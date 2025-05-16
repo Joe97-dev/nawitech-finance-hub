@@ -1,63 +1,33 @@
 
-import { useToast } from "@/hooks/use-toast";
-import { Bell, Search, User } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { useAuth } from "@/context/AuthContext";
+import { LogOut, User } from "lucide-react";
 
-export const AppHeader = () => {
-  const { toast } = useToast();
-
-  const handleNotificationClick = () => {
-    toast({
-      title: "No new notifications",
-      description: "You're all caught up!",
-    });
-  };
-
+export function AppHeader() {
+  const { user, logout } = useAuth();
+  const { state } = useSidebar();
+  
   return (
-    <header className="border-b">
-      <div className="flex h-16 items-center px-4 gap-4">
-        <SidebarTrigger className="md:hidden" />
-        
-        <div className="relative hidden md:flex items-center w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search..."
-            className="w-full pl-8 bg-background"
-          />
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
+      <SidebarTrigger />
+      <div className="flex-1">
+        <h1 className="text-lg font-semibold">Nawitech Microfinance</h1>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+            <User className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <div className="hidden md:block">
+            <p className="text-sm font-medium">{user?.username || 'User'}</p>
+            <p className="text-xs text-muted-foreground">Admin</p>
+          </div>
         </div>
-        
-        <div className="ml-auto flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleNotificationClick}
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <User className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
-              <DropdownMenuItem>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <Button variant="ghost" size="icon" onClick={logout}>
+          <LogOut className="h-5 w-5" />
+        </Button>
       </div>
     </header>
   );
-};
+}

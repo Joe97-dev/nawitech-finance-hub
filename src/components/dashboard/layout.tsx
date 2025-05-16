@@ -1,12 +1,10 @@
 
-import { PropsWithChildren, useState } from "react";
+import { PropsWithChildren } from "react";
 import { AppSidebar } from "./sidebar";
 import { AppHeader } from "./header";
 import { SidebarProvider } from "@/components/ui/sidebar";
 
 export const DashboardLayout = ({ children }: PropsWithChildren) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
