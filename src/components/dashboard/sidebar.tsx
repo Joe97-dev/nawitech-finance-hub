@@ -84,7 +84,8 @@ const reportNavItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -109,7 +110,7 @@ export function AppSidebar() {
   return (
     <Sidebar
       className={`border-r ${collapsed ? "w-14" : "w-64"} transition-all duration-200`}
-      collapsible
+      collapsible="icon"
     >
       <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-6" : ""}`}>
         {collapsed ? (
@@ -119,9 +120,7 @@ export function AppSidebar() {
         )}
       </div>
       <SidebarContent className="p-2">
-        <SidebarGroup
-          defaultOpen={isMainExpanded}
-        >
+        <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
             Main
           </SidebarGroupLabel>
@@ -145,7 +144,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup defaultOpen={isReportsExpanded}>
+        <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
             Reports
           </SidebarGroupLabel>
