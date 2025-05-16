@@ -1,47 +1,30 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, LogIn } from "lucide-react";
-
-// Hardcoded users for demo purposes
-// In a real application, these would be stored in a database
-const USERS = [
-  { username: "admin", password: "admin123" },
-  { username: "user", password: "user123" }
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const Login = () => {
-  const [username, setUsername] = useState("");
+  // Login form state
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, signUp, loading } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    await login(email, password);
+  };
 
-    // Simulate API call
-    setTimeout(() => {
-      const user = USERS.find(
-        (user) => user.username === username && user.password === password
-      );
-
-      if (user) {
-        // Store auth state in localStorage
-        localStorage.setItem("nawitech-auth", JSON.stringify({ username }));
-        toast.success("Login successful");
-        navigate("/");
-      } else {
-        toast.error("Invalid username or password");
-      }
-      setIsLoading(false);
-    }, 1000);
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await signUp(email, password);
   };
 
   const togglePasswordVisibility = () => {
@@ -58,71 +41,144 @@ const Login = () => {
         
         <Card className="border-nawitech-200 shadow-lg">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
+            <CardTitle className="text-2xl font-bold text-center">Welcome</CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access the dashboard
+              Login or create an account to access the dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  autoComplete="username"
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    disabled={isLoading}
-                    className="pr-10"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex items-center pr-3"
-                    onClick={togglePasswordVisibility}
-                    tabIndex={-1}
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid grid-cols-2 mb-4">
+                <TabsTrigger value="login">Login</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                        disabled={loading}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        onClick={togglePasswordVisibility}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-nawitech-600 hover:bg-nawitech-700" 
+                    disabled={loading}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    {loading ? (
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Logging in...
+                      </div>
                     ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center">
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Login
+                      </div>
                     )}
-                  </button>
-                </div>
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-nawitech-600 hover:bg-nawitech-700" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    Logging in...
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      disabled={loading}
+                    />
                   </div>
-                ) : (
-                  <div className="flex items-center">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="new-password"
+                        disabled={loading}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        onClick={togglePasswordVisibility}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </Button>
-            </form>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-nawitech-600 hover:bg-nawitech-700" 
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <div className="flex items-center">
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Signing up...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Sign Up
+                      </div>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-muted-foreground">
