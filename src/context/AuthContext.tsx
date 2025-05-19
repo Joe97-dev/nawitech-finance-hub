@@ -21,12 +21,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state listener first to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        // Only update state, don't perform redirection or additional Supabase calls here
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
@@ -35,7 +37,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
 
-        // Only set loading to false once we have processed an auth event
+        // Mark auth as ready after processing event
+        setIsAuthReady(true);
         setLoading(false);
       }
     );
@@ -48,10 +51,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
-          setLoading(false);
         }
+        
+        // Mark auth initialization as complete
+        setIsAuthReady(true);
+        setLoading(false);
       } catch (error) {
         console.error("Error checking auth session:", error);
+        setIsAuthReady(true);
         setLoading(false);
       }
     };
@@ -70,7 +77,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // If login successful, session will be updated by the auth listener
-      // and navigate will happen automatically via <ProtectedRoute>
       toast.success("Login successful");
     } catch (error: any) {
       toast.error(error.message || "Failed to login");
@@ -113,7 +119,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, isAuthenticated: !!user, login, signUp, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      isAuthenticated: !!user, 
+      login, 
+      signUp, 
+      logout, 
+      loading: loading || !isAuthReady 
+    }}>
       {children}
     </AuthContext.Provider>
   );

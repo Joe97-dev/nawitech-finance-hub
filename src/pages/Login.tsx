@@ -22,11 +22,12 @@ const Login = () => {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !loading) {
+      console.log("User is authenticated, redirecting to:", from);
       // Use replace: true to prevent users from navigating back to the login page
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, loading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
