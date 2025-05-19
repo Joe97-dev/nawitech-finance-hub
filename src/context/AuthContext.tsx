@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener first
+    // Set up auth state listener first to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         if (currentSession) {
@@ -34,6 +34,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSession(null);
           setUser(null);
         }
+
+        // Only set loading to false once we have processed an auth event
+        setLoading(false);
       }
     );
 
@@ -45,10 +48,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error checking auth session:", error);
-      } finally {
         setLoading(false);
       }
     };
@@ -66,11 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw error;
       }
 
-      // If login successful, save session and redirect
-      if (data.session) {
-        toast.success("Login successful");
-        navigate("/");
-      }
+      // If login successful, session will be updated by the auth listener
+      // and navigate will happen automatically via <ProtectedRoute>
+      toast.success("Login successful");
     } catch (error: any) {
       toast.error(error.message || "Failed to login");
       console.error("Login error:", error);

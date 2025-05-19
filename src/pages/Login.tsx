@@ -23,6 +23,7 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
+      // Use replace: true to prevent users from navigating back to the login page
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
@@ -30,6 +31,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     await login(email, password);
+    // Navigation happens in the useEffect above when isAuthenticated becomes true
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
