@@ -1,3 +1,4 @@
+
 /**
  * Converts an array of objects to a CSV string
  * 
@@ -45,9 +46,10 @@ export function downloadCSV(csvContent: string, filename: string): void {
   const link = document.createElement('a');
   
   // Create a download link
-  if (navigator.msSaveBlob) {
+  // Check for IE-specific saveBlob method - using type assertion to avoid TypeScript error
+  if (navigator && 'msSaveBlob' in navigator) {
     // IE 10+
-    navigator.msSaveBlob(blob, filename);
+    (navigator as any).msSaveBlob(blob, filename);
   } else {
     // Other browsers
     const url = URL.createObjectURL(blob);
