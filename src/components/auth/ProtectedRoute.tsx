@@ -1,14 +1,22 @@
 
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
 export const ProtectedRoute = () => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  const [authChecked, setAuthChecked] = useState(false);
   
+  // Only set authChecked after loading is complete
+  useEffect(() => {
+    if (!loading) {
+      setAuthChecked(true);
+    }
+  }, [loading]);
+
   // Show loading state while authentication is being checked
-  if (loading) {
+  if (loading || !authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 border-4 border-nawitech-600 border-t-transparent rounded-full animate-spin"></div>
@@ -18,10 +26,12 @@ export const ProtectedRoute = () => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    console.log("Not authenticated, redirecting to login");
     // Save the intended location to redirect to after login
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Render child routes if authenticated
+  // Only render child routes if authenticated and authChecked
+  console.log("Authenticated, rendering protected route");
   return <Outlet />;
 };

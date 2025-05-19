@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,18 @@ const Login = () => {
   // Get redirect path from location state or default to home
   const from = location.state?.from || "/";
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - with debounce to prevent loops
   useEffect(() => {
     if (isAuthenticated && !loading) {
       console.log("User is authenticated, redirecting to:", from);
-      // Use replace: true to prevent users from navigating back to the login page
-      navigate(from, { replace: true });
+      
+      // Add a small timeout to prevent potential race conditions
+      const redirectTimer = setTimeout(() => {
+        // Use replace: true to prevent users from navigating back to the login page
+        navigate(from, { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(redirectTimer);
     }
   }, [isAuthenticated, navigate, from, loading]);
 

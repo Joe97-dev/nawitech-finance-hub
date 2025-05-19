@@ -21,29 +21,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthReady, setIsAuthReady] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set up auth state listener first to avoid missing auth events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        // Only update state, don't perform redirection or additional Supabase calls here
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-        } else {
-          setSession(null);
-          setUser(null);
-        }
-
-        // Mark auth as ready after processing event
-        setIsAuthReady(true);
-        setLoading(false);
-      }
-    );
-
-    // Then check for existing session
+    // Get initial session first
     const initializeAuth = async () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -53,17 +34,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(currentSession.user);
         }
         
-        // Mark auth initialization as complete
-        setIsAuthReady(true);
+        // Mark auth initialization as complete only here
         setLoading(false);
       } catch (error) {
         console.error("Error checking auth session:", error);
-        setIsAuthReady(true);
         setLoading(false);
       }
     };
 
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        console.log("Auth state changed:", event, "user:", currentSession?.user?.email);
+        
+        // Only update state, don't navigate here
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+      }
+    );
+
+    // Initialize auth state
     initializeAuth();
+    
+    // Cleanup subscription
     return () => subscription.unsubscribe();
   }, []);
 
@@ -109,7 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       await supabase.auth.signOut();
       toast.success("Logged out successfully");
-      navigate("/login");
+      // Use navigate here to ensure we only redirect once after logout
+      navigate("/login", { replace: true });
     } catch (error: any) {
       toast.error(error.message || "Failed to logout");
       console.error("Logout error:", error);
@@ -126,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login, 
       signUp, 
       logout, 
-      loading: loading || !isAuthReady 
+      loading
     }}>
       {children}
     </AuthContext.Provider>
