@@ -38,7 +38,6 @@ const App = () => (
               <Route path="/reports/par" element={<PARReport />} />
             </Route>
             
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
