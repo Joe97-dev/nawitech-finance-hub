@@ -1,9 +1,11 @@
 
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 export const ProtectedRoute = () => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   // Show loading or placeholder while checking auth
   if (loading) {
@@ -16,7 +18,8 @@ export const ProtectedRoute = () => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    // Save the intended location to redirect to after login
+    return <Navigate to="/login" state={{ from: location.pathname }} />;
   }
 
   // Render child routes if authenticated

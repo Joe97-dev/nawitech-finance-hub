@@ -27,34 +27,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
       }
     );
 
     // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
-    });
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+        }
+      } catch (error) {
+        console.error("Error checking auth session:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    initializeAuth();
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
         throw error;
       }
-      
-      toast.success("Login successful");
-      navigate("/");
+
+      // If login successful, save session and redirect
+      if (data.session) {
+        toast.success("Login successful");
+        navigate("/");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to login");
+      console.error("Login error:", error);
     } finally {
       setLoading(false);
     }
@@ -72,6 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.success("Sign up successful! Please check your email to verify your account.");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
+      console.error("Signup error:", error);
     } finally {
       setLoading(false);
     }
@@ -85,6 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       navigate("/login");
     } catch (error: any) {
       toast.error(error.message || "Failed to logout");
+      console.error("Logout error:", error);
     } finally {
       setLoading(false);
     }

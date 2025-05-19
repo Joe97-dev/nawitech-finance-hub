@@ -8,6 +8,9 @@ export function AppHeader() {
   const { user, logout } = useAuth();
   const { state } = useSidebar();
   
+  // Get the email to display instead of username
+  const displayName = user?.email || 'User';
+  
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
       <SidebarTrigger />
@@ -20,7 +23,7 @@ export function AppHeader() {
             <User className="h-4 w-4 text-primary-foreground" />
           </div>
           <div className="hidden md:block">
-            <p className="text-sm font-medium">{user?.username || 'User'}</p>
+            <p className="text-sm font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">Admin</p>
           </div>
         </div>
