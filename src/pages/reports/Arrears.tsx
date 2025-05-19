@@ -1,6 +1,7 @@
 
 import { ReportPage } from "./Base";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ExportButton } from "@/components/ui/export-button";
 
 const data = [
   { category: "1-7 days", amount: 24500 },
@@ -11,11 +12,17 @@ const data = [
   { category: "90+ days", amount: 2000 },
 ];
 
+const columns = [
+  { key: "category", header: "Days Past Due" },
+  { key: "amount", header: "Amount in Arrears (KES)" }
+];
+
 const ArrearsReport = () => {
   return (
     <ReportPage
       title="Arrears Report"
       description="Analysis of loans in arrears by time period."
+      actions={<ExportButton data={data} filename="arrears-report" columns={columns} />}
     >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">

@@ -1,6 +1,7 @@
 
 import { ReportPage } from "./Base";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { ExportButton } from "@/components/ui/export-button";
 
 const data = [
   { name: "Current", value: 80, color: "#22c55e" },
@@ -10,11 +11,17 @@ const data = [
   { name: "PAR 90+", value: 2, color: "#7f1d1d" },
 ];
 
+const columns = [
+  { key: "name", header: "Portfolio Status" },
+  { key: "value", header: "Percentage (%)" }
+];
+
 const PARReport = () => {
   return (
     <ReportPage
       title="Portfolio at Risk (PAR) Report"
       description="Analysis of loans at different risk levels."
+      actions={<ExportButton data={data} filename="par-report" columns={columns} />}
     >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
