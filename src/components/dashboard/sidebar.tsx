@@ -89,28 +89,18 @@ const reportNavItems = [
     icon: PieChart,
   },
   {
-    title: "Repayment Report",
-    href: "/reports/repayment",
-    icon: FileText,
-  },
-  {
     title: "KYC Report",
-    href: "/reports/kyc",
-    icon: FileText,
-  },
-  {
-    title: "Portfolio Performance",
-    href: "/reports/portfolio",
-    icon: BarChartHorizontal,
-  },
-  {
-    title: "Disbursal Report",
-    href: "/reports/disbursal",
+    href: "/reports/kyc", 
     icon: FileText,
   },
   {
     title: "Forecasting Report",
     href: "/reports/forecasting",
+    icon: FileText,
+  },
+  {
+    title: "Disbursal Report",
+    href: "/reports/disbursal",
     icon: FileText,
   }
 ];

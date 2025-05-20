@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, FileUp, Download } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 // Sample client data
 const clients = [
@@ -100,9 +101,12 @@ const ClientsPage = () => {
                     <TableCell>
                       <Link
                         to={`/clients/${client.id}`}
-                        className="font-medium text-nawitech-600 hover:underline"
+                        className="flex items-center gap-2 hover:underline"
                       >
-                        {client.name}
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>{client.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-nawitech-600">{client.name}</span>
                       </Link>
                     </TableCell>
                     <TableCell>{client.phone}</TableCell>

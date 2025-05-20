@@ -21,16 +21,59 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NewClientPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          title: "File too large",
+          description: "Photo must be less than 5MB in size."
+        });
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          variant: "destructive",
+          title: "Invalid file type",
+          description: "Please upload an image file (JPG, PNG)."
+        });
+        return;
+      }
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!photoPreview) {
+      toast({
+        variant: "destructive",
+        title: "Photo required",
+        description: "Please upload a passport photo to continue."
+      });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -76,6 +119,40 @@ const NewClientPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <Label htmlFor="photo">Passport Photo (Required)</Label>
+                  <div className="flex flex-col items-center space-y-3">
+                    <Avatar className="h-32 w-32">
+                      {photoPreview ? (
+                        <AvatarImage src={photoPreview} alt="Client photo" />
+                      ) : (
+                        <AvatarFallback className="bg-muted">
+                          <Image className="h-12 w-12 text-muted-foreground" />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    
+                    <div className="border border-dashed rounded-md p-4 text-center w-full">
+                      <input
+                        type="file"
+                        id="photo"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="sr-only"
+                      />
+                      <Label htmlFor="photo" className="cursor-pointer flex flex-col items-center">
+                        <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-1">
+                          Click to upload passport photo
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          JPG, PNG (Max 5MB)
+                        </p>
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
@@ -145,6 +222,22 @@ const NewClientPage = () => {
                     <Label htmlFor="region">Region/State</Label>
                     <Input id="region" required />
                   </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="branch">Branch</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select branch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="head-office">HEAD OFFICE</SelectItem>
+                      <SelectItem value="westlands">Westlands Branch</SelectItem>
+                      <SelectItem value="mombasa">Mombasa Branch</SelectItem>
+                      <SelectItem value="kisumu">Kisumu Branch</SelectItem>
+                      <SelectItem value="nakuru">Nakuru Branch</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
