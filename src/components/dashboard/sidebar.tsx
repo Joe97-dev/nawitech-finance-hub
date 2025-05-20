@@ -1,4 +1,3 @@
-
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -8,6 +7,7 @@ import {
   PieChart,
   Settings,
   BarChartHorizontal,
+  CalendarDays,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,9 +42,34 @@ const mainNavItems = [
 
 const reportNavItems = [
   {
+    title: "Income Report",
+    href: "/reports/income",
+    icon: BarChartHorizontal,
+  },
+  {
+    title: "Cash Flow",
+    href: "/reports/cash-flow",
+    icon: BarChartHorizontal,
+  },
+  {
+    title: "Loan Performance",
+    href: "/reports/loan-performance",
+    icon: PieChart,
+  },
+  {
+    title: "Collection Rate",
+    href: "/reports/collection",
+    icon: CalendarDays,
+  },
+  {
     title: "Arrears Report",
     href: "/reports/arrears",
     icon: FileText,
+  },
+  {
+    title: "PAR Report",
+    href: "/reports/par",
+    icon: PieChart,
   },
   {
     title: "Repayment Report",
@@ -70,16 +95,6 @@ const reportNavItems = [
     title: "Forecasting Report",
     href: "/reports/forecasting",
     icon: FileText,
-  },
-  {
-    title: "PAR Report",
-    href: "/reports/par",
-    icon: PieChart,
-  },
-  {
-    title: "Collection Rate",
-    href: "/reports/collection",
-    icon: PieChart,
   }
 ];
 
@@ -144,7 +159,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
+        <SidebarGroup defaultOpen>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
             Reports
           </SidebarGroupLabel>

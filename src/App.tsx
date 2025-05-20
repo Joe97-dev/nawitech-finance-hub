@@ -13,6 +13,10 @@ import LoansIndex from "./pages/loans/Index";
 import NewLoan from "./pages/loans/New";
 import ArrearsReport from "./pages/reports/Arrears";
 import PARReport from "./pages/reports/PAR";
+import IncomeReport from "./pages/reports/Income";
+import CashFlowReport from "./pages/reports/CashFlow";
+import LoanPerformanceReport from "./pages/reports/LoanPerformance";
+import CollectionRateReport from "./pages/reports/Collection";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 
@@ -36,6 +40,10 @@ const App = () => (
               <Route path="/loans/new" element={<NewLoan />} />
               <Route path="/reports/arrears" element={<ArrearsReport />} />
               <Route path="/reports/par" element={<PARReport />} />
+              <Route path="/reports/income" element={<IncomeReport />} />
+              <Route path="/reports/cash-flow" element={<CashFlowReport />} />
+              <Route path="/reports/loan-performance" element={<LoanPerformanceReport />} />
+              <Route path="/reports/collection" element={<CollectionRateReport />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
