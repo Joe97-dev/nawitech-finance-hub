@@ -4,6 +4,13 @@ import { ReportPage } from "./Base";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { CalendarRange } from "lucide-react";
 
 // Dummy data for collection rates
 const collectionData = [
@@ -21,6 +28,27 @@ const collectionData = [
   { month: "Dec", expected: 3680000, collected: 3532800, rate: 96 }
 ];
 
+// Data by branch
+const branchCollectionData = {
+  "all": collectionData,
+  "head-office": collectionData.map(item => ({...item, expected: item.expected * 0.4, collected: item.collected * 0.4})),
+  "westlands": collectionData.map(item => ({...item, expected: item.expected * 0.25, collected: item.collected * 0.25})),
+  "mombasa": collectionData.map(item => ({...item, expected: item.expected * 0.15, collected: item.collected * 0.15})),
+  "kisumu": collectionData.map(item => ({...item, expected: item.expected * 0.12, collected: item.collected * 0.12})),
+  "nakuru": collectionData.map(item => ({...item, expected: item.expected * 0.08, collected: item.collected * 0.08}))
+};
+
+const branches = [
+  { value: "all", label: "All Branches" },
+  { value: "head-office", label: "HEAD OFFICE" },
+  { value: "westlands", label: "Westlands Branch" },
+  { value: "mombasa", label: "Mombasa Branch" },
+  { value: "kisumu", label: "Kisumu Branch" },
+  { value: "nakuru", label: "Nakuru Branch" }
+];
+
+const years = ["2025", "2024", "2023"];
+
 const columns = [
   { key: "month", header: "Month" },
   { key: "expected", header: "Expected Collection (KES)" },
@@ -28,17 +56,22 @@ const columns = [
   { key: "rate", header: "Collection Rate (%)" }
 ];
 
-const years = ["2025", "2024", "2023"];
-
 const CollectionRateReport = () => {
   const [selectedYear, setSelectedYear] = useState("2025");
+  const [selectedBranch, setSelectedBranch] = useState("all");
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date(2025, 0, 1), // Jan 1, 2025
+    to: new Date(2025, 11, 31), // Dec 31, 2025
+  });
   
-  const totalExpected = collectionData.reduce(
+  const filteredData = branchCollectionData[selectedBranch as keyof typeof branchCollectionData] || branchCollectionData.all;
+  
+  const totalExpected = filteredData.reduce(
     (acc, month) => acc + month.expected, 
     0
   );
   
-  const totalCollected = collectionData.reduce(
+  const totalCollected = filteredData.reduce(
     (acc, month) => acc + month.collected, 
     0
   );
@@ -50,9 +83,46 @@ const CollectionRateReport = () => {
       title="Collection Rate Report"
       description="Analysis of monthly loan collection performance."
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "justify-start text-left font-normal w-full sm:w-auto",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarRange className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date range</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+              />
+            </PopoverContent>
+          </Popover>
+          
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="Select Year" />
             </SelectTrigger>
             <SelectContent>
@@ -63,9 +133,23 @@ const CollectionRateReport = () => {
               ))}
             </SelectContent>
           </Select>
+          
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Select Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.value} value={branch.value}>
+                  {branch.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
           <ExportButton 
-            data={collectionData} 
-            filename={`collection-rate-report-${selectedYear}`} 
+            data={filteredData} 
+            filename={`collection-rate-${selectedBranch}-${selectedYear}${date?.from ? '-' + format(date.from, 'yyyy-MM-dd') : ''}${date?.to ? '-to-' + format(date.to, 'yyyy-MM-dd') : ''}` } 
             columns={columns} 
           />
         </div>
@@ -99,7 +183,7 @@ const CollectionRateReport = () => {
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={collectionData}
+              data={filteredData}
               margin={{
                 top: 20,
                 right: 30,

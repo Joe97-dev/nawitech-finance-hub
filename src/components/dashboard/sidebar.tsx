@@ -1,3 +1,4 @@
+
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -8,6 +9,7 @@ import {
   Settings,
   BarChartHorizontal,
   CalendarDays,
+  Building,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,6 +29,11 @@ const mainNavItems = [
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Branches",
+    href: "/branches",
+    icon: Building,
   },
   {
     title: "Clients",
@@ -60,6 +67,16 @@ const reportNavItems = [
     title: "Collection Rate",
     href: "/reports/collection",
     icon: CalendarDays,
+  },
+  {
+    title: "Loans Due",
+    href: "/reports/loans-due",
+    icon: FileText,
+  },
+  {
+    title: "Dormant Clients",
+    href: "/reports/dormant",
+    icon: Users,
   },
   {
     title: "Arrears Report",
