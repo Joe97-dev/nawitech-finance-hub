@@ -68,7 +68,7 @@ const PARReport = () => {
       // Process the data to get PAR metrics
       if (data && data.length > 0) {
         // Get the most recent analysis
-        const latestAnalysis: PortfolioAnalysis = data[0];
+        const latestAnalysis = data[0] as PortfolioAnalysis;
         
         // Create data for the pie chart
         const processedData: PARData[] = [

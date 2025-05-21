@@ -42,6 +42,42 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_portfolio_analysis: {
+        Row: {
+          amount_at_risk: number
+          current_percentage: number
+          date: string
+          id: string
+          par_1_30_percentage: number
+          par_31_60_percentage: number
+          par_61_90_percentage: number
+          par_90_plus_percentage: number
+          total_portfolio: number
+        }
+        Insert: {
+          amount_at_risk: number
+          current_percentage: number
+          date: string
+          id?: string
+          par_1_30_percentage: number
+          par_31_60_percentage: number
+          par_61_90_percentage: number
+          par_90_plus_percentage: number
+          total_portfolio: number
+        }
+        Update: {
+          amount_at_risk?: number
+          current_percentage?: number
+          date?: string
+          id?: string
+          par_1_30_percentage?: number
+          par_31_60_percentage?: number
+          par_61_90_percentage?: number
+          par_90_plus_percentage?: number
+          total_portfolio?: number
+        }
+        Relationships: []
+      }
       loan_products: {
         Row: {
           amount_max: number
@@ -165,6 +201,42 @@ export type Database = {
           transaction_date?: string
           transaction_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      loans: {
+        Row: {
+          amount: number
+          balance: number
+          client: string
+          created_at: string | null
+          date: string
+          id: string
+          status: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          balance: number
+          client: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          status: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          balance?: number
+          client?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          status?: string
+          type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
