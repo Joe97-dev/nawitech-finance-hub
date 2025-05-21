@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 
 // Dummy data for loans due
 const loansDueData = [
@@ -56,6 +58,7 @@ const columns = [
 ];
 
 const LoansDueReport = () => {
+  const navigate = useNavigate();
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2025, 4, 20), // May 20, 2025
     to: new Date(2025, 5, 20), // June 20, 2025
@@ -122,6 +125,7 @@ const LoansDueReport = () => {
                   selected={date}
                   onSelect={setDate}
                   numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
@@ -167,42 +171,48 @@ const LoansDueReport = () => {
         </div>
       }
     >
-      <div className="space-y-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client Name</TableHead>
-              <TableHead>Phone Number</TableHead>
-              <TableHead>Amount Due (KES)</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead>Branch</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLoans.length === 0 ? (
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                  No loans due in the selected date range
-                </TableCell>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Phone Number</TableHead>
+                <TableHead>Amount Due (KES)</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead>Branch</TableHead>
               </TableRow>
-            ) : (
-              filteredLoans.map((loan) => (
-                <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.clientName}</TableCell>
-                  <TableCell>{loan.phoneNumber}</TableCell>
-                  <TableCell>{loan.amountDue.toLocaleString()}</TableCell>
-                  <TableCell>{loan.dueDate}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {branches.find(b => b.value === loan.branch)?.label || loan.branch}
-                    </Badge>
+            </TableHeader>
+            <TableBody>
+              {filteredLoans.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                    No loans due in the selected date range
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                filteredLoans.map((loan) => (
+                  <TableRow 
+                    key={loan.id}
+                    className="cursor-pointer hover:bg-muted"
+                    onClick={() => navigate(`/loans/${loan.id}`)}
+                  >
+                    <TableCell className="font-medium">{loan.clientName}</TableCell>
+                    <TableCell>{loan.phoneNumber}</TableCell>
+                    <TableCell>{loan.amountDue.toLocaleString()}</TableCell>
+                    <TableCell>{loan.dueDate}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {branches.find(b => b.value === loan.branch)?.label || loan.branch}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </ReportPage>
   );
 };

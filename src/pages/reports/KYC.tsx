@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
@@ -11,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useNavigate } from "react-router-dom";
 
-// Dummy data for KYC reports
+// Dummy data for KYC reports (removed email)
 const clientsData = [
   { 
     id: 1, 
@@ -20,7 +20,6 @@ const clientsData = [
     phoneNumber: "0712345678", 
     idNumber: "12345678", 
     dob: "1985-05-15",
-    email: "john@example.com",
     address: "123 Kimathi St, Nairobi",
     gender: "Male",
     branch: "head-office",
@@ -38,7 +37,6 @@ const clientsData = [
     phoneNumber: "0723456789", 
     idNumber: "23456789", 
     dob: "1990-08-22",
-    email: "mary@example.com",
     address: "456 Moi Ave, Nairobi",
     gender: "Female",
     branch: "head-office",
@@ -55,7 +53,6 @@ const clientsData = [
     phoneNumber: "0734567890", 
     idNumber: "34567890", 
     dob: "1982-11-30",
-    email: "peter@example.com",
     address: "789 Tom Mboya St, Nairobi",
     gender: "Male",
     branch: "westlands",
@@ -73,7 +70,6 @@ const clientsData = [
     phoneNumber: "0745678901", 
     idNumber: "45678901", 
     dob: "1988-04-12",
-    email: "lucy@example.com",
     address: "101 Kenyatta Ave, Mombasa",
     gender: "Female",
     branch: "mombasa",
@@ -88,7 +84,6 @@ const clientsData = [
     phoneNumber: "0756789012", 
     idNumber: "56789012", 
     dob: "1995-02-18",
-    email: "david@example.com",
     address: "202 Oginga Odinga St, Kisumu",
     gender: "Male",
     branch: "kisumu",
@@ -123,7 +118,6 @@ const columns = [
   { key: "idNumber", header: "ID Number" },
   { key: "gender", header: "Gender" },
   { key: "dob", header: "Date of Birth" },
-  { key: "email", header: "Email" },
   { key: "address", header: "Address" },
   { key: "branch", header: "Branch" },
   { key: "status", header: "Status" },
@@ -131,6 +125,7 @@ const columns = [
 ];
 
 const KYCReport = () => {
+  const navigate = useNavigate();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -254,7 +249,10 @@ const KYCReport = () => {
           
           <div className="lg:col-span-2">
             {selectedClient ? (
-              <ClientDetail client={clientsData.find(c => c.id === selectedClient)!} />
+              <ClientDetail 
+                client={clientsData.find(c => c.id === selectedClient)!}
+                onLoanClick={(loanId) => navigate(`/loans/${loanId}`)}
+              />
             ) : (
               <div className="border rounded-md flex items-center justify-center h-full p-8 text-muted-foreground">
                 Select a client to view their details
@@ -267,7 +265,14 @@ const KYCReport = () => {
   );
 };
 
-const ClientDetail = ({ client }: { client: typeof clientsData[0] }) => {
+// Updated ClientDetail component to handle loan navigation
+const ClientDetail = ({ 
+  client, 
+  onLoanClick 
+}: { 
+  client: typeof clientsData[0], 
+  onLoanClick: (loanId: number) => void 
+}) => {
   return (
     <Card>
       <CardContent className="p-6">
@@ -313,10 +318,6 @@ const ClientDetail = ({ client }: { client: typeof clientsData[0] }) => {
               
               <div className="space-y-3">
                 <div>
-                  <div className="text-sm text-muted-foreground">Email</div>
-                  <div>{client.email}</div>
-                </div>
-                <div>
                   <div className="text-sm text-muted-foreground">Physical Address</div>
                   <div>{client.address}</div>
                 </div>
@@ -355,8 +356,12 @@ const ClientDetail = ({ client }: { client: typeof clientsData[0] }) => {
                   </TableHeader>
                   <TableBody>
                     {client.loans.map((loan) => (
-                      <TableRow key={loan.id}>
-                        <TableCell>{loan.id}</TableCell>
+                      <TableRow 
+                        key={loan.id} 
+                        className="cursor-pointer hover:bg-muted"
+                        onClick={() => onLoanClick(loan.id)}
+                      >
+                        <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
                         <TableCell>KES {loan.amount.toLocaleString()}</TableCell>
                         <TableCell>{loan.disbursedDate}</TableCell>
                         <TableCell>{loan.dueDate}</TableCell>
