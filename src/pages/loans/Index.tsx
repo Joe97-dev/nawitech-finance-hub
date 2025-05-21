@@ -58,7 +58,6 @@ const LoansPage = () => {
     const fetchLoans = async () => {
       try {
         setLoading(true);
-        // Replace with your actual loans table
         const { data, error } = await supabase
           .from('loans')
           .select('*')
@@ -66,7 +65,18 @@ const LoansPage = () => {
           
         if (error) throw error;
         
-        setLoans(data || []);
+        // Transform data to match our Loan interface
+        const formattedLoans: Loan[] = data.map((loan: any) => ({
+          id: loan.id,
+          client: loan.client,
+          amount: loan.amount,
+          balance: loan.balance,
+          type: loan.type,
+          status: loan.status,
+          date: loan.date
+        }));
+        
+        setLoans(formattedLoans);
       } catch (error: any) {
         console.error("Error fetching loans:", error);
         toast({
