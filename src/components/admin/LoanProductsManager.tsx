@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 interface LoanProduct {
   id: string;
@@ -57,7 +57,7 @@ interface LoanProduct {
 }
 
 export function LoanProductsManager() {
-  const { toast: showToast } = useToast();
+  const { toast } = useToast();
   const { user } = useAuth();
   const [products, setProducts] = useState<LoanProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,9 +91,8 @@ export function LoanProductsManager() {
       setProducts(data as LoanProduct[] || []);
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: `Failed to fetch loan products: ${error.message}`,
-        variant: "destructive"
+        variant: "destructive",
+        description: `Failed to fetch loan products: ${error.message}`
       });
     } finally {
       setLoading(false);
@@ -110,18 +109,16 @@ export function LoanProductsManager() {
   const handleSaveProduct = async () => {
     if (!user) {
       toast({
-        title: "Authentication Error",
-        description: "You must be logged in to manage loan products.",
-        variant: "destructive"
+        variant: "destructive",
+        description: "You must be logged in to manage loan products."
       });
       return;
     }
     
     if (!newProduct.name) {
       toast({
-        title: "Validation Error",
-        description: "Please enter a product name.",
-        variant: "destructive"
+        variant: "destructive",
+        description: "Please enter a product name."
       });
       return;
     }
@@ -181,16 +178,14 @@ export function LoanProductsManager() {
       fetchLoanProducts();
       
       toast({
-        title: "Success",
         description: editingProduct 
           ? "Loan product updated successfully." 
           : "Loan product created successfully."
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
+        variant: "destructive",
+        description: error.message
       });
     }
   };
@@ -225,14 +220,12 @@ export function LoanProductsManager() {
         fetchLoanProducts();
         
         toast({
-          title: "Success",
           description: "Loan product deleted successfully."
         });
       } catch (error: any) {
         toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive"
+          variant: "destructive",
+          description: error.message
         });
       }
     }

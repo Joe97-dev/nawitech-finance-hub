@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -179,10 +178,8 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
       const a = document.createElement('a');
       a.href = url;
       a.download = document.name;
-      document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
-      a.remove();
     } catch (error: any) {
       toast({
         variant: "destructive",
