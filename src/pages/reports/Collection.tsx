@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, Download } from "lucide-react";
 
 // Dummy data for collection rates
 const collectionData = [
@@ -83,14 +83,14 @@ const CollectionRateReport = () => {
       title="Collection Rate Report"
       description="Analysis of monthly loan collection performance."
       actions={
-        <div className="flex flex-col sm:flex-row items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 id="date"
                 variant={"outline"}
                 className={cn(
-                  "justify-start text-left font-normal w-full sm:w-auto",
+                  "justify-start text-left font-normal",
                   !date && "text-muted-foreground"
                 )}
               >
@@ -122,7 +122,7 @@ const CollectionRateReport = () => {
           </Popover>
           
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-full sm:w-32">
+            <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Select Year" />
             </SelectTrigger>
             <SelectContent>
@@ -135,7 +135,7 @@ const CollectionRateReport = () => {
           </Select>
           
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Select Branch" />
             </SelectTrigger>
             <SelectContent>
@@ -150,24 +150,24 @@ const CollectionRateReport = () => {
           <ExportButton 
             data={filteredData} 
             filename={`collection-rate-${selectedBranch}-${selectedYear}${date?.from ? '-' + format(date.from, 'yyyy-MM-dd') : ''}${date?.to ? '-to-' + format(date.to, 'yyyy-MM-dd') : ''}` } 
-            columns={columns} 
+            columns={columns}
           />
         </div>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="stats-card">
-            <h3 className="stats-label">Total Expected</h3>
-            <p className="stats-value">KES {totalExpected.toLocaleString()}</p>
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">Total Expected</h3>
+            <p className="mt-2 text-2xl font-semibold">KES {totalExpected.toLocaleString()}</p>
           </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Total Collected</h3>
-            <p className="stats-value">KES {totalCollected.toLocaleString()}</p>
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">Total Collected</h3>
+            <p className="mt-2 text-2xl font-semibold">KES {totalCollected.toLocaleString()}</p>
           </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Average Collection Rate</h3>
-            <p className="stats-value">{averageRate}%</p>
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">Average Collection Rate</h3>
+            <p className="mt-2 text-2xl font-semibold">{averageRate}%</p>
             <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
               <div 
                 className={`h-2.5 rounded-full ${
@@ -180,7 +180,7 @@ const CollectionRateReport = () => {
           </div>
         </div>
         
-        <div className="h-80 w-full">
+        <div className="border rounded-lg p-4 h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={filteredData}
@@ -198,8 +198,8 @@ const CollectionRateReport = () => {
                 name === "rate" ? `${value}%` : `KES ${value.toLocaleString()}`
               } />
               <Legend />
-              <Area type="monotone" dataKey="expected" name="Expected Collection" stroke="#8884d8" fill="#8884d8" />
-              <Area type="monotone" dataKey="collected" name="Actual Collection" stroke="#22c55e" fill="#22c55e" />
+              <Area type="monotone" dataKey="expected" name="Expected Collection" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
+              <Area type="monotone" dataKey="collected" name="Actual Collection" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

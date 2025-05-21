@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,7 +38,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, ShieldCheck } from "lucide-react";
+import { Users, ShieldCheck, BookText } from "lucide-react";
+import { LoanProductsManager } from "@/components/admin/LoanProductsManager";
 
 type UserWithRole = {
   id: string;
@@ -147,6 +147,10 @@ const Settings = () => {
               <TabsTrigger value="users" className="flex items-center">
                 <Users className="mr-2 h-4 w-4" />
                 Users & Roles
+              </TabsTrigger>
+              <TabsTrigger value="loanProducts" className="flex items-center">
+                <BookText className="mr-2 h-4 w-4" />
+                Loan Products
               </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center">
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -256,6 +260,10 @@ const Settings = () => {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="loanProducts" className="space-y-4">
+              <LoanProductsManager />
             </TabsContent>
             
             <TabsContent value="security" className="space-y-4">
