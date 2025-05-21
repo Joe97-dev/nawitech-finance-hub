@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useRole } from "@/context/RoleContext";
-import { FileText, PlusCircle, Download, Eye, Trash2 } from "lucide-react";
+import { FileText, PlusCircle, Download, Eye, Trash2, Loader2 } from "lucide-react";
 
 interface LoanDocument {
   id: string;
@@ -321,7 +322,12 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
                   onClick={handleUpload} 
                   disabled={uploading || !selectedFile || !documentName}
                 >
-                  {uploading ? "Uploading..." : "Upload Document"}
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : "Upload Document"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -344,7 +350,8 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-4">
                   <div className="flex justify-center">
-                    <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    <span>Loading documents...</span>
                   </div>
                 </TableCell>
               </TableRow>

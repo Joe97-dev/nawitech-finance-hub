@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,20 +11,20 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Plus, Search, Download } from "lucide-react";
+import { Plus, Search, Download, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Sample loan data
-const loans = [
-  { id: "L0001", client: "Jane Cooper", amount: 50000, balance: 35000, type: "Business", status: "active", date: "2025-04-15" },
-  { id: "L0002", client: "Wade Warren", amount: 30000, balance: 30000, type: "Personal", status: "pending", date: "2025-04-20" },
-  { id: "L0003", client: "Esther Howard", amount: 75000, balance: 20000, type: "Business", status: "active", date: "2025-04-01" },
-  { id: "L0004", client: "Cameron Williamson", amount: 25000, balance: 0, type: "Education", status: "closed", date: "2025-03-10" },
-  { id: "L0005", client: "Brooklyn Simmons", amount: 100000, balance: 80000, type: "Business", status: "active", date: "2025-03-25" },
-  { id: "L0006", client: "Leslie Alexander", amount: 15000, balance: 10000, type: "Personal", status: "active", date: "2025-04-05" },
-  { id: "L0007", client: "Jenny Wilson", amount: 50000, balance: 50000, type: "Business", status: "pending", date: "2025-04-22" },
-  { id: "L0008", client: "Guy Hawkins", amount: 35000, balance: 5000, type: "Personal", status: "active", date: "2025-03-15" },
-];
+interface Loan {
+  id: string;
+  client: string;
+  amount: number;
+  balance: number;
+  type: string;
+  status: string;
+  date: string;
+}
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat("en-US", {
@@ -50,12 +50,73 @@ const getStatusClass = (status: string) => {
 
 const LoansPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const fetchLoans = async () => {
+      try {
+        setLoading(true);
+        // Replace with your actual loans table
+        const { data, error } = await supabase
+          .from('loans')
+          .select('*')
+          .order('date', { ascending: false });
+          
+        if (error) throw error;
+        
+        setLoans(data || []);
+      } catch (error: any) {
+        console.error("Error fetching loans:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to fetch loans",
+          description: error.message || "An error occurred while fetching loans"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLoans();
+  }, [toast]);
   
   const filteredLoans = loans.filter(loan => 
     loan.client.toLowerCase().includes(searchQuery.toLowerCase()) || 
     loan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     loan.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const exportLoans = () => {
+    // Implement CSV export functionality here
+    const headers = ["Loan ID", "Client", "Amount", "Balance", "Type", "Date", "Status"];
+    const dataRows = filteredLoans.map(loan => [
+      loan.id,
+      loan.client,
+      loan.amount.toString(),
+      loan.balance.toString(),
+      loan.type,
+      loan.date,
+      loan.status
+    ]);
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(","),
+      ...dataRows.map(row => row.join(","))
+    ].join("\n");
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `loans-export-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <DashboardLayout>
@@ -66,7 +127,7 @@ const LoansPage = () => {
             <p className="text-muted-foreground">Manage all client loans.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={exportLoans}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -108,10 +169,19 @@ const LoansPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLoans.length === 0 ? (
+              {loading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No loans found.
+                    <div className="flex justify-center items-center">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Loading loans...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredLoans.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    {searchQuery ? "No loans matching your search." : "No loans found."}
                   </TableCell>
                 </TableRow>
               ) : (
