@@ -165,19 +165,20 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
     }
   };
 
-  const downloadDocument = async (document: LoanDocument) => {
+  // Fixed function: renamed parameter from 'document' to 'docItem' to avoid name collision with global document
+  const downloadDocument = async (docItem: LoanDocument) => {
     try {
       const { data, error } = await supabase.storage
         .from('loan_documents')
-        .download(document.file_path);
+        .download(docItem.file_path);
         
       if (error) throw error;
       
-      // Create download link
+      // Create download link - now correctly references the global document object
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = document.name;
+      a.download = docItem.name;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error: any) {
