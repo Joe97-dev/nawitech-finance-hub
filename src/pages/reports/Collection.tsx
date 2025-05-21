@@ -10,7 +10,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CalendarRange, Download } from "lucide-react";
+import { CalendarRange } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Dummy data for collection rates
 const collectionData = [
@@ -63,6 +65,7 @@ const CollectionRateReport = () => {
     from: new Date(2025, 0, 1), // Jan 1, 2025
     to: new Date(2025, 11, 31), // Dec 31, 2025
   });
+  const [activeView, setActiveView] = useState("chart");
   
   const filteredData = branchCollectionData[selectedBranch as keyof typeof branchCollectionData] || branchCollectionData.all;
   
@@ -157,52 +160,109 @@ const CollectionRateReport = () => {
     >
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Expected</h3>
-            <p className="mt-2 text-2xl font-semibold">KES {totalExpected.toLocaleString()}</p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-medium text-muted-foreground">Total Collected</h3>
-            <p className="mt-2 text-2xl font-semibold">KES {totalCollected.toLocaleString()}</p>
-          </div>
-          <div className="rounded-lg border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-medium text-muted-foreground">Average Collection Rate</h3>
-            <p className="mt-2 text-2xl font-semibold">{averageRate}%</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div 
-                className={`h-2.5 rounded-full ${
-                  averageRate >= 95 ? 'bg-green-600' : 
-                  averageRate >= 90 ? 'bg-yellow-400' : 'bg-red-600'
-                }`} 
-                style={{ width: `${averageRate}%` }}
-              />
-            </div>
-          </div>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-sm font-medium text-muted-foreground">Total Expected</h3>
+              <p className="mt-2 text-2xl font-semibold">KES {totalExpected.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-sm font-medium text-muted-foreground">Total Collected</h3>
+              <p className="mt-2 text-2xl font-semibold">KES {totalCollected.toLocaleString()}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-sm">
+            <CardContent className="pt-6">
+              <h3 className="text-sm font-medium text-muted-foreground">Average Collection Rate</h3>
+              <p className="mt-2 text-2xl font-semibold">{averageRate}%</p>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                <div 
+                  className={`h-2.5 rounded-full ${
+                    averageRate >= 95 ? 'bg-green-600' : 
+                    averageRate >= 90 ? 'bg-yellow-400' : 'bg-red-600'
+                  }`} 
+                  style={{ width: `${averageRate}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="border rounded-lg p-4 h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={filteredData}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value, name) => 
-                name === "rate" ? `${value}%` : `KES ${value.toLocaleString()}`
-              } />
-              <Legend />
-              <Area type="monotone" dataKey="expected" name="Expected Collection" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-              <Area type="monotone" dataKey="collected" name="Actual Collection" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <Card className="shadow-sm">
+          <CardContent className="pt-6">
+            <Tabs defaultValue="chart" value={activeView} onValueChange={setActiveView} className="mb-4">
+              <TabsList>
+                <TabsTrigger value="chart">Chart View</TabsTrigger>
+                <TabsTrigger value="table">Table View</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="chart" className="pt-4">
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={filteredData}
+                      margin={{
+                        top: 20,
+                        right: 30,
+                        left: 20,
+                        bottom: 5,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value, name) => 
+                        name === "rate" ? `${value}%` : `KES ${value.toLocaleString()}`
+                      } />
+                      <Legend />
+                      <Area type="monotone" dataKey="expected" name="Expected Collection" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
+                      <Area type="monotone" dataKey="collected" name="Actual Collection" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="table" className="pt-4">
+                <div className="relative w-full overflow-auto">
+                  <table className="w-full caption-bottom text-sm">
+                    <thead>
+                      <tr className="border-b transition-colors hover:bg-muted/50">
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Month</th>
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Expected (KES)</th>
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Collected (KES)</th>
+                        <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Rate (%)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredData.map((item, index) => (
+                        <tr key={index} className="border-b transition-colors hover:bg-muted/50">
+                          <td className="p-4 align-middle">{item.month}</td>
+                          <td className="p-4 align-middle">{item.expected.toLocaleString()}</td>
+                          <td className="p-4 align-middle">{item.collected.toLocaleString()}</td>
+                          <td className="p-4 align-middle">
+                            <div className="flex items-center">
+                              <span className="mr-2">{item.rate}%</span>
+                              <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                <div 
+                                  className={`h-1.5 rounded-full ${
+                                    item.rate >= 95 ? 'bg-green-600' : 
+                                    item.rate >= 90 ? 'bg-yellow-400' : 'bg-red-600'
+                                  }`} 
+                                  style={{ width: `${item.rate}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </ReportPage>
   );

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,13 +49,15 @@ interface LoanProduct {
   term_unit: string;
   amount_min: number;
   amount_max: number;
-  description: string;
+  description: string | null;
   created_at: string;
   status: string;
+  created_by: string | null;
+  updated_at: string;
 }
 
 export function LoanProductsManager() {
-  const { toast } = useToast();
+  const { toast: showToast } = useToast();
   const { user } = useAuth();
   const [products, setProducts] = useState<LoanProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,12 +88,12 @@ export function LoanProductsManager() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setProducts(data || []);
+      setProducts(data as LoanProduct[] || []);
     } catch (error: any) {
       toast({
-        variant: "destructive",
         title: "Error",
-        description: `Failed to fetch loan products: ${error.message}`
+        description: `Failed to fetch loan products: ${error.message}`,
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -108,18 +110,18 @@ export function LoanProductsManager() {
   const handleSaveProduct = async () => {
     if (!user) {
       toast({
-        variant: "destructive",
         title: "Authentication Error",
-        description: "You must be logged in to manage loan products."
+        description: "You must be logged in to manage loan products.",
+        variant: "destructive"
       });
       return;
     }
     
     if (!newProduct.name) {
       toast({
-        variant: "destructive",
         title: "Validation Error",
-        description: "Please enter a product name."
+        description: "Please enter a product name.",
+        variant: "destructive"
       });
       return;
     }
@@ -133,29 +135,29 @@ export function LoanProductsManager() {
         term_unit: newProduct.term_unit,
         amount_min: parseFloat(newProduct.amount_min),
         amount_max: parseFloat(newProduct.amount_max),
-        description: newProduct.description,
+        description: newProduct.description || null,
         status: newProduct.status,
         created_by: user.id
       };
       
-      let operation;
+      let operation: any;
       
       if (editingProduct) {
         // Update existing product
-        operation = supabase
+        operation = await supabase
           .from('loan_products')
           .update(productData)
           .eq('id', editingProduct.id)
           .select();
       } else {
         // Insert new product
-        operation = supabase
+        operation = await supabase
           .from('loan_products')
           .insert(productData)
           .select();
       }
         
-      const { data, error } = await operation;
+      const { error } = operation;
         
       if (error) throw error;
       
@@ -186,9 +188,9 @@ export function LoanProductsManager() {
       });
     } catch (error: any) {
       toast({
-        variant: "destructive",
         title: "Error",
-        description: error.message
+        description: error.message,
+        variant: "destructive"
       });
     }
   };
@@ -228,9 +230,9 @@ export function LoanProductsManager() {
         });
       } catch (error: any) {
         toast({
-          variant: "destructive",
           title: "Error",
-          description: error.message
+          description: error.message,
+          variant: "destructive"
         });
       }
     }
@@ -447,10 +449,10 @@ export function LoanProductsManager() {
                       <TableCell>
                         {new Intl.NumberFormat('en-US', {
                           style: 'currency',
-                          currency: 'USD'
+                          currency: 'KES'
                         }).format(product.amount_min)} - {new Intl.NumberFormat('en-US', {
                           style: 'currency',
-                          currency: 'USD'
+                          currency: 'KES'
                         }).format(product.amount_max)}
                       </TableCell>
                       <TableCell>

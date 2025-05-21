@@ -42,6 +42,54 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_products: {
+        Row: {
+          amount_max: number
+          amount_min: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          interest_rate: number
+          name: string
+          status: string
+          term_max: number
+          term_min: number
+          term_unit: string
+          updated_at: string
+        }
+        Insert: {
+          amount_max: number
+          amount_min: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          interest_rate: number
+          name: string
+          status?: string
+          term_max: number
+          term_min: number
+          term_unit: string
+          updated_at?: string
+        }
+        Update: {
+          amount_max?: number
+          amount_min?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          interest_rate?: number
+          name?: string
+          status?: string
+          term_max?: number
+          term_min?: number
+          term_unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       loan_schedule: {
         Row: {
           created_at: string
