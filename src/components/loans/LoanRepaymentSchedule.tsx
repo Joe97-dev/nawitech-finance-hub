@@ -40,7 +40,14 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
           .order('due_date', { ascending: true });
         
         if (error) throw error;
-        setScheduleItems(data || []);
+        
+        // Cast the data to the correct type
+        const typedData = (data || []).map(item => ({
+          ...item,
+          status: item.status as "pending" | "partial" | "paid" | "overdue"
+        }));
+        
+        setScheduleItems(typedData);
       } catch (error: any) {
         toast({
           variant: "destructive",
