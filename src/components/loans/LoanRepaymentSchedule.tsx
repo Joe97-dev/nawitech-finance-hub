@@ -33,6 +33,7 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
   useEffect(() => {
     const fetchRepaymentSchedule = async () => {
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('loan_schedule')
           .select('*')
@@ -54,12 +55,15 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
           title: "Error",
           description: `Failed to fetch repayment schedule: ${error.message}`
         });
+        setScheduleItems([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRepaymentSchedule();
+    if (loanId) {
+      fetchRepaymentSchedule();
+    }
   }, [loanId, toast]);
 
   const getStatusBadge = (status: string) => {
@@ -78,7 +82,9 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(amount);
   };
 

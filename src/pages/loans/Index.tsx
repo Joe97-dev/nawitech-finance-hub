@@ -66,7 +66,7 @@ const LoansPage = () => {
         if (error) throw error;
         
         // Transform data to match our Loan interface
-        const formattedLoans: Loan[] = data.map((loan: any) => ({
+        const formattedLoans: Loan[] = (data || []).map((loan: any) => ({
           id: loan.id,
           client: loan.client,
           amount: loan.amount,
@@ -200,16 +200,16 @@ const LoansPage = () => {
                     <TableCell>
                       <Link
                         to={`/loans/${loan.id}`}
-                        className="font-medium text-nawitech-600 hover:underline"
+                        className="font-medium text-primary hover:underline"
                       >
-                        {loan.id}
+                        {loan.id.substring(0, 8)}...
                       </Link>
                     </TableCell>
                     <TableCell>{loan.client}</TableCell>
                     <TableCell>{formatCurrency(loan.amount)}</TableCell>
                     <TableCell>{formatCurrency(loan.balance)}</TableCell>
                     <TableCell>{loan.type}</TableCell>
-                    <TableCell>{loan.date}</TableCell>
+                    <TableCell>{new Date(loan.date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusClass(loan.status)}`}

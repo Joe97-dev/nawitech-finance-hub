@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
@@ -14,10 +13,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, User, CreditCard, FileText } from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Loan {
+  id: number;
+  amount: number;
+  disbursedDate: string;
+  dueDate: string;
+  status: string;
+  interestRate: number;
+  loanOfficer: string;
+  repayments: {
+    date: string;
+    amount: number;
+  }[];
+}
+
+interface Client {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  status: string;
+  idNumber: string;
+  dob: string;
+  gender: string;
+  occupation: string;
+  monthlyIncome: number;
+  branch: string;
+  registrationDate: string;
+  photoUrl: string;
+  loans: Loan[];
+}
 
 // Sample client data with loan history
-const clientsData = [
+const clientsData: Client[] = [
   { 
     id: "1", 
     name: "Jane Cooper", 
@@ -124,9 +157,33 @@ const clientsData = [
 const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [client, setClient] = useState<Client | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Find client by ID
-  const client = clientsData.find(c => c.id === clientId);
+  useEffect(() => {
+    // For now, we'll use the dummy data
+    // In a real implementation, this would fetch from the database
+    const foundClient = clientsData.find(c => c.id === clientId);
+    setClient(foundClient || null);
+    setLoading(false);
+    
+    // TODO: Replace with actual API call when client database is ready
+  }, [clientId]);
+  
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="flex items-center space-x-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <p>Loading client details...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
   
   if (!client) {
     return (
@@ -289,8 +346,8 @@ const ClientDetailPage = () => {
                         </TableHeader>
                         <TableBody>
                           {activeLoans.map(loan => (
-                            <TableRow key={loan.id}>
-                              <TableCell className="font-medium">{loan.id}</TableCell>
+                            <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
+                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>{loan.disbursedDate}</TableCell>
                               <TableCell>{loan.dueDate}</TableCell>
@@ -324,8 +381,8 @@ const ClientDetailPage = () => {
                         </TableHeader>
                         <TableBody>
                           {closedLoans.map(loan => (
-                            <TableRow key={loan.id}>
-                              <TableCell className="font-medium">{loan.id}</TableCell>
+                            <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
+                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>{loan.disbursedDate}</TableCell>
                               <TableCell>{loan.dueDate}</TableCell>
@@ -360,8 +417,8 @@ const ClientDetailPage = () => {
                         </TableHeader>
                         <TableBody>
                           {client.loans.map(loan => (
-                            <TableRow key={loan.id}>
-                              <TableCell className="font-medium">{loan.id}</TableCell>
+                            <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
+                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>
                                 <Badge variant={loan.status === "active" ? "default" : "secondary"}>

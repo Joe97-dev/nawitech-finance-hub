@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +68,12 @@ export function LoanTransactions({ loanId, readOnly = false, onTransactionAdded 
     receiptNumber: "",
     notes: ""
   });
+
+  useEffect(() => {
+    if (loanId) {
+      fetchTransactions();
+    }
+  }, [loanId]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -329,38 +335,50 @@ export function LoanTransactions({ loanId, readOnly = false, onTransactionAdded 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {transactions.length === 0 && (
+            {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                  {loading ? "Loading..." : "No transactions found"}
+                  <div className="flex justify-center items-center">
+                    <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent mr-2"></div>
+                    <span>Loading transactions...</span>
+                  </div>
                 </TableCell>
               </TableRow>
+            ) : transactions.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                  No transactions found
+                </TableCell>
+              </TableRow>
+            ) : (
+              transactions.map((transaction) => (
+                <TableRow key={transaction.id}>
+                  <TableCell>
+                    {new Date(transaction.transaction_date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {transaction.transaction_type}
+                  </TableCell>
+                  <TableCell>
+                    {new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'KES',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
+                    }).format(transaction.amount)}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {transaction.payment_method || '-'}
+                  </TableCell>
+                  <TableCell>
+                    {transaction.receipt_number || '-'}
+                  </TableCell>
+                  <TableCell>
+                    {transaction.notes || '-'}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
-            {transactions.map((transaction) => (
-              <TableRow key={transaction.id}>
-                <TableCell>
-                  {new Date(transaction.transaction_date).toLocaleDateString()}
-                </TableCell>
-                <TableCell className="capitalize">
-                  {transaction.transaction_type}
-                </TableCell>
-                <TableCell>
-                  {new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD'
-                  }).format(transaction.amount)}
-                </TableCell>
-                <TableCell className="capitalize">
-                  {transaction.payment_method || '-'}
-                </TableCell>
-                <TableCell>
-                  {transaction.receipt_number || '-'}
-                </TableCell>
-                <TableCell>
-                  {transaction.notes || '-'}
-                </TableCell>
-              </TableRow>
-            ))}
           </TableBody>
         </Table>
       </div>
