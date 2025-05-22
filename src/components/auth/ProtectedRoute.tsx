@@ -1,9 +1,13 @@
 
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 
-export const ProtectedRoute = () => {
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
   const [authChecked, setAuthChecked] = useState(false);
@@ -33,5 +37,5 @@ export const ProtectedRoute = () => {
 
   // Only render child routes if authenticated and authChecked
   console.log("Authenticated, rendering protected route");
-  return <Outlet />;
+  return <>{children}</>;
 };
