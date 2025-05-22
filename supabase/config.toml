@@ -1,1 +1,10 @@
-project_id = "stleylfmcokqartpldpg"
+
+# This file is used to configure your Supabase project.
+# Learn more: https://supabase.com/docs/reference/cli/config
+
+[storage]
+[[storage.buckets]]
+name = "client_photos"
+public = true
+file_size_limit = "5MB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,28 +13,72 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, FileUp, Download } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Sample client data
-const clients = [
-  { id: 1, name: "Jane Cooper", phone: "(254) 555-0111", email: "jane@example.com", address: "Nairobi, Kenya", status: "active" },
-  { id: 2, name: "Wade Warren", phone: "(254) 555-0222", email: "wade@example.com", address: "Nakuru, Kenya", status: "active" },
-  { id: 3, name: "Esther Howard", phone: "(254) 555-0333", email: "esther@example.com", address: "Mombasa, Kenya", status: "inactive" },
-  { id: 4, name: "Cameron Williamson", phone: "(254) 555-0444", email: "cameron@example.com", address: "Kisumu, Kenya", status: "active" },
-  { id: 5, name: "Brooklyn Simmons", phone: "(254) 555-0555", email: "brooklyn@example.com", address: "Eldoret, Kenya", status: "inactive" },
-  { id: 6, name: "Leslie Alexander", phone: "(254) 555-0666", email: "leslie@example.com", address: "Machakos, Kenya", status: "active" },
-  { id: 7, name: "Jenny Wilson", phone: "(254) 555-0777", email: "jenny@example.com", address: "Thika, Kenya", status: "active" },
-  { id: 8, name: "Guy Hawkins", phone: "(254) 555-0888", email: "guy@example.com", address: "Kitale, Kenya", status: "active" },
-];
+interface Client {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  region: string | null;
+  status: string;
+}
 
 const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  // Fetch clients from Supabase
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        setClients(data || []);
+      } catch (error: any) {
+        console.error("Error fetching clients:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load clients",
+          description: error.message || "There was an error loading the client list."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, [toast]);
   
   const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    client.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    client.last_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     client.phone.includes(searchQuery) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const getFullName = (client: Client) => {
+    return `${client.first_name} ${client.last_name}`;
+  };
+
+  const getFullAddress = (client: Client) => {
+    const parts = [client.address, client.city, client.region].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : '—';
+  };
 
   return (
     <DashboardLayout>
@@ -76,64 +120,71 @@ const ClientsPage = () => {
           <Button variant="outline">Filter</Button>
         </div>
         
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No clients found.
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredClients.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <Link
-                        to={`/clients/${client.id}`}
-                        className="flex items-center gap-2 hover:underline"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>{client.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-nawitech-600">{client.name}</span>
-                      </Link>
-                    </TableCell>
-                    <TableCell>{client.phone}</TableCell>
-                    <TableCell>{client.email}</TableCell>
-                    <TableCell>{client.address}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                          client.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {client.status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/clients/${client.id}`}>View</Link>
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No clients found.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filteredClients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <Link
+                          to={`/clients/${client.id}`}
+                          className="flex items-center gap-2 hover:underline"
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={client.photo_url || undefined} />
+                            <AvatarFallback>{`${client.first_name[0]}${client.last_name[0]}`}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-nawitech-600">{getFullName(client)}</span>
+                        </Link>
+                      </TableCell>
+                      <TableCell>{client.phone}</TableCell>
+                      <TableCell>{client.email || "—"}</TableCell>
+                      <TableCell>{getFullAddress(client)}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                            client.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {client.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/clients/${client.id}`}>View</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

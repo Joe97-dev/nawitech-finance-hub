@@ -9,6 +9,116 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      branches: {
+        Row: {
+          active_loans: number | null
+          created_at: string | null
+          id: string
+          location: string
+          name: string
+          staff_count: number | null
+          total_portfolio: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active_loans?: number | null
+          created_at?: string | null
+          id?: string
+          location: string
+          name: string
+          staff_count?: number | null
+          total_portfolio?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active_loans?: number | null
+          created_at?: string | null
+          id?: string
+          location?: string
+          name?: string
+          staff_count?: number | null
+          total_portfolio?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          address: string | null
+          branch_id: string | null
+          city: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          employment_status: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          id_number: string
+          last_name: string
+          monthly_income: number | null
+          occupation: string | null
+          phone: string
+          photo_url: string | null
+          region: string | null
+          registration_date: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          branch_id?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          employment_status?: string | null
+          first_name: string
+          gender?: string | null
+          id?: string
+          id_number: string
+          last_name: string
+          monthly_income?: number | null
+          occupation?: string | null
+          phone: string
+          photo_url?: string | null
+          region?: string | null
+          registration_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          branch_id?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          employment_status?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          id_number?: string
+          last_name?: string
+          monthly_income?: number | null
+          occupation?: string | null
+          phone?: string
+          photo_url?: string | null
+          region?: string | null
+          registration_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_documents: {
         Row: {
           created_at: string

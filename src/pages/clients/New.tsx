@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,71 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Upload, Image } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Branch {
+  id: string;
+  name: string;
+}
 
 const NewClientPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    idNumber: "",
+    gender: "",
+    dob: "",
+    address: "",
+    city: "",
+    region: "",
+    branch_id: "",
+    occupation: "",
+    employmentStatus: "",
+    monthlyIncome: ""
+  });
+  
+  // Fetch branches
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('branches')
+          .select('id, name');
+        
+        if (error) {
+          throw error;
+        }
+        
+        setBranches(data || []);
+      } catch (error: any) {
+        console.error("Error fetching branches:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load branches",
+          description: error.message || "There was an error loading the branch list."
+        });
+      }
+    };
+
+    fetchBranches();
+  }, [toast]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+  };
+  
+  const handleSelectChange = (id: string, value: string) => {
+    setFormData({ ...formData, [id]: value });
+  };
   
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,26 +119,95 @@ const NewClientPage = () => {
         setPhotoPreview(event.target?.result as string);
       };
       reader.readAsDataURL(file);
+      setPhotoFile(file);
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const uploadPhoto = async (clientId: string): Promise<string | null> => {
+    if (!photoFile) return null;
     
-    if (!photoPreview) {
-      toast({
-        variant: "destructive",
-        title: "Photo required",
-        description: "Please upload a passport photo to continue."
-      });
-      return;
+    try {
+      // Define file path using client ID and timestamp to ensure uniqueness
+      const filePath = `client_photos/${clientId}/${Date.now()}_${photoFile.name}`;
+      
+      // Upload the file to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('client_photos')
+        .upload(filePath, photoFile);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL for the uploaded file
+      const { data: urlData } = supabase.storage
+        .from('client_photos')
+        .getPublicUrl(filePath);
+      
+      return urlData.publicUrl;
+    } catch (error: any) {
+      console.error("Error uploading photo:", error);
+      return null;
     }
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Validate required fields
+      const requiredFields = ['firstName', 'lastName', 'phone', 'idNumber'];
+      const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+      
+      if (missingFields.length > 0) {
+        throw new Error("Please fill in all required fields");
+      }
+      
+      // Create client record
+      const clientData = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email || null,
+        phone: formData.phone,
+        id_number: formData.idNumber,
+        gender: formData.gender || null,
+        date_of_birth: formData.dob || null,
+        address: formData.address || null,
+        city: formData.city || null,
+        region: formData.region || null,
+        branch_id: formData.branch_id || null,
+        occupation: formData.occupation || null,
+        employment_status: formData.employmentStatus || null,
+        monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
+        photo_url: null, // Will update this after uploading the photo
+        status: 'active'
+      };
+      
+      // Insert client to database
+      const { data: newClient, error } = await supabase
+        .from('clients')
+        .insert(clientData)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Upload photo if available
+      if (photoFile && newClient) {
+        const photoUrl = await uploadPhoto(newClient.id);
+        
+        // Update client record with photo URL
+        if (photoUrl) {
+          const { error: updateError } = await supabase
+            .from('clients')
+            .update({ photo_url: photoUrl })
+            .eq('id', newClient.id);
+            
+          if (updateError) {
+            console.error("Error updating client photo URL:", updateError);
+          }
+        }
+      }
       
       toast({
         title: "Client created",
@@ -87,7 +215,16 @@ const NewClientPage = () => {
       });
       
       navigate("/clients");
-    }, 1500);
+    } catch (error: any) {
+      console.error("Error creating client:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create client",
+        description: error.message || "There was an error creating the client."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -120,7 +257,7 @@ const NewClientPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  <Label htmlFor="photo">Passport Photo (Required)</Label>
+                  <Label htmlFor="photo">Passport Photo</Label>
                   <div className="flex flex-col items-center space-y-3">
                     <Avatar className="h-32 w-32">
                       {photoPreview ? (
@@ -156,32 +293,60 @@ const NewClientPage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="firstName">First Name</Label>
-                    <Input id="firstName" required />
+                    <Input 
+                      id="firstName" 
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
-                    <Input id="lastName" required />
+                    <Input 
+                      id="lastName" 
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      required 
+                    />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" required />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    value={formData.email}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" required />
+                  <Input 
+                    id="phone" 
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required 
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="idNumber">ID Number</Label>
-                  <Input id="idNumber" required />
+                  <Input 
+                    id="idNumber" 
+                    value={formData.idNumber}
+                    onChange={handleInputChange}
+                    required 
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="gender">Gender</Label>
-                  <Select>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) => handleSelectChange('gender', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
@@ -195,7 +360,12 @@ const NewClientPage = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="dob">Date of Birth</Label>
-                  <Input id="dob" type="date" required />
+                  <Input 
+                    id="dob" 
+                    type="date" 
+                    value={formData.dob}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -210,44 +380,66 @@ const NewClientPage = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="address">Physical Address</Label>
-                  <Textarea id="address" required />
+                  <Textarea 
+                    id="address" 
+                    value={formData.address}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="city">City/Town</Label>
-                    <Input id="city" required />
+                    <Input 
+                      id="city" 
+                      value={formData.city}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="region">Region/State</Label>
-                    <Input id="region" required />
+                    <Input 
+                      id="region" 
+                      value={formData.region}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="branch">Branch</Label>
-                  <Select>
+                  <Label htmlFor="branch_id">Branch</Label>
+                  <Select
+                    value={formData.branch_id}
+                    onValueChange={(value) => handleSelectChange('branch_id', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select branch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="head-office">HEAD OFFICE</SelectItem>
-                      <SelectItem value="westlands">Westlands Branch</SelectItem>
-                      <SelectItem value="mombasa">Mombasa Branch</SelectItem>
-                      <SelectItem value="kisumu">Kisumu Branch</SelectItem>
-                      <SelectItem value="nakuru">Nakuru Branch</SelectItem>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="occupation">Occupation</Label>
-                  <Input id="occupation" />
+                  <Input 
+                    id="occupation" 
+                    value={formData.occupation}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="employmentStatus">Employment Status</Label>
-                  <Select>
+                  <Select
+                    value={formData.employmentStatus}
+                    onValueChange={(value) => handleSelectChange('employmentStatus', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
@@ -263,23 +455,12 @@ const NewClientPage = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="monthlyIncome">Monthly Income</Label>
-                  <Input id="monthlyIncome" type="number" />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>ID Document</Label>
-                  <div className="border border-dashed rounded-md p-6 text-center">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-1">
-                      Drag and drop your file here or click to browse
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Supported formats: JPG, PNG, PDF (Max 5MB)
-                    </p>
-                    <Button type="button" variant="outline" size="sm" className="mt-4">
-                      Select File
-                    </Button>
-                  </div>
+                  <Input 
+                    id="monthlyIncome" 
+                    type="number" 
+                    value={formData.monthlyIncome}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -290,6 +471,7 @@ const NewClientPage = () => {
               variant="outline"
               onClick={() => navigate("/clients")}
               className="mr-2"
+              type="button"
             >
               Cancel
             </Button>

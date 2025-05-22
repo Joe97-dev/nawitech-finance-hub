@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import {
   Card,
@@ -16,61 +16,57 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
-// Dummy data for branches
-const branchData = [
-  {
-    id: "head-office",
-    name: "HEAD OFFICE",
-    location: "Nairobi CBD",
-    staffCount: 15,
-    activeLoans: 450,
-    totalPortfolio: 12500000,
-  },
-  {
-    id: "westlands",
-    name: "Westlands Branch",
-    location: "Westlands, Nairobi",
-    staffCount: 8,
-    activeLoans: 230,
-    totalPortfolio: 7800000,
-  },
-  {
-    id: "mombasa",
-    name: "Mombasa Branch",
-    location: "Mombasa Town",
-    staffCount: 6,
-    activeLoans: 180,
-    totalPortfolio: 5200000,
-  },
-  {
-    id: "kisumu",
-    name: "Kisumu Branch",
-    location: "Kisumu CBD",
-    staffCount: 5,
-    activeLoans: 120,
-    totalPortfolio: 4100000,
-  },
-  {
-    id: "nakuru",
-    name: "Nakuru Branch",
-    location: "Nakuru Town",
-    staffCount: 4,
-    activeLoans: 90,
-    totalPortfolio: 2800000,
-  },
-];
+interface Branch {
+  id: string;
+  name: string;
+  location: string;
+  staff_count: number;
+  active_loans: number;
+  total_portfolio: number;
+}
 
 const BranchesIndex = () => {
-  const [branches, setBranches] = useState(branchData);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [newBranch, setNewBranch] = useState({
     name: "",
     location: "",
   });
   const { toast } = useToast();
 
-  const handleAddBranch = () => {
+  // Fetch branches from Supabase
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('branches')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        setBranches(data || []);
+      } catch (error: any) {
+        console.error("Error fetching branches:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load branches",
+          description: error.message || "There was an error loading the branch list."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, [toast]);
+
+  const handleAddBranch = async () => {
     if (!newBranch.name || !newBranch.location) {
       toast({
         title: "Missing Information",
@@ -80,23 +76,41 @@ const BranchesIndex = () => {
       return;
     }
 
-    const branch = {
-      id: newBranch.name.toLowerCase().replace(/\s+/g, "-"),
-      name: newBranch.name,
-      location: newBranch.location,
-      staffCount: 0,
-      activeLoans: 0,
-      totalPortfolio: 0,
-    };
+    try {
+      const branch = {
+        name: newBranch.name,
+        location: newBranch.location,
+        staff_count: 0,
+        active_loans: 0,
+        total_portfolio: 0,
+      };
 
-    setBranches([...branches, branch]);
-    setNewBranch({ name: "", location: "" });
-    setOpen(false);
+      const { data, error } = await supabase
+        .from('branches')
+        .insert(branch)
+        .select()
+        .single();
 
-    toast({
-      title: "Branch Added",
-      description: `${branch.name} has been successfully added.`,
-    });
+      if (error) {
+        throw error;
+      }
+
+      setBranches([...branches, data]);
+      setNewBranch({ name: "", location: "" });
+      setOpen(false);
+
+      toast({
+        title: "Branch Added",
+        description: `${branch.name} has been successfully added.`,
+      });
+    } catch (error: any) {
+      console.error("Error adding branch:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to add branch",
+        description: error.message || "There was an error adding the branch."
+      });
+    }
   };
 
   return (
@@ -150,36 +164,50 @@ const BranchesIndex = () => {
             <CardDescription>List of all microfinance branches</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Branch Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Staff</TableHead>
-                  <TableHead>Active Loans</TableHead>
-                  <TableHead>Portfolio (KES)</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {branches.map((branch) => (
-                  <TableRow key={branch.id}>
-                    <TableCell className="font-medium">{branch.name}</TableCell>
-                    <TableCell>{branch.location}</TableCell>
-                    <TableCell>{branch.staffCount}</TableCell>
-                    <TableCell>{branch.activeLoans}</TableCell>
-                    <TableCell>{branch.totalPortfolio.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Link to={`/branches/${branch.id}`}>
-                        <Button variant="outline" size="sm">
-                          View Details
-                        </Button>
-                      </Link>
-                    </TableCell>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Branch Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Staff</TableHead>
+                    <TableHead>Active Loans</TableHead>
+                    <TableHead>Portfolio (KES)</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {branches.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                        No branches found. Add your first branch to get started.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    branches.map((branch) => (
+                      <TableRow key={branch.id}>
+                        <TableCell className="font-medium">{branch.name}</TableCell>
+                        <TableCell>{branch.location}</TableCell>
+                        <TableCell>{branch.staff_count}</TableCell>
+                        <TableCell>{branch.active_loans}</TableCell>
+                        <TableCell>{branch.total_portfolio.toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Link to={`/branches/${branch.id}`}>
+                            <Button variant="outline" size="sm">
+                              View Details
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
