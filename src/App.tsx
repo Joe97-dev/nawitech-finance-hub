@@ -31,9 +31,9 @@ import ForecastingReport from "./pages/reports/Forecasting";
 
 function App() {
   return (
-    <AuthProvider>
-      <RoleProvider>
-        <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <RoleProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -70,9 +70,9 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
-        </BrowserRouter>
-      </RoleProvider>
-    </AuthProvider>
+        </RoleProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
