@@ -21,7 +21,7 @@ interface Client {
   phone: string;
   email: string | null;
   id_number: string;
-  dob: string | null;
+  date_of_birth: string | null;  // Changed from dob to date_of_birth to match Supabase schema
   address: string | null;
   city: string | null;
   region: string | null;
@@ -29,6 +29,7 @@ interface Client {
   branch_id: string | null;
   status: string;
   photo_url: string | null;
+  registration_date: string | null;  // Added registration_date property to match usage
   loans?: Loan[];
 }
 
@@ -100,7 +101,7 @@ const KYCReport = () => {
         if (loansError) throw loansError;
         
         // Map loans to clients
-        const enhancedClients = (clientsData || []).map((client: Client) => {
+        const enhancedClients = (clientsData || []).map((client: any) => {
           // Match loans with clients based on client name
           // This is a temporary solution until we have a proper client_id in loans table
           const clientName = `${client.first_name} ${client.last_name}`;
@@ -344,7 +345,7 @@ const ClientDetail = ({
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Date of Birth</div>
-                    <div>{client.dob || "Not specified"}</div>
+                    <div>{client.date_of_birth || "Not specified"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Gender</div>
