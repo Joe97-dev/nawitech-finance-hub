@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -13,6 +12,8 @@ import { CalendarRange, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
 
 interface PARData {
   name: string;
@@ -114,52 +115,63 @@ const PARReport = () => {
     }
   };
 
+  const filters = (
+    <ReportFilters title="Portfolio Analysis Filters">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Analysis Period</label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              id="date"
+              variant={"outline"}
+              className={cn(
+                "w-full sm:w-auto justify-start text-left font-normal",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarRange className="mr-2 h-4 w-4" />
+              {date?.from ? (
+                date.to ? (
+                  <>
+                    {format(date.from, "LLL dd, y")} -{" "}
+                    {format(date.to, "LLL dd, y")}
+                  </>
+                ) : (
+                  format(date.from, "LLL dd, y")
+                )
+              ) : (
+                <span>Pick a date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={date?.from}
+              selected={date}
+              onSelect={setDate}
+              numberOfMonths={2}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </ReportFilters>
+  );
+
   return (
     <ReportPage
       title="Portfolio at Risk (PAR) Report"
       description="Analysis of loans at different risk levels."
       actions={
-        <div className="flex items-center gap-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                  "justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarRange className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(date.from, "LLL dd, y")
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          <ExportButton data={parData} filename="par-report" columns={columns} />
-        </div>
+        <ExportButton 
+          data={parData} 
+          filename="par-report" 
+          columns={columns} 
+        />
       }
+      filters={filters}
     >
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -168,23 +180,19 @@ const PARReport = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="shadow-sm">
-              <CardContent className="pt-6">
-                <h3 className="text-sm font-medium text-muted-foreground">Total Portfolio</h3>
-                <p className="mt-2 text-2xl font-semibold">KES {totalPortfolio.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm">
-              <CardContent className="pt-6">
-                <h3 className="text-sm font-medium text-muted-foreground">Total at Risk</h3>
-                <p className="mt-2 text-2xl font-semibold">KES {totalAtRisk.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm">
-              <CardContent className="pt-6">
-                <h3 className="text-sm font-medium text-muted-foreground">PAR Ratio</h3>
-                <p className="mt-2 text-2xl font-semibold">{parRatio}%</p>
+          <ReportStats>
+            <ReportStat 
+              label="Total Portfolio" 
+              value={`KES ${totalPortfolio.toLocaleString()}`}
+            />
+            <ReportStat 
+              label="Total at Risk" 
+              value={`KES ${totalAtRisk.toLocaleString()}`}
+            />
+            <ReportStat 
+              label="PAR Ratio" 
+              value={`${parRatio}%`}
+              subValue={
                 <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                   <div 
                     className={`h-2.5 rounded-full ${
@@ -193,9 +201,9 @@ const PARReport = () => {
                     style={{ width: `${parRatio}%` }} 
                   />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              }
+            />
+          </ReportStats>
           
           <Card className="shadow-sm">
             <CardContent className="pt-6">

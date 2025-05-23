@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
@@ -15,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
 
 // Dummy data for loans due
 const loansDueData = [
@@ -84,92 +85,103 @@ const LoansDueReport = () => {
   });
   
   const totalAmountDue = filteredLoans.reduce((acc, loan) => acc + loan.amountDue, 0);
+
+  const filters = (
+    <ReportFilters title="Loan Repayment Filters">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Date Range</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarRange className="mr-2 h-4 w-4" />
+                {date?.from ? (
+                  date.to ? (
+                    <>
+                      {format(date.from, "LLL dd, y")} -{" "}
+                      {format(date.to, "LLL dd, y")}
+                    </>
+                  ) : (
+                    format(date.from, "LLL dd, y")
+                  )
+                ) : (
+                  <span>Pick a date range</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={date?.from}
+                selected={date}
+                onSelect={setDate}
+                numberOfMonths={2}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Branch</label>
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.value} value={branch.value}>
+                  {branch.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Search</label>
+          <Input
+            placeholder="Search by client name or phone"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      <div className="mt-4 bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="text-sm mb-2 sm:mb-0">
+          <span className="font-medium">{filteredLoans.length}</span> loans due for repayment
+        </div>
+        <div className="text-sm font-medium">
+          Total amount due: <span className="text-primary">KES {totalAmountDue.toLocaleString()}</span>
+        </div>
+      </div>
+    </ReportFilters>
+  );
   
   return (
     <ReportPage
       title="Loans Due Report"
       description="View upcoming loan repayments by date range"
       actions={
-        <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={"outline"}
-                  className={cn(
-                    "justify-start text-left font-normal w-full sm:w-auto",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarRange className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format(date.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
-            
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Select Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input 
-              placeholder="Search by client name or phone" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-auto flex-1"
-            />
-            
-            <ExportButton 
-              data={filteredLoans.map(loan => ({
-                ...loan,
-                branch: branches.find(b => b.value === loan.branch)?.label || loan.branch
-              }))} 
-              filename={`loans-due-${selectedBranch}-${date?.from ? format(date.from, 'yyyy-MM-dd') : ''}-${date?.to ? 'to-' + format(date.to, 'yyyy-MM-dd') : ''}`} 
-              columns={columns} 
-            />
-          </div>
-          
-          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
-            <div className="text-sm">
-              <span className="font-medium">{filteredLoans.length}</span> loans due for repayment
-            </div>
-            <div className="text-sm font-medium">
-              Total amount due: <span className="text-primary">KES {totalAmountDue.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
+        <ExportButton 
+          data={filteredLoans.map(loan => ({
+            ...loan,
+            branch: branches.find(b => b.value === loan.branch)?.label || loan.branch
+          }))} 
+          filename={`loans-due-${selectedBranch}-${date?.from ? format(date.from, 'yyyy-MM-dd') : ''}-${date?.to ? 'to-' + format(date.to, 'yyyy-MM-dd') : ''}`} 
+          columns={columns} 
+        />
       }
+      filters={filters}
     >
       <Card className="shadow-sm">
         <CardContent className="p-0">
@@ -186,7 +198,7 @@ const LoansDueReport = () => {
             <TableBody>
               {filteredLoans.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     No loans due in the selected date range
                   </TableCell>
                 </TableRow>

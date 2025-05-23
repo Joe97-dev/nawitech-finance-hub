@@ -4,6 +4,9 @@ import { ReportPage } from "./Base";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
 
 // Dummy data for monthly cash flow
 const cashFlowData = [
@@ -45,71 +48,84 @@ const CashFlowReport = () => {
   
   const yearlyNetCashflow = yearlyRepayments - yearlyDisbursements;
 
+  const filters = (
+    <ReportFilters title="Cash Flow Analysis Filters">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Year</label>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((year) => (
+              <SelectItem key={year} value={year}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </ReportFilters>
+  );
+
   return (
     <ReportPage
       title="Cash Flow Report"
       description="Monthly analysis of cash inflows and outflows."
       actions={
-        <div className="flex items-center gap-2">
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <ExportButton 
-            data={cashFlowData} 
-            filename={`cash-flow-report-${selectedYear}`} 
-            columns={columns} 
-          />
-        </div>
+        <ExportButton 
+          data={cashFlowData} 
+          filename={`cash-flow-report-${selectedYear}`} 
+          columns={columns} 
+        />
       }
+      filters={filters}
     >
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="stats-card">
-            <h3 className="stats-label">Total Disbursements</h3>
-            <p className="stats-value">KES {yearlyDisbursements.toLocaleString()}</p>
-          </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Total Repayments</h3>
-            <p className="stats-value">KES {yearlyRepayments.toLocaleString()}</p>
-          </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Net Cash Flow</h3>
-            <p className={`stats-value ${yearlyNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              KES {yearlyNetCashflow.toLocaleString()}
-            </p>
-          </div>
-        </div>
+      <div className="space-y-6">
+        <ReportStats>
+          <ReportStat 
+            label="Total Disbursements" 
+            value={`KES ${yearlyDisbursements.toLocaleString()}`}
+            className="border-l-4 border-l-red-500"
+          />
+          <ReportStat 
+            label="Total Repayments" 
+            value={`KES ${yearlyRepayments.toLocaleString()}`}
+            className="border-l-4 border-l-green-500"
+          />
+          <ReportStat 
+            label="Net Cash Flow" 
+            value={`KES ${yearlyNetCashflow.toLocaleString()}`}
+            className={`border-l-4 ${yearlyNetCashflow >= 0 ? 'border-l-green-500' : 'border-l-red-500'}`}
+          />
+        </ReportStats>
         
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={cashFlowData}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => `KES ${value.toLocaleString()}`} />
-              <Legend />
-              <Bar dataKey="disbursements" name="Disbursements" fill="#ef4444" />
-              <Bar dataKey="repayments" name="Repayments" fill="#22c55e" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <Card className="shadow-sm">
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-medium mb-4">Monthly Cash Flow</h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={cashFlowData}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `KES ${value.toLocaleString()}`} />
+                  <Legend />
+                  <Bar dataKey="disbursements" name="Disbursements" fill="#ef4444" />
+                  <Bar dataKey="repayments" name="Repayments" fill="#22c55e" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </ReportPage>
   );
