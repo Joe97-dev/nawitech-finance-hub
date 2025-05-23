@@ -6,7 +6,7 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
 import { ReportCard } from "@/components/reports/ReportCard";
-import { ReportStats } from "@/components/reports/ReportStats";
+import { ReportStats, ReportStat } from "@/components/reports/ReportStats";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -185,7 +185,7 @@ const ArrearsReport = () => {
     }
   };
 
-  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || dateRange;
+  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || (dateRange !== undefined);
 
   const handleReset = () => {
     setSelectedBranch("all");
@@ -277,34 +277,36 @@ const ArrearsReport = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <ReportStats
-            stats={[
-              {
-                title: "Total Overdue Amount",
-                value: `KES ${totalOverdueAmount.toLocaleString()}`,
-                description: "Across all overdue loans",
-                trend: { value: 8.2, isPositive: false }
-              },
-              {
-                title: "Total Outstanding",
-                value: `KES ${totalOutstanding.toLocaleString()}`,
-                description: "Principal + interest",
-                trend: { value: 3.1, isPositive: false }
-              },
-              {
-                title: "Average Days Overdue",
-                value: `${avgDaysOverdue} days`,
-                description: "Across all accounts",
-                trend: { value: 12.5, isPositive: false }
-              },
-              {
-                title: "Accounts in Arrears",
-                value: filteredData.length.toString(),
-                description: "Requiring attention",
-                trend: { value: 5.8, isPositive: false }
-              }
-            ]}
-          />
+          <ReportStats>
+            <ReportStat
+              label="Total Overdue Amount"
+              value={`KES ${totalOverdueAmount.toLocaleString()}`}
+              subValue="Across all overdue loans"
+              trend="down"
+              trendValue="8.2%"
+            />
+            <ReportStat
+              label="Total Outstanding"
+              value={`KES ${totalOutstanding.toLocaleString()}`}
+              subValue="Principal + interest"
+              trend="down"
+              trendValue="3.1%"
+            />
+            <ReportStat
+              label="Average Days Overdue"
+              value={`${avgDaysOverdue} days`}
+              subValue="Across all accounts"
+              trend="down"
+              trendValue="12.5%"
+            />
+            <ReportStat
+              label="Accounts in Arrears"
+              value={filteredData.length.toString()}
+              subValue="Requiring attention"
+              trend="down"
+              trendValue="5.8%"
+            />
+          </ReportStats>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <ReportCard title="Risk Distribution" className="lg:col-span-1">
