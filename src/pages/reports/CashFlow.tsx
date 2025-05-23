@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -7,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { DateRange } from "react-day-picker";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 // Dummy data for monthly cash flow
 const cashFlowData = [
@@ -35,6 +36,7 @@ const years = ["2025", "2024", "2023"];
 
 const CashFlowReport = () => {
   const [selectedYear, setSelectedYear] = useState("2025");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const yearlyDisbursements = cashFlowData.reduce(
     (acc, month) => acc + month.disbursements, 
@@ -48,22 +50,42 @@ const CashFlowReport = () => {
   
   const yearlyNetCashflow = yearlyRepayments - yearlyDisbursements;
 
+  const hasActiveFilters = selectedYear !== "2025" || (dateRange !== undefined);
+
+  const handleReset = () => {
+    setSelectedYear("2025");
+    setDateRange(undefined);
+  };
+
   const filters = (
-    <ReportFilters title="Cash Flow Analysis Filters">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Year</label>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Select Year" />
-          </SelectTrigger>
-          <SelectContent>
-            {years.map((year) => (
-              <SelectItem key={year} value={year}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <ReportFilters 
+      title="Cash Flow Analysis Filters"
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Year
+          </label>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </ReportFilters>
   );

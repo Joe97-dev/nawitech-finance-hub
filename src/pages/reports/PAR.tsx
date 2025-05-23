@@ -2,18 +2,14 @@ import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
-import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { CalendarRange, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 interface PARData {
   name: string;
@@ -115,48 +111,23 @@ const PARReport = () => {
     }
   };
 
+  const hasActiveFilters = date !== undefined;
+
+  const handleReset = () => {
+    setDate(undefined);
+  };
+
   const filters = (
-    <ReportFilters title="Portfolio Analysis Filters">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Analysis Period</label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              id="date"
-              variant={"outline"}
-              className={cn(
-                "w-full sm:w-auto justify-start text-left font-normal",
-                !date && "text-muted-foreground"
-              )}
-            >
-              <CalendarRange className="mr-2 h-4 w-4" />
-              {date?.from ? (
-                date.to ? (
-                  <>
-                    {format(date.from, "LLL dd, y")} -{" "}
-                    {format(date.to, "LLL dd, y")}
-                  </>
-                ) : (
-                  format(date.from, "LLL dd, y")
-                )
-              ) : (
-                <span>Pick a date range</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={date?.from}
-              selected={date}
-              onSelect={setDate}
-              numberOfMonths={2}
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+    <ReportFilters 
+      title="Portfolio Analysis Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <DateRangePicker
+        dateRange={date}
+        onDateRangeChange={setDate}
+        className="w-full sm:w-auto"
+      />
     </ReportFilters>
   );
 

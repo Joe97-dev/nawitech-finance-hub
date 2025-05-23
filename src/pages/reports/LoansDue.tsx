@@ -1,22 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { format } from "date-fns";
-import { CalendarRange } from "lucide-react";
 import { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { ExportButton } from "@/components/ui/export-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ReportFilters } from "@/components/reports/ReportFilters";
-import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -112,54 +106,33 @@ const LoansDueReport = () => {
   
   const totalAmountDue = filteredLoans.reduce((acc, loan) => acc + loan.balance, 0);
 
-  const filters = (
-    <ReportFilters title="Loan Repayment Filters">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Date Range</label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarRange className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(date.from, "LLL dd, y")
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+  const hasActiveFilters = selectedBranch !== "all" || searchQuery !== "" || (date !== undefined);
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Branch</label>
+  const handleReset = () => {
+    setSelectedBranch("all");
+    setSearchQuery("");
+    setDate(undefined);
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Loan Repayment Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <DateRangePicker
+          dateRange={date}
+          onDateRangeChange={setDate}
+          className="sm:col-span-2 lg:col-span-1"
+        />
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Branch
+          </label>
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger>
+            <SelectTrigger className="border-dashed">
               <SelectValue placeholder="Select Branch" />
             </SelectTrigger>
             <SelectContent>
@@ -172,12 +145,15 @@ const LoansDueReport = () => {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Search</label>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Search
+          </label>
           <Input
             placeholder="Search by client name or phone"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-dashed"
           />
         </div>
       </div>
@@ -206,7 +182,7 @@ const LoansDueReport = () => {
             dueDate: loan.date,
             branch: "Not specified", // No branch in current schema
           }))} 
-          filename={`loans-due-${selectedBranch}-${date?.from ? format(date.from, 'yyyy-MM-dd') : ''}-${date?.to ? 'to-' + format(date.to, 'yyyy-MM-dd') : ''}`} 
+          filename={`loans-due-${selectedBranch}`} 
           columns={columns} 
         />
       }

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
@@ -13,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 // Dummy data for loan disbursals
 const disbursalData = [
@@ -90,92 +91,86 @@ const DisbursalReport = () => {
     acc[branch] += loan.amount;
     return acc;
   }, {});
+
+  const hasActiveFilters = selectedBranch !== "all" || searchQuery !== "" || (date !== undefined);
+
+  const handleReset = () => {
+    setSelectedBranch("all");
+    setSearchQuery("");
+    setDate(undefined);
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Disbursal Report Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <DateRangePicker
+          dateRange={date}
+          onDateRangeChange={setDate}
+          className="sm:col-span-2 lg:col-span-1"
+        />
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Branch
+          </label>
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="Select Branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((branch) => (
+                <SelectItem key={branch.value} value={branch.value}>
+                  {branch.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Search
+          </label>
+          <Input 
+            placeholder="Search by client name, phone or loan officer" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-dashed"
+          />
+        </div>
+      </div>
+      
+      <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="text-sm mb-2 sm:mb-0">
+          <span className="font-medium">{filteredDisbursals.length}</span> loans disbursed
+        </div>
+        <div className="text-sm font-medium">
+          Total disbursed: <span className="text-primary">KES {totalDisbursed.toLocaleString()}</span>
+        </div>
+      </div>
+    </ReportFilters>
+  );
   
   return (
     <ReportPage
       title="Disbursal Report"
       description="Loans disbursed within a specific date range"
       actions={
-        <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={"outline"}
-                  className={cn(
-                    "justify-start text-left font-normal w-full sm:w-auto",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarRange className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format(date.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-            
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Select Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input 
-              placeholder="Search by client name, phone or loan officer" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-auto flex-1"
-            />
-            
-            <ExportButton 
-              data={filteredDisbursals.map(loan => ({
-                ...loan,
-                branch: branches.find(b => b.value === loan.branch)?.label || loan.branch,
-                amount: loan.amount.toLocaleString()
-              }))} 
-              filename={`disbursal-report-${selectedBranch}-${date?.from ? format(date.from, 'yyyy-MM-dd') : ''}-${date?.to ? 'to-' + format(date.to, 'yyyy-MM-dd') : ''}`} 
-              columns={columns} 
-            />
-          </div>
-          
-          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
-            <div className="text-sm">
-              <span className="font-medium">{filteredDisbursals.length}</span> loans disbursed
-            </div>
-            <div className="text-sm font-medium">
-              Total disbursed: <span className="text-primary">KES {totalDisbursed.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
+        <ExportButton 
+          data={filteredDisbursals.map(loan => ({
+            ...loan,
+            branch: branches.find(b => b.value === loan.branch)?.label || loan.branch,
+            amount: loan.amount.toLocaleString()
+          }))} 
+          filename={`disbursal-report-${selectedBranch}`} 
+          columns={columns} 
+        />
       }
+      filters={filters}
     >
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

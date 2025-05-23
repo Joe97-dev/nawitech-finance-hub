@@ -1,18 +1,13 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { CalendarRange } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 // Dummy data for collection rates
 const collectionData = [
@@ -81,51 +76,33 @@ const CollectionRateReport = () => {
   
   const averageRate = Math.round((totalCollected / totalExpected) * 100);
 
-  return (
-    <ReportPage
-      title="Collection Rate Report"
-      description="Analysis of monthly loan collection performance."
-      actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={"outline"}
-                className={cn(
-                  "justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarRange className="mr-2 h-4 w-4" />
-                {date?.from ? (
-                  date.to ? (
-                    <>
-                      {format(date.from, "LLL dd, y")} -{" "}
-                      {format(date.to, "LLL dd, y")}
-                    </>
-                  ) : (
-                    format(date.from, "LLL dd, y")
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={date?.from}
-                selected={date}
-                onSelect={setDate}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-          
+  const hasActiveFilters = selectedBranch !== "all" || selectedYear !== "2025" || (date !== undefined);
+
+  const handleReset = () => {
+    setSelectedBranch("all");
+    setSelectedYear("2025");
+    setDate(undefined);
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Collection Rate Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <DateRangePicker
+          dateRange={date}
+          onDateRangeChange={setDate}
+          className="md:col-span-2"
+        />
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Year
+          </label>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="border-dashed">
               <SelectValue placeholder="Select Year" />
             </SelectTrigger>
             <SelectContent>
@@ -136,9 +113,14 @@ const CollectionRateReport = () => {
               ))}
             </SelectContent>
           </Select>
-          
+        </div>
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Branch
+          </label>
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="border-dashed">
               <SelectValue placeholder="Select Branch" />
             </SelectTrigger>
             <SelectContent>
@@ -149,14 +131,23 @@ const CollectionRateReport = () => {
               ))}
             </SelectContent>
           </Select>
-          
-          <ExportButton 
-            data={filteredData} 
-            filename={`collection-rate-${selectedBranch}-${selectedYear}${date?.from ? '-' + format(date.from, 'yyyy-MM-dd') : ''}${date?.to ? '-to-' + format(date.to, 'yyyy-MM-dd') : ''}` } 
-            columns={columns}
-          />
         </div>
+      </div>
+    </ReportFilters>
+  );
+
+  return (
+    <ReportPage
+      title="Collection Rate Report"
+      description="Analysis of monthly loan collection performance."
+      actions={
+        <ExportButton 
+          data={filteredData} 
+          filename={`collection-rate-${selectedBranch}-${selectedYear}`} 
+          columns={columns}
+        />
       }
+      filters={filters}
     >
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">

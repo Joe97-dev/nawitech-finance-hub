@@ -1,10 +1,12 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { Line, LineChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateRange } from "react-day-picker";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 // Dummy data for monthly income from interest
 const monthlyIncomeData = [
@@ -34,6 +36,7 @@ const years = ["2025", "2024", "2023"];
 
 const IncomeReport = () => {
   const [selectedYear, setSelectedYear] = useState("2025");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   
   const yearlyTotal = monthlyIncomeData.reduce(
     (acc, month) => acc + month.total, 
@@ -50,14 +53,31 @@ const IncomeReport = () => {
     0
   );
 
-  return (
-    <ReportPage
-      title="Income Report"
-      description="Monthly analysis of income from interest, fees, and penalties."
-      actions={
-        <div className="flex items-center gap-2">
+  const hasActiveFilters = selectedYear !== "2025" || (dateRange !== undefined);
+
+  const handleReset = () => {
+    setSelectedYear("2025");
+    setDateRange(undefined);
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Income Report Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Year
+          </label>
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="border-dashed">
               <SelectValue placeholder="Select Year" />
             </SelectTrigger>
             <SelectContent>
@@ -68,13 +88,23 @@ const IncomeReport = () => {
               ))}
             </SelectContent>
           </Select>
-          <ExportButton 
-            data={monthlyIncomeData} 
-            filename={`income-report-${selectedYear}`} 
-            columns={columns} 
-          />
         </div>
+      </div>
+    </ReportFilters>
+  );
+
+  return (
+    <ReportPage
+      title="Income Report"
+      description="Monthly analysis of income from interest, fees, and penalties."
+      actions={
+        <ExportButton 
+          data={monthlyIncomeData} 
+          filename={`income-report-${selectedYear}`} 
+          columns={columns} 
+        />
       }
+      filters={filters}
     >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">

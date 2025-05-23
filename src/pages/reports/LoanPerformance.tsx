@@ -1,9 +1,11 @@
-
 import { useState } from "react";
 import { ReportPage } from "./Base";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DateRange } from "react-day-picker";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 
 // Dummy data for loan performance by product
 const loanPerformanceData = [
@@ -67,6 +69,8 @@ const portionByProduct = loanPerformanceData.map(item => ({
 }));
 
 const LoanPerformanceReport = () => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
   const totalDisbursed = loanPerformanceData.reduce((acc, item) => acc + item.disbursed, 0);
   const totalOutstanding = loanPerformanceData.reduce((acc, item) => acc + item.outstanding, 0);
   const totalInterestEarned = loanPerformanceData.reduce((acc, item) => acc + item.interest, 0);
@@ -75,11 +79,32 @@ const LoanPerformanceReport = () => {
     return acc + (item.defaultRate * item.disbursed / totalDisbursed);
   }, 0).toFixed(2);
 
+  const hasActiveFilters = dateRange !== undefined;
+
+  const handleReset = () => {
+    setDateRange(undefined);
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Loan Performance Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <DateRangePicker
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+        className="w-full sm:w-auto"
+      />
+    </ReportFilters>
+  );
+
   return (
     <ReportPage
       title="Loan Performance Report"
       description="Analysis of loan performance by product."
       actions={<ExportButton data={loanPerformanceData} filename="loan-performance-report" columns={columns} />}
+      filters={filters}
     >
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
