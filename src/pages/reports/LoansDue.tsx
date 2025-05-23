@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
 import { CalendarRange } from "lucide-react";
@@ -16,30 +17,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for loans due
-const loansDueData = [
-  { id: 1, clientName: "John Kamau", phoneNumber: "0712345678", amountDue: 35000, dueDate: "2025-05-25", branch: "head-office" },
-  { id: 2, clientName: "Mary Wanjiku", phoneNumber: "0723456789", amountDue: 42000, dueDate: "2025-05-26", branch: "head-office" },
-  { id: 3, clientName: "Peter Ochieng", phoneNumber: "0734567890", amountDue: 28000, dueDate: "2025-05-27", branch: "head-office" },
-  { id: 4, clientName: "Lucy Muthoni", phoneNumber: "0745678901", amountDue: 50000, dueDate: "2025-05-28", branch: "head-office" },
-  { id: 5, clientName: "David Kiprop", phoneNumber: "0756789012", amountDue: 65000, dueDate: "2025-05-29", branch: "head-office" },
-  { id: 6, clientName: "Alice Wairimu", phoneNumber: "0712345679", amountDue: 22000, dueDate: "2025-05-25", branch: "westlands" },
-  { id: 7, clientName: "Bob Mugo", phoneNumber: "0723456780", amountDue: 30000, dueDate: "2025-05-26", branch: "westlands" },
-  { id: 8, clientName: "Carol Wekesa", phoneNumber: "0734567891", amountDue: 18000, dueDate: "2025-05-27", branch: "westlands" },
-  { id: 9, clientName: "Frank Odinga", phoneNumber: "0767890124", amountDue: 25000, dueDate: "2025-05-25", branch: "mombasa" },
-  { id: 10, clientName: "Gloria Hassan", phoneNumber: "0778901235", amountDue: 33000, dueDate: "2025-05-26", branch: "mombasa" },
-  { id: 11, clientName: "Kevin Onyango", phoneNumber: "0712345670", amountDue: 20000, dueDate: "2025-05-25", branch: "kisumu" },
-  { id: 12, clientName: "Linda Achieng", phoneNumber: "0723456781", amountDue: 28000, dueDate: "2025-05-26", branch: "kisumu" },
-  { id: 13, clientName: "Oscar Kipchoge", phoneNumber: "0756789014", amountDue: 15000, dueDate: "2025-05-25", branch: "nakuru" },
-  { id: 14, clientName: "Patricia Cherono", phoneNumber: "0767890125", amountDue: 22000, dueDate: "2025-05-26", branch: "nakuru" },
-  { id: 15, clientName: "Thomas Kariuki", phoneNumber: "0787654321", amountDue: 45000, dueDate: "2025-06-10", branch: "head-office" },
-  { id: 16, clientName: "Sophia Wambui", phoneNumber: "0798765432", amountDue: 37000, dueDate: "2025-06-08", branch: "westlands" },
-  { id: 17, clientName: "Victor Kimani", phoneNumber: "0709876543", amountDue: 28000, dueDate: "2025-06-15", branch: "mombasa" },
-  { id: 18, clientName: "Winnie Oduor", phoneNumber: "0721098765", amountDue: 52000, dueDate: "2025-06-12", branch: "kisumu" },
-  { id: 19, clientName: "Xavier Mwangi", phoneNumber: "0732109876", amountDue: 33000, dueDate: "2025-06-20", branch: "nakuru" },
-  { id: 20, clientName: "Yvonne Njeri", phoneNumber: "0743210987", amountDue: 41000, dueDate: "2025-06-18", branch: "head-office" }
-];
+interface Loan {
+  id: string;
+  client: string;
+  amount: number;
+  balance: number;
+  date: string;
+  type: string;
+  status: string;
+  due_date?: string;
+  branch?: string;
+}
 
 const branches = [
   { value: "all", label: "All Branches" },
@@ -60,31 +51,66 @@ const columns = [
 
 const LoansDueReport = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2025, 4, 20), // May 20, 2025
     to: new Date(2025, 5, 20), // June 20, 2025
   });
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loans, setLoans] = useState<Loan[]>([]);
   
-  // Filter data based on selected branch, date range and search query
-  const filteredLoans = loansDueData.filter(loan => {
-    const matchesBranch = selectedBranch === "all" || loan.branch === selectedBranch;
+  useEffect(() => {
+    const fetchLoans = async () => {
+      try {
+        setLoading(true);
+        
+        // Get active loans from Supabase
+        const { data, error } = await supabase
+          .from('loans')
+          .select('*')
+          .eq('status', 'active');
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Map loan data to expected format
+        const activeLoans = data || [];
+        
+        setLoans(activeLoans);
+      } catch (error: any) {
+        console.error("Error fetching loans:", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to fetch loans",
+          description: "There was an error loading the loans data."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // Check if loan falls within selected date range
-    const loanDate = new Date(loan.dueDate);
+    fetchLoans();
+  }, [toast]);
+  
+  // Filter loans based on selected branch, date range, and search query
+  const filteredLoans = loans.filter(loan => {
+    // Since we don't have actual branch and due date in the current schema, we'll use placeholder logic
+    // This should be updated when the schema provides these details
+    const loanDate = new Date(loan.date);
     const isInDateRange = (!date?.from || loanDate >= date.from) && 
                            (!date?.to || loanDate <= date.to);
     
     // Check if loan matches search query
     const matchesSearch = searchQuery === "" || 
-                         loan.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         loan.phoneNumber.includes(searchQuery);
+                         loan.client.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesBranch && isInDateRange && matchesSearch;
+    return isInDateRange && matchesSearch;
   });
   
-  const totalAmountDue = filteredLoans.reduce((acc, loan) => acc + loan.amountDue, 0);
+  const totalAmountDue = filteredLoans.reduce((acc, loan) => acc + loan.balance, 0);
 
   const filters = (
     <ReportFilters title="Loan Repayment Filters">
@@ -174,8 +200,11 @@ const LoansDueReport = () => {
       actions={
         <ExportButton 
           data={filteredLoans.map(loan => ({
-            ...loan,
-            branch: branches.find(b => b.value === loan.branch)?.label || loan.branch
+            clientName: loan.client,
+            phoneNumber: "-", // No phone number in current schema
+            amountDue: loan.balance,
+            dueDate: loan.date,
+            branch: "Not specified", // No branch in current schema
           }))} 
           filename={`loans-due-${selectedBranch}-${date?.from ? format(date.from, 'yyyy-MM-dd') : ''}-${date?.to ? 'to-' + format(date.to, 'yyyy-MM-dd') : ''}`} 
           columns={columns} 
@@ -189,14 +218,20 @@ const LoansDueReport = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Client Name</TableHead>
-                <TableHead>Phone Number</TableHead>
                 <TableHead>Amount Due (KES)</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Branch</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLoans.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    Loading loans...
+                  </TableCell>
+                </TableRow>
+              ) : filteredLoans.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     No loans due in the selected date range
@@ -209,14 +244,18 @@ const LoansDueReport = () => {
                     className="cursor-pointer hover:bg-muted"
                     onClick={() => navigate(`/loans/${loan.id}`)}
                   >
-                    <TableCell className="font-medium">{loan.clientName}</TableCell>
-                    <TableCell>{loan.phoneNumber}</TableCell>
-                    <TableCell>{loan.amountDue.toLocaleString()}</TableCell>
-                    <TableCell>{loan.dueDate}</TableCell>
+                    <TableCell className="font-medium">{loan.client}</TableCell>
+                    <TableCell>KES {loan.balance.toLocaleString()}</TableCell>
+                    <TableCell>{loan.date}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
-                        {branches.find(b => b.value === loan.branch)?.label || loan.branch}
+                        {loan.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/loans/${loan.id}`)}>
+                        View
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

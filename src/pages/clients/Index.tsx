@@ -28,6 +28,11 @@ interface Client {
   region: string | null;
   status: string;
   photo_url: string | null;
+  id_number: string;
+  gender: string | null;
+  date_of_birth: string | null;
+  branch_id: string | null;
+  registration_date: string | null;
 }
 
 const ClientsPage = () => {
@@ -47,6 +52,11 @@ const ClientsPage = () => {
         
         if (error) {
           throw error;
+        }
+        
+        // Ensure all client data is formatted correctly
+        if (data) {
+          console.log("Fetched clients:", data);
         }
         
         setClients(data || []);

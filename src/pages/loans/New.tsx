@@ -28,7 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 // Define interface for clients
 interface Client {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
 }
 
 const NewLoanPage = () => {
@@ -52,26 +53,28 @@ const NewLoanPage = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        // For now, we'll use the sample clients since we haven't set up the clients table
-        // In a real application, you would fetch from the clients table
-        setClients([
-          { id: "1", name: "Jane Cooper" },
-          { id: "2", name: "Wade Warren" },
-          { id: "3", name: "Esther Howard" },
-          { id: "4", name: "Cameron Williamson" },
-          { id: "5", name: "Brooklyn Simmons" },
-          { id: "6", name: "Leslie Alexander" },
-          { id: "7", name: "Jenny Wilson" },
-          { id: "8", name: "Guy Hawkins" },
-        ]);
-        setLoadingClients(false);
-      } catch (error) {
+        setLoadingClients(true);
+        
+        // Get actual clients from Supabase
+        const { data, error } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name');
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Set clients from database
+        setClients(data || []);
+        
+      } catch (error: any) {
         console.error("Error fetching clients:", error);
         toast({
           variant: "destructive",
           title: "Failed to load clients",
-          description: "There was an error loading the client list.",
+          description: "There was an error loading the client list." + (error.message ? ` (${error.message})` : ""),
         });
+      } finally {
         setLoadingClients(false);
       }
     };
@@ -118,17 +121,24 @@ const NewLoanPage = () => {
     try {
       // Get selected client name
       const selectedClient = clients.find(client => client.id === clientId);
+      if (!selectedClient) {
+        throw new Error("Selected client not found");
+      }
+      
+      const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
       
       // Prepare loan data
       const amount = parseFloat(loanAmount);
       const loanData = {
-        client: selectedClient?.name || "Unknown Client",
+        client: clientName,
         amount: amount,
         balance: amount, // Initially, the balance is the full amount
         type: loanType,
         status: "pending",
         date: disbursementDate
       };
+      
+      console.log("Creating loan with data:", loanData);
       
       // Insert loan into Supabase
       const { data: loan, error } = await supabase
@@ -204,6 +214,8 @@ const NewLoanPage = () => {
         });
       }
       
+      console.log("Creating loan schedule with items:", scheduleItems);
+      
       // Insert schedule items into database
       const { error } = await supabase
         .from('loan_schedule')
@@ -214,6 +226,10 @@ const NewLoanPage = () => {
       console.error("Error creating loan schedule:", error);
       throw error;
     }
+  };
+
+  const getFullClientName = (client: Client) => {
+    return `${client.first_name} ${client.last_name}`;
   };
   
   return (
@@ -258,10 +274,12 @@ const NewLoanPage = () => {
                     <SelectContent>
                       {loadingClients ? (
                         <SelectItem value="loading" disabled>Loading clients...</SelectItem>
+                      ) : clients.length === 0 ? (
+                        <SelectItem value="no-clients" disabled>No clients found</SelectItem>
                       ) : (
                         clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
-                            {client.name}
+                            {getFullClientName(client)}
                           </SelectItem>
                         ))
                       )}
@@ -280,11 +298,11 @@ const NewLoanPage = () => {
                       <SelectValue placeholder="Select loan type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="business">Business Loan</SelectItem>
-                      <SelectItem value="personal">Personal Loan</SelectItem>
-                      <SelectItem value="education">Education Loan</SelectItem>
-                      <SelectItem value="emergency">Emergency Loan</SelectItem>
-                      <SelectItem value="agricultural">Agricultural Loan</SelectItem>
+                      <SelectItem value="Business">Business Loan</SelectItem>
+                      <SelectItem value="Personal">Personal Loan</SelectItem>
+                      <SelectItem value="Education">Education Loan</SelectItem>
+                      <SelectItem value="Emergency">Emergency Loan</SelectItem>
+                      <SelectItem value="Agricultural">Agricultural Loan</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

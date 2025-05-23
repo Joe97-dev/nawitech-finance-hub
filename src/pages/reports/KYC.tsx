@@ -1,6 +1,6 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -11,90 +11,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for KYC reports (removed email)
-const clientsData = [
-  { 
-    id: 1, 
-    clientName: "John Kamau", 
-    phoneNumber: "0712345678", 
-    idNumber: "12345678", 
-    dob: "1985-05-15",
-    address: "123 Kimathi St, Nairobi",
-    gender: "Male",
-    branch: "head-office",
-    status: "active",
-    registrationDate: "2024-01-15",
-    photoUrl: "",
-    loans: [
-      { id: 101, amount: 50000, disbursedDate: "2024-02-10", status: "active", dueDate: "2025-08-10" },
-      { id: 102, amount: 25000, disbursedDate: "2023-10-05", status: "closed", dueDate: "2024-04-05" }
-    ]
-  },
-  { 
-    id: 2, 
-    clientName: "Mary Wanjiku", 
-    phoneNumber: "0723456789", 
-    idNumber: "23456789", 
-    dob: "1990-08-22",
-    address: "456 Moi Ave, Nairobi",
-    gender: "Female",
-    branch: "head-office",
-    status: "active",
-    registrationDate: "2024-02-20",
-    photoUrl: "",
-    loans: [
-      { id: 103, amount: 35000, disbursedDate: "2024-03-15", status: "active", dueDate: "2025-09-15" }
-    ]
-  },
-  { 
-    id: 3, 
-    clientName: "Peter Ochieng", 
-    phoneNumber: "0734567890", 
-    idNumber: "34567890", 
-    dob: "1982-11-30",
-    address: "789 Tom Mboya St, Nairobi",
-    gender: "Male",
-    branch: "westlands",
-    status: "inactive",
-    registrationDate: "2023-11-10",
-    photoUrl: "",
-    loans: [
-      { id: 104, amount: 20000, disbursedDate: "2023-12-05", status: "closed", dueDate: "2024-06-05" },
-      { id: 105, amount: 40000, disbursedDate: "2024-01-20", status: "closed", dueDate: "2024-07-20" }
-    ]
-  },
-  { 
-    id: 4, 
-    clientName: "Lucy Muthoni", 
-    phoneNumber: "0745678901", 
-    idNumber: "45678901", 
-    dob: "1988-04-12",
-    address: "101 Kenyatta Ave, Mombasa",
-    gender: "Female",
-    branch: "mombasa",
-    status: "dormant",
-    registrationDate: "2023-08-05",
-    photoUrl: "",
-    loans: []
-  },
-  { 
-    id: 5, 
-    clientName: "David Kiprop", 
-    phoneNumber: "0756789012", 
-    idNumber: "56789012", 
-    dob: "1995-02-18",
-    address: "202 Oginga Odinga St, Kisumu",
-    gender: "Male",
-    branch: "kisumu",
-    status: "active",
-    registrationDate: "2023-09-25",
-    photoUrl: "",
-    loans: [
-      { id: 106, amount: 30000, disbursedDate: "2023-10-15", status: "active", dueDate: "2025-04-15" }
-    ]
-  }
-];
+interface Client {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string | null;
+  id_number: string;
+  dob: string | null;
+  address: string | null;
+  city: string | null;
+  region: string | null;
+  gender: string | null;
+  branch_id: string | null;
+  status: string;
+  photo_url: string | null;
+  loans?: Loan[];
+}
+
+interface Loan {
+  id: string;
+  amount: number;
+  status: string;
+  date: string;
+  type: string;
+}
 
 const branches = [
   { value: "all", label: "All Branches" },
@@ -126,24 +70,93 @@ const columns = [
 
 const KYCReport = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedClient, setSelectedClient] = useState<number | null>(null);
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Filter data based on selected branch, status and search query
-  const filteredClients = clientsData.filter(client => {
-    const matchesBranch = selectedBranch === "all" || client.branch === selectedBranch;
+  // Fetch clients and loans from Supabase
+  useEffect(() => {
+    const fetchClientsAndLoans = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch clients
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('*');
+        
+        if (clientsError) throw clientsError;
+        
+        // Fetch loans
+        const { data: loansData, error: loansError } = await supabase
+          .from('loans')
+          .select('*');
+          
+        if (loansError) throw loansError;
+        
+        // Map loans to clients
+        const enhancedClients = (clientsData || []).map((client: Client) => {
+          // Match loans with clients based on client name
+          // This is a temporary solution until we have a proper client_id in loans table
+          const clientName = `${client.first_name} ${client.last_name}`;
+          const clientLoans = (loansData || []).filter(
+            (loan: any) => loan.client === clientName
+          );
+          
+          return {
+            ...client,
+            loans: clientLoans || []
+          };
+        });
+        
+        setClients(enhancedClients);
+        setLoans(loansData || []);
+        
+        // Select first client by default if available
+        if (enhancedClients.length > 0 && !selectedClient) {
+          setSelectedClient(enhancedClients[0].id);
+        }
+      } catch (error: any) {
+        console.error("Error fetching clients and loans:", error);
+        toast({
+          variant: "destructive",
+          title: "Data fetch error",
+          description: "Failed to load clients and loans data."
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchClientsAndLoans();
+  }, [toast, selectedClient]);
+  
+  // Filter clients based on selected branch, status and search query
+  const filteredClients = clients.filter(client => {
+    const matchesBranch = selectedBranch === "all" || client.branch_id === selectedBranch;
     const matchesStatus = selectedStatus === "all" || client.status === selectedStatus;
     
     // Check if client matches search query
+    const clientName = `${client.first_name} ${client.last_name}`;
     const matchesSearch = searchQuery === "" || 
-                         client.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         client.phoneNumber.includes(searchQuery) ||
-                         client.idNumber.includes(searchQuery);
+                         clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         client.phone.includes(searchQuery) ||
+                         client.id_number.includes(searchQuery) ||
+                         (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
     return matchesBranch && matchesStatus && matchesSearch;
   });
+  
+  // Get selected client data
+  const selectedClientData = clients.find(c => c.id === selectedClient);
+
+  // Helper function to get full name
+  const getFullName = (client: Client) => `${client.first_name} ${client.last_name}`;
   
   return (
     <ReportPage
@@ -187,82 +200,105 @@ const KYCReport = () => {
             
             <ExportButton 
               data={filteredClients.map(client => ({
-                ...client,
-                branch: branches.find(b => b.value === client.branch)?.label || client.branch,
-                loans: undefined // Don't include loans in the export
+                clientName: getFullName(client),
+                phoneNumber: client.phone,
+                idNumber: client.id_number,
+                gender: client.gender || "Not specified",
+                dob: client.dob || "Not specified",
+                address: client.address || "Not specified",
+                branch: getBranchLabel(client.branch_id),
+                status: client.status,
+                registrationDate: client.registration_date || "Not specified"
               }))} 
-              filename={`kyc-report-${selectedBranch}-${format(new Date(), 'yyyy-MM-dd')}`} 
+              filename={`kyc-report-${selectedBranch}-${new Date().toISOString().slice(0, 10)}`} 
               columns={columns} 
             />
           </div>
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="font-medium">Total Clients</div>
-                <div className="text-2xl font-bold">{filteredClients.length}</div>
-                <div className="text-sm text-muted-foreground">
-                  Active: {filteredClients.filter(c => c.status === 'active').length} | 
-                  Inactive: {filteredClients.filter(c => c.status === 'inactive').length} | 
-                  Dormant: {filteredClients.filter(c => c.status === 'dormant').length}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-1 space-y-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="font-medium">Total Clients</div>
+                  <div className="text-2xl font-bold">{filteredClients.length}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Active: {filteredClients.filter(c => c.status === 'active').length} | 
+                    Inactive: {filteredClients.filter(c => c.status === 'inactive').length} | 
+                    Dormant: {filteredClients.filter(c => c.status === 'dormant').length}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <ScrollArea className="h-[500px] border rounded-md">
+                <div className="p-4">
+                  <h3 className="text-sm font-medium mb-3">Client List</h3>
+                  <div className="space-y-2">
+                    {filteredClients.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground">
+                        No clients match your criteria
+                      </div>
+                    ) : (
+                      filteredClients.map(client => (
+                        <Card 
+                          key={client.id} 
+                          className={`cursor-pointer ${selectedClient === client.id ? 'border-primary' : ''}`}
+                          onClick={() => setSelectedClient(client.id)}
+                        >
+                          <CardContent className="p-3 flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={client.photo_url || undefined} />
+                              <AvatarFallback>{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{getFullName(client)}</div>
+                              <div className="text-sm text-muted-foreground">{client.phone}</div>
+                            </div>
+                            <Badge className="ml-auto" variant={client.status === 'active' ? 'default' : 'outline'}>
+                              {client.status}
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ScrollArea>
+            </div>
             
-            <ScrollArea className="h-[500px] border rounded-md">
-              <div className="p-4">
-                <h3 className="text-sm font-medium mb-3">Client List</h3>
-                <div className="space-y-2">
-                  {filteredClients.map(client => (
-                    <Card 
-                      key={client.id} 
-                      className={`cursor-pointer ${selectedClient === client.id ? 'border-primary' : ''}`}
-                      onClick={() => setSelectedClient(client.id)}
-                    >
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>{client.clientName.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{client.clientName}</div>
-                          <div className="text-sm text-muted-foreground">{client.phoneNumber}</div>
-                        </div>
-                        <Badge className="ml-auto" variant={client.status === 'active' ? 'default' : 'outline'}>
-                          {client.status}
-                        </Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {filteredClients.length === 0 && (
-                    <div className="text-center py-4 text-muted-foreground">
-                      No clients match your criteria
-                    </div>
-                  )}
+            <div className="lg:col-span-2">
+              {selectedClientData ? (
+                <ClientDetail 
+                  client={selectedClientData}
+                  onLoanClick={(loanId) => navigate(`/loans/${loanId}`)}
+                />
+              ) : (
+                <div className="border rounded-md flex items-center justify-center h-full p-8 text-muted-foreground">
+                  {filteredClients.length > 0 ? "Select a client to view their details" : "No clients available"}
                 </div>
-              </div>
-            </ScrollArea>
-          </div>
-          
-          <div className="lg:col-span-2">
-            {selectedClient ? (
-              <ClientDetail 
-                client={clientsData.find(c => c.id === selectedClient)!}
-                onLoanClick={(loanId) => navigate(`/loans/${loanId}`)}
-              />
-            ) : (
-              <div className="border rounded-md flex items-center justify-center h-full p-8 text-muted-foreground">
-                Select a client to view their details
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </ReportPage>
   );
+};
+
+// Helper function to get branch label
+const getBranchLabel = (branch_id: string | null) => {
+  if (!branch_id) return "Not assigned";
+  
+  // In a real implementation, you would fetch branch names from your database
+  // For now, we'll return a placeholder
+  return "Branch";
 };
 
 // Updated ClientDetail component to handle loan navigation
@@ -270,8 +306,8 @@ const ClientDetail = ({
   client, 
   onLoanClick 
 }: { 
-  client: typeof clientsData[0], 
-  onLoanClick: (loanId: number) => void 
+  client: Client, 
+  onLoanClick: (loanId: string) => void 
 }) => {
   return (
     <Card>
@@ -286,10 +322,11 @@ const ClientDetail = ({
               <div>
                 <div className="flex items-center gap-4 mb-6">
                   <Avatar className="h-16 w-16">
-                    <AvatarFallback className="text-lg">{client.clientName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarImage src={client.photo_url || undefined} />
+                    <AvatarFallback className="text-lg">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-xl font-semibold">{client.clientName}</h3>
+                    <h3 className="text-xl font-semibold">{client.first_name} {client.last_name}</h3>
                     <Badge variant={client.status === 'active' ? 'default' : 'outline'} className="mt-1">
                       {client.status}
                     </Badge>
@@ -299,19 +336,19 @@ const ClientDetail = ({
                 <div className="space-y-3">
                   <div>
                     <div className="text-sm text-muted-foreground">Phone Number</div>
-                    <div>{client.phoneNumber}</div>
+                    <div>{client.phone}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">ID Number</div>
-                    <div>{client.idNumber}</div>
+                    <div>{client.id_number}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Date of Birth</div>
-                    <div>{client.dob}</div>
+                    <div>{client.dob || "Not specified"}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Gender</div>
-                    <div>{client.gender}</div>
+                    <div>{client.gender || "Not specified"}</div>
                   </div>
                 </div>
               </div>
@@ -319,15 +356,19 @@ const ClientDetail = ({
               <div className="space-y-3">
                 <div>
                   <div className="text-sm text-muted-foreground">Physical Address</div>
-                  <div>{client.address}</div>
+                  <div>{client.address || "Not specified"}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Branch</div>
-                  <div>{branches.find(b => b.value === client.branch)?.label || client.branch}</div>
+                  <div className="text-sm text-muted-foreground">City</div>
+                  <div>{client.city || "Not specified"}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Region</div>
+                  <div>{client.region || "Not specified"}</div>
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">Registration Date</div>
-                  <div>{client.registrationDate}</div>
+                  <div>{client.registration_date || "Not specified"}</div>
                 </div>
               </div>
             </div>
@@ -336,21 +377,25 @@ const ClientDetail = ({
           <TabsContent value="loans">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="font-medium">Total Loans: {client.loans.length}</div>
+                <div className="font-medium">Total Loans: {client.loans?.length || 0}</div>
                 <div className="text-sm text-muted-foreground">
-                  Active: {client.loans.filter(loan => loan.status === 'active').length} | 
-                  Closed: {client.loans.filter(loan => loan.status === 'closed').length}
+                  Active: {client.loans?.filter(loan => loan.status === 'active').length || 0} | 
+                  Closed: {client.loans?.filter(loan => loan.status === 'closed').length || 0}
                 </div>
               </div>
               
-              {client.loans.length > 0 ? (
+              {!client.loans || client.loans.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-md">
+                  No loans found for this client
+                </div>
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Loan ID</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Disbursed</TableHead>
-                      <TableHead>Due Date</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -361,10 +406,10 @@ const ClientDetail = ({
                         className="cursor-pointer hover:bg-muted"
                         onClick={() => onLoanClick(loan.id)}
                       >
-                        <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
+                        <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
                         <TableCell>KES {loan.amount.toLocaleString()}</TableCell>
-                        <TableCell>{loan.disbursedDate}</TableCell>
-                        <TableCell>{loan.dueDate}</TableCell>
+                        <TableCell>{loan.date}</TableCell>
+                        <TableCell>{loan.type}</TableCell>
                         <TableCell>
                           <Badge variant={loan.status === 'active' ? 'default' : 'secondary'}>
                             {loan.status}
@@ -374,10 +419,6 @@ const ClientDetail = ({
                     ))}
                   </TableBody>
                 </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground border rounded-md">
-                  No loans found for this client
-                </div>
               )}
             </div>
           </TabsContent>
