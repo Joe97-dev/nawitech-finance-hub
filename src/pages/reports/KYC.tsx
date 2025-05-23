@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -205,7 +204,7 @@ const KYCReport = () => {
                 phoneNumber: client.phone,
                 idNumber: client.id_number,
                 gender: client.gender || "Not specified",
-                dob: client.dob || "Not specified",
+                dob: client.date_of_birth || "Not specified",
                 address: client.address || "Not specified",
                 branch: getBranchLabel(client.branch_id),
                 status: client.status,
