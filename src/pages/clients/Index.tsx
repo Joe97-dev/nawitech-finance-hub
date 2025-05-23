@@ -27,6 +27,7 @@ interface Client {
   city: string | null;
   region: string | null;
   status: string;
+  photo_url: string | null;
 }
 
 const ClientsPage = () => {
