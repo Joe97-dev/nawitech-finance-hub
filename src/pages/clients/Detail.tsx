@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/layout";
@@ -18,141 +19,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface Loan {
-  id: number;
+  id: string;
   amount: number;
-  disbursedDate: string;
-  dueDate: string;
+  date: string;
   status: string;
-  interestRate: number;
-  loanOfficer: string;
-  repayments: {
-    date: string;
-    amount: number;
-  }[];
+  type: string;
+  balance: number;
 }
 
 interface Client {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
-  email: string;
-  address: string;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  region: string | null;
   status: string;
-  idNumber: string;
-  dob: string;
-  gender: string;
-  occupation: string;
-  monthlyIncome: number;
-  branch: string;
-  registrationDate: string;
-  photoUrl: string;
+  id_number: string;
+  date_of_birth: string | null;
+  gender: string | null;
+  occupation: string | null;
+  monthly_income: number | null;
+  branch_id: string | null;
+  registration_date: string | null;
+  photo_url: string | null;
+  employment_status: string | null;
   loans: Loan[];
 }
-
-// Sample client data with loan history
-const clientsData: Client[] = [
-  { 
-    id: "1", 
-    name: "Jane Cooper", 
-    phone: "(254) 555-0111", 
-    email: "jane@example.com", 
-    address: "Nairobi, Kenya",
-    status: "active",
-    idNumber: "12345678",
-    dob: "1985-04-12",
-    gender: "Female",
-    occupation: "Teacher",
-    monthlyIncome: 45000,
-    branch: "Head Office",
-    registrationDate: "2024-01-15",
-    photoUrl: "",
-    loans: [
-      { id: 101, amount: 50000, disbursedDate: "2024-02-10", dueDate: "2024-08-10", status: "active", interestRate: 15, loanOfficer: "James Maina", repayments: [
-        { date: "2024-03-10", amount: 9500 },
-        { date: "2024-04-10", amount: 9500 }
-      ] },
-      { id: 102, amount: 30000, disbursedDate: "2023-06-05", dueDate: "2023-12-05", status: "closed", interestRate: 15, loanOfficer: "James Maina", repayments: [
-        { date: "2023-07-05", amount: 5700 },
-        { date: "2023-08-05", amount: 5700 },
-        { date: "2023-09-05", amount: 5700 },
-        { date: "2023-10-05", amount: 5700 },
-        { date: "2023-11-05", amount: 5700 },
-        { date: "2023-12-05", amount: 5700 }
-      ] }
-    ]
-  },
-  { 
-    id: "2", 
-    name: "Wade Warren", 
-    phone: "(254) 555-0222", 
-    email: "wade@example.com", 
-    address: "Nakuru, Kenya",
-    status: "active",
-    idNumber: "23456789",
-    dob: "1978-08-24",
-    gender: "Male",
-    occupation: "Businessman",
-    monthlyIncome: 65000,
-    branch: "Nakuru Branch",
-    registrationDate: "2023-11-20",
-    photoUrl: "",
-    loans: [
-      { id: 103, amount: 70000, disbursedDate: "2023-12-15", dueDate: "2024-06-15", status: "active", interestRate: 15, loanOfficer: "Joseph Kirui", repayments: [
-        { date: "2024-01-15", amount: 13250 },
-        { date: "2024-02-15", amount: 13250 },
-        { date: "2024-03-15", amount: 13250 },
-        { date: "2024-04-15", amount: 13250 }
-      ] }
-    ]
-  },
-  { 
-    id: "3", 
-    name: "Esther Howard", 
-    phone: "(254) 555-0333", 
-    email: "esther@example.com", 
-    address: "Mombasa, Kenya",
-    status: "inactive",
-    idNumber: "34567890",
-    dob: "1990-03-08",
-    gender: "Female",
-    occupation: "Shopkeeper",
-    monthlyIncome: 30000,
-    branch: "Mombasa Branch",
-    registrationDate: "2023-09-05",
-    photoUrl: "",
-    loans: []
-  },
-  { 
-    id: "4", 
-    name: "Cameron Williamson", 
-    phone: "(254) 555-0444", 
-    email: "cameron@example.com", 
-    address: "Kisumu, Kenya",
-    status: "active",
-    idNumber: "45678901",
-    dob: "1983-12-15",
-    gender: "Male",
-    occupation: "Doctor",
-    monthlyIncome: 120000,
-    branch: "Kisumu Branch",
-    registrationDate: "2023-10-10",
-    photoUrl: "",
-    loans: [
-      { id: 104, amount: 100000, disbursedDate: "2023-11-01", dueDate: "2024-05-01", status: "closed", interestRate: 15, loanOfficer: "Susan Achieng", repayments: [
-        { date: "2023-12-01", amount: 19000 },
-        { date: "2024-01-01", amount: 19000 },
-        { date: "2024-02-01", amount: 19000 },
-        { date: "2024-03-01", amount: 19000 },
-        { date: "2024-04-01", amount: 19000 },
-        { date: "2024-05-01", amount: 19000 }
-      ] },
-      { id: 105, amount: 50000, disbursedDate: "2024-02-15", dueDate: "2024-08-15", status: "active", interestRate: 15, loanOfficer: "Susan Achieng", repayments: [
-        { date: "2024-03-15", amount: 9500 },
-        { date: "2024-04-15", amount: 9500 }
-      ] }
-    ]
-  }
-];
 
 const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -161,16 +56,63 @@ const ClientDetailPage = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Find client by ID
   useEffect(() => {
-    // For now, we'll use the dummy data
-    // In a real implementation, this would fetch from the database
-    const foundClient = clientsData.find(c => c.id === clientId);
-    setClient(foundClient || null);
-    setLoading(false);
+    const fetchClientData = async () => {
+      if (!clientId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // Fetch client data from Supabase
+        const { data: clientData, error: clientError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', clientId)
+          .single();
+        
+        if (clientError) {
+          console.error("Error fetching client:", clientError);
+          throw clientError;
+        }
+        
+        // Fetch loans for this client
+        const clientName = `${clientData.first_name} ${clientData.last_name}`;
+        const { data: loansData, error: loansError } = await supabase
+          .from('loans')
+          .select('*')
+          .eq('client', clientName);
+        
+        if (loansError) {
+          console.error("Error fetching loans:", loansError);
+          // Don't throw here, just log the error and continue without loans
+        }
+        
+        // Combine client data with loans
+        const enrichedClient = {
+          ...clientData,
+          loans: loansData || []
+        };
+        
+        setClient(enrichedClient);
+        
+      } catch (error: any) {
+        console.error("Error fetching client details:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading client",
+          description: error.message || "Failed to load client details"
+        });
+        setClient(null);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // TODO: Replace with actual API call when client database is ready
-  }, [clientId]);
+    fetchClientData();
+  }, [clientId, toast]);
   
   if (loading) {
     return (
@@ -197,6 +139,12 @@ const ClientDetailPage = () => {
     );
   }
   
+  const getFullName = () => `${client.first_name} ${client.last_name}`;
+  const getFullAddress = () => {
+    const parts = [client.address, client.city, client.region].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : 'Not specified';
+  };
+  
   const activeLoans = client.loans.filter(loan => loan.status === "active");
   const closedLoans = client.loans.filter(loan => loan.status === "closed");
   const totalLoanAmount = client.loans.reduce((acc, loan) => acc + loan.amount, 0);
@@ -216,13 +164,13 @@ const ClientDetailPage = () => {
               Back to Clients
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">{client.name}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{getFullName()}</h1>
               <p className="text-muted-foreground">Client ID: {clientId}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline">Edit Client</Button>
-            <Button>New Loan</Button>
+            <Button onClick={() => navigate("/loans/new")}>New Loan</Button>
           </div>
         </div>
         
@@ -236,12 +184,12 @@ const ClientDetailPage = () => {
               <CardContent className="space-y-6">
                 <div className="flex flex-col items-center">
                   <Avatar className="h-24 w-24">
-                    <AvatarFallback className="text-2xl">{client.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    {client.photoUrl && <AvatarImage src={client.photoUrl} alt={client.name} />}
+                    <AvatarFallback className="text-2xl">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
+                    {client.photo_url && <AvatarImage src={client.photo_url} alt={getFullName()} />}
                   </Avatar>
                   
                   <div className="mt-3 text-center">
-                    <h3 className="font-semibold text-lg">{client.name}</h3>
+                    <h3 className="font-semibold text-lg">{getFullName()}</h3>
                     <Badge variant={client.status === "active" ? "default" : "outline"} className="mt-1">
                       {client.status}
                     </Badge>
@@ -256,51 +204,48 @@ const ClientDetailPage = () => {
                   
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.email}</span>
+                    <span>{client.email || "Not provided"}</span>
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.address}</span>
+                    <span>{getFullAddress()}</span>
                   </div>
                 </div>
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">ID Number</span>
-                    <span className="font-medium">{client.idNumber}</span>
+                    <span className="font-medium">{client.id_number}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Date of Birth</span>
-                    <span className="font-medium">{client.dob}</span>
+                    <span className="font-medium">{client.date_of_birth || "Not specified"}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Gender</span>
-                    <span className="font-medium">{client.gender}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Branch</span>
-                    <span className="font-medium">{client.branch}</span>
+                    <span className="font-medium">{client.gender || "Not specified"}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Registration Date</span>
-                    <span className="font-medium">{client.registrationDate}</span>
+                    <span className="font-medium">{client.registration_date || "Not specified"}</span>
                   </div>
                 </div>
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Occupation</span>
-                    <span className="font-medium">{client.occupation}</span>
+                    <span className="font-medium">{client.occupation || "Not specified"}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Monthly Income</span>
-                    <span className="font-medium">KES {client.monthlyIncome.toLocaleString()}</span>
+                    <span className="font-medium">
+                      {client.monthly_income ? `KES ${client.monthly_income.toLocaleString()}` : "Not specified"}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -338,21 +283,19 @@ const ClientDetailPage = () => {
                           <TableRow>
                             <TableHead>Loan ID</TableHead>
                             <TableHead>Amount (KES)</TableHead>
-                            <TableHead>Disbursed</TableHead>
-                            <TableHead>Due Date</TableHead>
-                            <TableHead>Interest Rate</TableHead>
-                            <TableHead>Loan Officer</TableHead>
+                            <TableHead>Balance (KES)</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Type</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {activeLoans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
-                              <TableCell>{loan.disbursedDate}</TableCell>
-                              <TableCell>{loan.dueDate}</TableCell>
-                              <TableCell>{loan.interestRate}%</TableCell>
-                              <TableCell>{loan.loanOfficer}</TableCell>
+                              <TableCell>{loan.balance.toLocaleString()}</TableCell>
+                              <TableCell>{loan.date}</TableCell>
+                              <TableCell>{loan.type}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -373,21 +316,19 @@ const ClientDetailPage = () => {
                           <TableRow>
                             <TableHead>Loan ID</TableHead>
                             <TableHead>Amount (KES)</TableHead>
-                            <TableHead>Disbursed</TableHead>
-                            <TableHead>Closed</TableHead>
-                            <TableHead>Interest Rate</TableHead>
-                            <TableHead>Loan Officer</TableHead>
+                            <TableHead>Balance (KES)</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Type</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {closedLoans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
-                              <TableCell>{loan.disbursedDate}</TableCell>
-                              <TableCell>{loan.dueDate}</TableCell>
-                              <TableCell>{loan.interestRate}%</TableCell>
-                              <TableCell>{loan.loanOfficer}</TableCell>
+                              <TableCell>{loan.balance.toLocaleString()}</TableCell>
+                              <TableCell>{loan.date}</TableCell>
+                              <TableCell>{loan.type}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -408,27 +349,25 @@ const ClientDetailPage = () => {
                           <TableRow>
                             <TableHead>Loan ID</TableHead>
                             <TableHead>Amount (KES)</TableHead>
+                            <TableHead>Balance (KES)</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Disbursed</TableHead>
-                            <TableHead>Due Date</TableHead>
-                            <TableHead>Interest Rate</TableHead>
-                            <TableHead>Loan Officer</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Type</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {client.loans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id}</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
+                              <TableCell>{loan.balance.toLocaleString()}</TableCell>
                               <TableCell>
                                 <Badge variant={loan.status === "active" ? "default" : "secondary"}>
                                   {loan.status}
                                 </Badge>
                               </TableCell>
-                              <TableCell>{loan.disbursedDate}</TableCell>
-                              <TableCell>{loan.dueDate}</TableCell>
-                              <TableCell>{loan.interestRate}%</TableCell>
-                              <TableCell>{loan.loanOfficer}</TableCell>
+                              <TableCell>{loan.date}</TableCell>
+                              <TableCell>{loan.type}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

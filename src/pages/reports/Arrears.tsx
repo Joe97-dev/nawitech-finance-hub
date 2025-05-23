@@ -1,427 +1,413 @@
 
 import { useState, useEffect } from "react";
-import { ReportPage } from "./Base";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ExportButton } from "@/components/ui/export-button";
 import { DateRange } from "react-day-picker";
-import { DateRangePicker } from "@/components/reports/DateRangePicker";
-import { Card } from "@/components/ui/card";
+import { ReportPage } from "./Base";
 import { ReportFilters } from "@/components/reports/ReportFilters";
-import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
-import { ReportCard } from "@/components/reports/ReportCard";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
+import { ReportCard } from "@/components/reports/ReportCard";
+import { ReportStats } from "@/components/reports/ReportStats";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { ExportButton } from "@/components/ui/export-button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle, ArrowUpRight, BarChart3, PieChart, TrendingDown } from "lucide-react";
 
-// Interface for loans from Supabase
-interface Loan {
+interface ArrearsData {
   id: string;
-  amount: number;
-  balance: number;
-  status: string;
-  date: string;
+  clientName: string;
+  loanId: string;
+  principalAmount: number;
+  outstandingBalance: number;
+  daysOverdue: number;
+  amountOverdue: number;
+  lastPaymentDate: string;
+  contactInfo: string;
+  riskCategory: "low" | "medium" | "high" | "critical";
+  photoUrl?: string;
 }
 
-// Process loans to calculate arrears
-const calculateArrears = (loans: Loan[]) => {
-  // Only consider active loans with a balance > 0
-  const activeLoans = loans.filter(loan => loan.status === 'active' && loan.balance > 0);
-  
-  // For demo purposes, we'll use loan date to calculate days past due
-  // In a real app, you would have specific due dates and payment data
-  
-  const today = new Date();
-  
-  // Calculate days past due for each loan
-  const loansWithDaysPastDue = activeLoans.map(loan => {
-    const loanDate = new Date(loan.date);
-    const daysDifference = Math.round((today.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    return {
-      ...loan,
-      daysPastDue: daysDifference
-    };
-  });
-  
-  // Group loans by days past due categories
-  const arrearsCategories = [
-    { category: "1-7 days", min: 1, max: 7, amount: 0, count: 0, color: "#3b82f6" },
-    { category: "8-14 days", min: 8, max: 14, amount: 0, count: 0, color: "#8b5cf6" },
-    { category: "15-30 days", min: 15, max: 30, amount: 0, count: 0, color: "#ec4899" },
-    { category: "31-60 days", min: 31, max: 60, amount: 0, count: 0, color: "#f59e0b" },
-    { category: "61-90 days", min: 61, max: 90, amount: 0, count: 0, color: "#ef4444" },
-    { category: "90+ days", min: 91, max: 999999, amount: 0, count: 0, color: "#7f1d1d" }
-  ];
-  
-  // Sum up balances for each category
-  for (const loan of loansWithDaysPastDue) {
-    for (const category of arrearsCategories) {
-      if (loan.daysPastDue >= category.min && loan.daysPastDue <= category.max) {
-        category.amount += loan.balance;
-        category.count += 1;
-        break;
-      }
-    }
-  }
-  
-  return arrearsCategories;
-};
+const branches = [
+  { value: "all", label: "All Branches" },
+  { value: "head-office", label: "HEAD OFFICE" },
+  { value: "westlands", label: "Westlands Branch" },
+  { value: "mombasa", label: "Mombasa Branch" },
+  { value: "kisumu", label: "Kisumu Branch" },
+  { value: "nakuru", label: "Nakuru Branch" }
+];
 
-// Calculate PAR (Portfolio at Risk) metrics
-const calculatePAR = (loans: Loan[]) => {
-  const totalPortfolio = loans.reduce((sum, loan) => sum + loan.balance, 0);
-  
-  if (totalPortfolio === 0) return { 
-    par30: 0, 
-    par90: 0, 
-    totalInArrears: 0,
-    totalPortfolio: 0,
-    loansInArrears: 0,
-    totalLoans: loans.length
-  };
-  
-  const today = new Date();
-  
-  // Sum all balances over 30 days past due
-  const balanceOver30Days = loans.reduce((sum, loan) => {
-    const loanDate = new Date(loan.date);
-    const daysDifference = Math.round((today.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDifference > 30 ? sum + loan.balance : sum;
-  }, 0);
-  
-  // Sum all balances over 90 days past due
-  const balanceOver90Days = loans.reduce((sum, loan) => {
-    const loanDate = new Date(loan.date);
-    const daysDifference = Math.round((today.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDifference > 90 ? sum + loan.balance : sum;
-  }, 0);
-  
-  // Sum all balances past due (over 1 day)
-  const totalInArrears = loans.reduce((sum, loan) => {
-    const loanDate = new Date(loan.date);
-    const daysDifference = Math.round((today.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDifference > 0 ? sum + loan.balance : sum;
-  }, 0);
-
-  // Count loans in arrears
-  const loansInArrears = loans.reduce((count, loan) => {
-    const loanDate = new Date(loan.date);
-    const daysDifference = Math.round((today.getTime() - loanDate.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDifference > 0 ? count + 1 : count;
-  }, 0);
-  
-  const par30 = (balanceOver30Days / totalPortfolio) * 100;
-  const par90 = (balanceOver90Days / totalPortfolio) * 100;
-  
-  return { 
-    par30: parseFloat(par30.toFixed(1)), 
-    par90: parseFloat(par90.toFixed(1)), 
-    totalInArrears,
-    totalPortfolio,
-    loansInArrears,
-    totalLoans: loans.length
-  };
-};
+const riskCategories = [
+  { value: "all", label: "All Risk Levels" },
+  { value: "low", label: "Low Risk (1-30 days)" },
+  { value: "medium", label: "Medium Risk (31-60 days)" },
+  { value: "high", label: "High Risk (61-90 days)" },
+  { value: "critical", label: "Critical Risk (90+ days)" }
+];
 
 const columns = [
-  { key: "category", header: "Days Past Due" },
-  { key: "amount", header: "Amount in Arrears (KES)" },
-  { key: "count", header: "Number of Loans" }
+  { key: "clientName", header: "Client Name" },
+  { key: "loanId", header: "Loan ID" },
+  { key: "principalAmount", header: "Principal Amount" },
+  { key: "outstandingBalance", header: "Outstanding Balance" },
+  { key: "daysOverdue", header: "Days Overdue" },
+  { key: "amountOverdue", header: "Amount Overdue" },
+  { key: "lastPaymentDate", header: "Last Payment" },
+  { key: "contactInfo", header: "Contact" },
+  { key: "riskCategory", header: "Risk Category" }
 ];
 
 const ArrearsReport = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2025, 4, 1), // May 1, 2025
-    to: new Date(),
-  });
-  const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("monthly");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [selectedBranch, setSelectedBranch] = useState("all");
+  const [selectedRisk, setSelectedRisk] = useState("all");
+  const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
+  const [arrearsData, setArrearsData] = useState<ArrearsData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [arrearsData, setArrearsData] = useState<any[]>([]);
-  const [parData, setParData] = useState({ 
-    par30: 0, 
-    par90: 0, 
-    totalInArrears: 0, 
-    totalPortfolio: 0,
-    loansInArrears: 0,
-    totalLoans: 0
-  });
-  
+
+  // Simulate data fetching from Supabase
   useEffect(() => {
-    const fetchLoans = async () => {
+    const fetchArrearsData = async () => {
       try {
         setLoading(true);
+        // TODO: Implement actual Supabase query
+        // For now, using sample data
+        const sampleData: ArrearsData[] = [
+          {
+            id: "1",
+            clientName: "Jane Cooper",
+            loanId: "LN001",
+            principalAmount: 50000,
+            outstandingBalance: 35000,
+            daysOverdue: 15,
+            amountOverdue: 8500,
+            lastPaymentDate: "2024-01-15",
+            contactInfo: "(254) 555-0111",
+            riskCategory: "low"
+          },
+          {
+            id: "2",
+            clientName: "Wade Warren",
+            loanId: "LN002",
+            principalAmount: 75000,
+            outstandingBalance: 55000,
+            daysOverdue: 45,
+            amountOverdue: 12500,
+            lastPaymentDate: "2023-12-20",
+            contactInfo: "(254) 555-0222",
+            riskCategory: "medium"
+          },
+          {
+            id: "3",
+            clientName: "Esther Howard",
+            loanId: "LN003",
+            principalAmount: 30000,
+            outstandingBalance: 25000,
+            daysOverdue: 75,
+            amountOverdue: 6000,
+            lastPaymentDate: "2023-11-10",
+            contactInfo: "(254) 555-0333",
+            riskCategory: "high"
+          },
+          {
+            id: "4",
+            clientName: "Cameron Williamson",
+            loanId: "LN004",
+            principalAmount: 100000,
+            outstandingBalance: 90000,
+            daysOverdue: 120,
+            amountOverdue: 25000,
+            lastPaymentDate: "2023-10-05",
+            contactInfo: "(254) 555-0444",
+            riskCategory: "critical"
+          }
+        ];
         
-        // Get all loans from Supabase
-        const { data, error } = await supabase
-          .from('loans')
-          .select('*');
-        
-        if (error) {
-          throw error;
-        }
-        
-        setLoans(data || []);
-        
-        // Calculate arrears based on loans
-        const arrears = calculateArrears(data || []);
-        setArrearsData(arrears);
-        
-        // Calculate PAR metrics
-        const par = calculatePAR(data || []);
-        setParData(par);
-        
+        setArrearsData(sampleData);
       } catch (error: any) {
-        console.error("Error fetching loans for arrears report:", error);
+        console.error("Error fetching arrears data:", error);
         toast({
           variant: "destructive",
-          title: "Failed to fetch loans",
-          description: "There was an error loading the arrears data."
+          title: "Data fetch error",
+          description: "Failed to load arrears data."
         });
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchLoans();
-  }, [toast]);
 
-  const resetFilters = () => {
-    setDate({
-      from: new Date(2025, 4, 1),
-      to: new Date(),
-    });
-    setInterestCalculation("monthly");
+    fetchArrearsData();
+  }, [toast, dateRange, selectedBranch, selectedRisk]);
+
+  // Filter data based on selected filters
+  const filteredData = arrearsData.filter(item => {
+    const matchesBranch = selectedBranch === "all";
+    const matchesRisk = selectedRisk === "all" || item.riskCategory === selectedRisk;
+    
+    return matchesBranch && matchesRisk;
+  });
+
+  // Calculate statistics
+  const totalOverdueAmount = filteredData.reduce((sum, item) => sum + item.amountOverdue, 0);
+  const totalOutstanding = filteredData.reduce((sum, item) => sum + item.outstandingBalance, 0);
+  const avgDaysOverdue = filteredData.length > 0 
+    ? Math.round(filteredData.reduce((sum, item) => sum + item.daysOverdue, 0) / filteredData.length)
+    : 0;
+  const riskDistribution = {
+    low: filteredData.filter(item => item.riskCategory === "low").length,
+    medium: filteredData.filter(item => item.riskCategory === "medium").length,
+    high: filteredData.filter(item => item.riskCategory === "high").length,
+    critical: filteredData.filter(item => item.riskCategory === "critical").length
   };
-  
-  const hasActiveFilters = 
-    (date?.from && date.from.getTime() !== new Date(2025, 4, 1).getTime()) || 
-    (date?.to && date.to.getTime() !== new Date().getTime()) ||
-    interestCalculation !== "monthly";
-  
-  const filters = (
-    <ReportFilters 
-      title="Arrears Analysis Filters" 
-      onReset={resetFilters} 
-      hasActiveFilters={hasActiveFilters}
+
+  const getRiskBadgeVariant = (risk: string) => {
+    switch (risk) {
+      case "low": return "secondary";
+      case "medium": return "outline";
+      case "high": return "destructive";
+      case "critical": return "destructive";
+      default: return "secondary";
+    }
+  };
+
+  const getRiskProgress = (risk: string) => {
+    switch (risk) {
+      case "low": return 25;
+      case "medium": return 50;
+      case "high": return 75;
+      case "critical": return 100;
+      default: return 0;
+    }
+  };
+
+  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || dateRange;
+
+  const handleReset = () => {
+    setSelectedBranch("all");
+    setSelectedRisk("all");
+    setDateRange(undefined);
+    setInterestCalculation("annually");
+  };
+
+  return (
+    <ReportPage
+      title="Arrears Report"
+      description="Track overdue loans and manage collection activities"
+      actions={
+        <ExportButton 
+          data={filteredData.map(item => ({
+            clientName: item.clientName,
+            loanId: item.loanId,
+            principalAmount: item.principalAmount,
+            outstandingBalance: item.outstandingBalance,
+            daysOverdue: item.daysOverdue,
+            amountOverdue: item.amountOverdue,
+            lastPaymentDate: item.lastPaymentDate,
+            contactInfo: item.contactInfo,
+            riskCategory: item.riskCategory
+          }))} 
+          filename={`arrears-report-${new Date().toISOString().slice(0, 10)}`} 
+          columns={columns} 
+        />
+      }
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Date Range</label>
-          <DateRangePicker dateRange={date} onDateRangeChange={setDate} />
+      <ReportFilters 
+        hasActiveFilters={hasActiveFilters}
+        onReset={handleReset}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DateRangePicker
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+            className="md:col-span-2"
+          />
+          
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Branch
+            </label>
+            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="Select Branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.value} value={branch.value}>
+                    {branch.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Risk Category
+            </label>
+            <Select value={selectedRisk} onValueChange={setSelectedRisk}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="Risk Level" />
+              </SelectTrigger>
+              <SelectContent>
+                {riskCategories.map((risk) => (
+                  <SelectItem key={risk.value} value={risk.value}>
+                    {risk.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <InterestCalculationToggle
           value={interestCalculation}
           onChange={setInterestCalculation}
-          className="space-y-2"
+          className="w-fit"
         />
-      </div>
-    </ReportFilters>
-  );
-  
-  return (
-    <ReportPage
-      title="Arrears Report"
-      description="Analysis of loans in arrears by time period."
-      actions={
-        <ExportButton 
-          data={arrearsData.map(item => ({
-            category: item.category,
-            amount: item.amount,
-            count: item.count
-          }))} 
-          filename="arrears-report" 
-          columns={columns} 
-        />
-      }
-      filters={filters}
-    >
+      </ReportFilters>
+
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       ) : (
         <div className="space-y-6">
-          <ReportStats>
-            <ReportStat 
-              label="Total Portfolio" 
-              value={`KES ${parData.totalPortfolio.toLocaleString()}`}
-              icon={<PieChart className="h-5 w-5" />}
-              subValue={`${parData.totalLoans} total loans`}
-            />
-            <ReportStat 
-              label="Total in Arrears" 
-              value={`KES ${parData.totalInArrears.toLocaleString()}`}
-              icon={<AlertCircle className="h-5 w-5" />}
-              trend={parData.totalInArrears > 0 ? "up" : "neutral"}
-              trendValue={`${parData.loansInArrears} loans affected`}
-            />
-            <ReportStat 
-              label="Portfolio at Risk" 
-              value={`${parData.par30}%`}
-              icon={<TrendingDown className="h-5 w-5" />}
-              subValue={
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div className="h-2.5 rounded-full bg-amber-500" style={{ width: `${Math.min(100, parData.par30)}%` }} />
-                </div>
+          <ReportStats
+            stats={[
+              {
+                title: "Total Overdue Amount",
+                value: `KES ${totalOverdueAmount.toLocaleString()}`,
+                description: "Across all overdue loans",
+                trend: { value: 8.2, isPositive: false }
+              },
+              {
+                title: "Total Outstanding",
+                value: `KES ${totalOutstanding.toLocaleString()}`,
+                description: "Principal + interest",
+                trend: { value: 3.1, isPositive: false }
+              },
+              {
+                title: "Average Days Overdue",
+                value: `${avgDaysOverdue} days`,
+                description: "Across all accounts",
+                trend: { value: 12.5, isPositive: false }
+              },
+              {
+                title: "Accounts in Arrears",
+                value: filteredData.length.toString(),
+                description: "Requiring attention",
+                trend: { value: 5.8, isPositive: false }
               }
-            />
-          </ReportStats>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ReportCard
-              title="Arrears Breakdown"
-              description="Amount in arrears by days past due"
-              className="lg:col-span-2"
-            >
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={arrearsData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis 
-                      dataKey="category" 
-                      tick={{ fontSize: 12 }}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => 
-                        value >= 1000000
-                          ? `${(value / 1000000).toFixed(1)}M`
-                          : value >= 1000
-                          ? `${(value / 1000).toFixed(0)}K`
-                          : value.toString()
-                      }
-                    />
-                    <Tooltip 
-                      formatter={(value) => `KES ${value.toLocaleString()}`} 
-                      cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
-                      contentStyle={{ 
-                        borderRadius: '8px', 
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                        border: '1px solid rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                    <Legend />
-                    <Bar 
-                      dataKey="amount" 
-                      name="Amount in Arrears" 
-                      fill="#8b5cf6" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+            ]}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <ReportCard title="Risk Distribution" className="lg:col-span-1">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Low Risk</span>
+                  <span className="text-sm font-medium">{riskDistribution.low}</span>
+                </div>
+                <Progress value={(riskDistribution.low / filteredData.length) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Medium Risk</span>
+                  <span className="text-sm font-medium">{riskDistribution.medium}</span>
+                </div>
+                <Progress value={(riskDistribution.medium / filteredData.length) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">High Risk</span>
+                  <span className="text-sm font-medium">{riskDistribution.high}</span>
+                </div>
+                <Progress value={(riskDistribution.high / filteredData.length) * 100} className="h-2" />
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Critical Risk</span>
+                  <span className="text-sm font-medium">{riskDistribution.critical}</span>
+                </div>
+                <Progress value={(riskDistribution.critical / filteredData.length) * 100} className="h-2" />
               </div>
             </ReportCard>
 
-            <ReportCard 
-              title="Arrears Distribution"
-              description="Loans in arrears by category"
-            >
-              <div className="space-y-4 pt-3">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b border-muted/30">
-                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Category</th>
-                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Loans</th>
-                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Amount</th>
-                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {arrearsData.map((category) => (
-                      <tr key={category.category} className="border-b border-muted/20">
-                        <td className="py-2">
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: category.color }}
-                            />
-                            <span className="text-sm">{category.category}</span>
+            <ReportCard title="Arrears Details" className="lg:col-span-3">
+              {filteredData.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No arrears data found for the selected criteria
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Loan ID</TableHead>
+                      <TableHead>Outstanding</TableHead>
+                      <TableHead>Days Overdue</TableHead>
+                      <TableHead>Amount Overdue</TableHead>
+                      <TableHead>Risk Level</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredData.map((item) => (
+                      <TableRow key={item.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={item.photoUrl} />
+                              <AvatarFallback>{item.clientName.substring(0, 2)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{item.clientName}</div>
+                              <div className="text-xs text-muted-foreground">{item.contactInfo}</div>
+                            </div>
                           </div>
-                        </td>
-                        <td className="text-right text-sm">{category.count}</td>
-                        <td className="text-right text-sm">KES {category.amount.toLocaleString()}</td>
-                        <td className="text-right text-sm">
-                          {parData.totalInArrears > 0 
-                            ? `${((category.amount / parData.totalInArrears) * 100).toFixed(1)}%` 
-                            : '0%'}
-                        </td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{item.loanId}</TableCell>
+                        <TableCell className="font-medium">
+                          KES {item.outstandingBalance.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span>{item.daysOverdue} days</span>
+                            <Progress 
+                              value={Math.min(getRiskProgress(item.riskCategory), 100)} 
+                              className="h-1 w-12" 
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium text-destructive">
+                          KES {item.amountOverdue.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getRiskBadgeVariant(item.riskCategory)}>
+                            {item.riskCategory.charAt(0).toUpperCase() + item.riskCategory.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <button 
+                              className="text-xs text-primary hover:underline"
+                              onClick={() => navigate(`/loans/${item.loanId}`)}
+                            >
+                              View
+                            </button>
+                            <span className="text-muted-foreground">|</span>
+                            <button className="text-xs text-primary hover:underline">
+                              Contact
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t border-muted/50">
-                      <td className="py-3 text-sm font-medium">Total</td>
-                      <td className="py-3 text-right text-sm font-medium">{parData.loansInArrears}</td>
-                      <td colSpan={2} className="py-3 text-right text-sm font-medium">KES {parData.totalInArrears.toLocaleString()}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </ReportCard>
-
-            <ReportCard 
-              title="PAR Trend"
-              description="Portfolio at Risk metrics"
-            >
-              <div className="space-y-4 py-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-muted-foreground">PAR 30</span>
-                    <span className="text-sm font-medium">{parData.par30}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-amber-500 transition-all duration-500" 
-                      style={{ width: `${Math.min(100, parData.par30)}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    KES {(parData.totalPortfolio * parData.par30 / 100).toLocaleString()} at risk
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-muted-foreground">PAR 90</span>
-                    <span className="text-sm font-medium">{parData.par90}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="h-2 rounded-full bg-red-500 transition-all duration-500" 
-                      style={{ width: `${Math.min(100, parData.par90)}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    KES {(parData.totalPortfolio * parData.par90 / 100).toLocaleString()} at risk
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex justify-between items-center border-t border-muted/30 pt-4">
-                    <div className="text-sm font-medium">Risk Assessment</div>
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      parData.par30 > 10 ? 'bg-red-100 text-red-800' : 
-                      parData.par30 > 5 ? 'bg-amber-100 text-amber-800' : 
-                      'bg-green-100 text-green-800'
-                    }`}>
-                      {parData.par30 > 10 ? 'High Risk' : 
-                       parData.par30 > 5 ? 'Medium Risk' : 'Low Risk'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  </TableBody>
+                </Table>
+              )}
             </ReportCard>
           </div>
         </div>

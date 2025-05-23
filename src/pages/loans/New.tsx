@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
 
 // Define interface for clients
 interface Client {
@@ -48,6 +49,7 @@ const NewLoanPage = () => {
   const [guarantor, setGuarantor] = useState("yes");
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   
   // Fetch clients from Supabase
   useEffect(() => {
@@ -87,9 +89,16 @@ const NewLoanPage = () => {
     const rate = parseFloat(interestRate) || 0;
     const months = parseFloat(loanTerm) || 1;
     
-    const totalInterest = (amount * rate / 100) * (months / 12);
-    const totalAmount = amount + totalInterest;
+    let totalInterest;
+    if (interestCalculation === "monthly") {
+      // Monthly interest: rate per month
+      totalInterest = (amount * rate / 100) * months;
+    } else {
+      // Annual interest: rate per year, calculated for the loan term
+      totalInterest = (amount * rate / 100) * (months / 12);
+    }
     
+    const totalAmount = amount + totalInterest;
     return totalAmount.toLocaleString('en-US');
   };
   
@@ -98,7 +107,16 @@ const NewLoanPage = () => {
     const rate = parseFloat(interestRate) || 0;
     const months = parseFloat(loanTerm) || 1;
     
-    const totalAmount = amount + (amount * rate / 100) * (months / 12);
+    let totalInterest;
+    if (interestCalculation === "monthly") {
+      // Monthly interest: rate per month
+      totalInterest = (amount * rate / 100) * months;
+    } else {
+      // Annual interest: rate per year, calculated for the loan term
+      totalInterest = (amount * rate / 100) * (months / 12);
+    }
+    
+    const totalAmount = amount + totalInterest;
     const monthlyPayment = totalAmount / months;
     
     return monthlyPayment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -179,8 +197,16 @@ const NewLoanPage = () => {
       const rate = parseFloat(interestRate) / 100;
       const months = parseInt(loanTerm);
       
-      // Calculate interest and principal per period
-      const totalInterest = amount * rate * (months / 12);
+      // Calculate interest based on selected method
+      let totalInterest;
+      if (interestCalculation === "monthly") {
+        // Monthly interest: rate per month
+        totalInterest = amount * rate * months;
+      } else {
+        // Annual interest: rate per year, calculated for the loan term
+        totalInterest = amount * rate * (months / 12);
+      }
+      
       const totalAmount = amount + totalInterest;
       const installmentAmount = totalAmount / months;
       
@@ -328,6 +354,11 @@ const NewLoanPage = () => {
                     onChange={(e) => setInterestRate(e.target.value)}
                   />
                 </div>
+
+                <InterestCalculationToggle
+                  value={interestCalculation}
+                  onChange={setInterestCalculation}
+                />
                 
                 <div className="space-y-2">
                   <Label htmlFor="term">Loan Term (Months)</Label>
@@ -400,7 +431,7 @@ const NewLoanPage = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Interest Rate</p>
-                      <p className="text-lg font-medium">{interestRate}% p.a.</p>
+                      <p className="text-lg font-medium">{interestRate}% {interestCalculation === "monthly" ? "per month" : "per annum"}</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Term</p>
