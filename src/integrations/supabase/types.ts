@@ -550,6 +550,10 @@ export type Database = {
         Args: { target_user_id: string; reason?: string }
         Returns: undefined
       }
+      generate_client_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_loan_number: {
         Args: Record<PropertyKey, never>
         Returns: string
