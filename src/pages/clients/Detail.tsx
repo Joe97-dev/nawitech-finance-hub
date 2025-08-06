@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Loan {
   id: string;
+  loan_number: string;
   amount: number;
   date: string;
   status: string;
@@ -291,7 +292,7 @@ const ClientDetailPage = () => {
                         <TableBody>
                           {activeLoans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.loan_number || `${loan.id.substring(0, 8)}...`}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>{loan.balance.toLocaleString()}</TableCell>
                               <TableCell>{loan.date}</TableCell>
@@ -324,7 +325,7 @@ const ClientDetailPage = () => {
                         <TableBody>
                           {closedLoans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.loan_number || `${loan.id.substring(0, 8)}...`}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>{loan.balance.toLocaleString()}</TableCell>
                               <TableCell>{loan.date}</TableCell>
@@ -358,7 +359,7 @@ const ClientDetailPage = () => {
                         <TableBody>
                           {client.loans.map(loan => (
                             <TableRow key={loan.id} className="cursor-pointer" onClick={() => navigate(`/loans/${loan.id}`)}>
-                              <TableCell className="font-medium text-primary underline">{loan.id.substring(0, 8)}...</TableCell>
+                              <TableCell className="font-medium text-primary underline">{loan.loan_number || `${loan.id.substring(0, 8)}...`}</TableCell>
                               <TableCell>{loan.amount.toLocaleString()}</TableCell>
                               <TableCell>{loan.balance.toLocaleString()}</TableCell>
                               <TableCell>
