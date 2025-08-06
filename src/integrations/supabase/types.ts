@@ -454,6 +454,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_loan_status: {
+        Args: { p_loan_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "admin" | "loan_officer" | "data_entry"
