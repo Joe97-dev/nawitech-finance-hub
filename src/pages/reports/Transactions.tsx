@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 interface TransactionData {
   id: string;
   loan_id: string;
+  loan_number: string;
   client_name: string;
   amount: number;
   transaction_date: string;
@@ -46,7 +47,7 @@ const paymentMethods = [
 const columns = [
   { key: "transaction_date", header: "Date" },
   { key: "client_name", header: "Client" },
-  { key: "loan_id", header: "Loan ID" },
+  { key: "loan_number", header: "Loan Number" },
   { key: "transaction_type", header: "Type" },
   { key: "amount", header: "Amount" },
   { key: "payment_method", header: "Payment Method" },
@@ -100,25 +101,32 @@ const TransactionsReport = () => {
         // Get unique loan IDs from transactions
         const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
         
-        // Fetch loan data for client names
+        // Fetch loan data for client names and loan numbers
         const { data: loanData, error: loanError } = await supabase
           .from('loans')
-          .select('id, client')
+          .select('id, client, loan_number')
           .in('id', loanIds);
           
         if (loanError) throw loanError;
         
-        // Create a map of loan_id to client name
-        const loanClientMap = new Map();
+        // Create a map of loan_id to loan info
+        const loanInfoMap = new Map();
         loanData?.forEach(loan => {
-          loanClientMap.set(loan.id, loan.client);
+          loanInfoMap.set(loan.id, {
+            client: loan.client,
+            loan_number: loan.loan_number || 'N/A'
+          });
         });
         
-        // Transform data to include client name
-        const transformedData: TransactionData[] = (transactionData || []).map(transaction => ({
-          ...transaction,
-          client_name: loanClientMap.get(transaction.loan_id) || 'Unknown Client'
-        }));
+        // Transform data to include client name and loan number
+        const transformedData: TransactionData[] = (transactionData || []).map(transaction => {
+          const loanInfo = loanInfoMap.get(transaction.loan_id);
+          return {
+            ...transaction,
+            client_name: loanInfo?.client || 'Unknown Client',
+            loan_number: loanInfo?.loan_number || 'N/A'
+          };
+        });
 
         setTransactions(transformedData);
       } catch (error: any) {
@@ -141,13 +149,13 @@ const TransactionsReport = () => {
   const filteredData = transactions.filter(transaction => {
     if (!searchTerm) return true;
     
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      transaction.client_name?.toLowerCase().includes(searchLower) ||
-      transaction.loan_id?.toLowerCase().includes(searchLower) ||
-      transaction.receipt_number?.toLowerCase().includes(searchLower) ||
-      transaction.notes?.toLowerCase().includes(searchLower)
-    );
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        transaction.client_name?.toLowerCase().includes(searchLower) ||
+        transaction.loan_number?.toLowerCase().includes(searchLower) ||
+        transaction.receipt_number?.toLowerCase().includes(searchLower) ||
+        transaction.notes?.toLowerCase().includes(searchLower)
+      );
   });
 
   // Calculate statistics
@@ -202,7 +210,7 @@ const TransactionsReport = () => {
           data={filteredData.map(transaction => ({
             date: new Date(transaction.transaction_date).toLocaleDateString(),
             client_name: transaction.client_name,
-            loan_id: transaction.loan_id,
+            loan_number: transaction.loan_number,
             transaction_type: transaction.transaction_type,
             amount: transaction.amount,
             payment_method: transaction.payment_method || '',
@@ -266,7 +274,7 @@ const TransactionsReport = () => {
               Search
             </label>
             <Input
-              placeholder="Client, Loan ID, Receipt..."
+              placeholder="Client, Loan Number, Receipt..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="border-dashed"
@@ -323,7 +331,7 @@ const TransactionsReport = () => {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Client</TableHead>
-                    <TableHead>Loan ID</TableHead>
+                    <TableHead>Loan Number</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Payment Method</TableHead>
@@ -342,7 +350,7 @@ const TransactionsReport = () => {
                         {transaction.client_name}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {transaction.loan_id}
+                        {transaction.loan_number}
                       </TableCell>
                       <TableCell>
                         {getTransactionBadge(transaction.transaction_type)}
