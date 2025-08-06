@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, Eye, Play, Square, RefreshCw } from "lucide-react";
+import { Upload, FileText, Eye, Play, Square, RefreshCw, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
@@ -31,6 +32,7 @@ interface MigrationJob {
 }
 
 export default function DataMigration() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [jobs, setJobs] = useState<MigrationJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,6 +239,17 @@ export default function DataMigration() {
     <RoleGuard allowedRoles={["admin"]}>
       <div className="container mx-auto py-6">
         <div className="mb-6">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+          </div>
           <h1 className="text-3xl font-bold">Data Migration</h1>
           <p className="text-muted-foreground">
             Import client, loan, and transaction data from CSV/Excel files
