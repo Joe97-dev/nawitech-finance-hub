@@ -118,6 +118,12 @@ const reportNavItems = [
     href: "/reports/disbursal",
     icon: FileText,
     requiredRoles: ["admin", "loan_officer", "data_entry"],
+  },
+  {
+    title: "Transactions Report",
+    href: "/reports/transactions",
+    icon: BarChartHorizontal,
+    requiredRoles: ["admin", "loan_officer", "data_entry"],
   }
 ];
 
