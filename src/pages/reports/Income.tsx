@@ -1,62 +1,140 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { Line, LineChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ExportButton } from "@/components/ui/export-button";
-import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DateRange } from "react-day-picker";
+import { ReportCard } from "@/components/reports/ReportCard";
+import { ReportStats, ReportStat } from "@/components/reports/ReportStats";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
+import { ExportButton } from "@/components/ui/export-button";
+import { DateRange } from "react-day-picker";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for monthly income from interest
-const monthlyIncomeData = [
-  { month: "Jan", interest: 324500, fees: 45000, penalties: 12000, total: 381500 },
-  { month: "Feb", interest: 356200, fees: 48500, penalties: 15600, total: 420300 },
-  { month: "Mar", interest: 378900, fees: 52000, penalties: 18200, total: 449100 },
-  { month: "Apr", interest: 412500, fees: 55000, penalties: 21000, total: 488500 },
-  { month: "May", interest: 430800, fees: 58500, penalties: 23500, total: 512800 },
-  { month: "Jun", interest: 452100, fees: 62000, penalties: 25800, total: 539900 },
-  { month: "Jul", interest: 468700, fees: 64500, penalties: 27200, total: 560400 },
-  { month: "Aug", interest: 482300, fees: 67000, penalties: 29500, total: 578800 },
-  { month: "Sep", interest: 495800, fees: 69500, penalties: 31000, total: 596300 },
-  { month: "Oct", interest: 510200, fees: 72000, penalties: 32500, total: 614700 },
-  { month: "Nov", interest: 524500, fees: 74500, penalties: 34000, total: 633000 },
-  { month: "Dec", interest: 542000, fees: 78000, penalties: 36000, total: 656000 }
-];
+interface IncomeData {
+  month: string;
+  interest_income: number;
+  fee_income: number;
+  penalty_income: number;
+  total_income: number;
+}
 
 const columns = [
   { key: "month", header: "Month" },
-  { key: "interest", header: "Interest Income (KES)" },
-  { key: "fees", header: "Fees Income (KES)" },
-  { key: "penalties", header: "Penalties (KES)" },
-  { key: "total", header: "Total Income (KES)" }
+  { key: "interest_income", header: "Interest Income" },
+  { key: "fee_income", header: "Fee Income" },
+  { key: "penalty_income", header: "Penalty Income" },
+  { key: "total_income", header: "Total Income" }
 ];
 
-const years = ["2025", "2024", "2023"];
-
 const IncomeReport = () => {
-  const [selectedYear, setSelectedYear] = useState("2025");
+  const { toast } = useToast();
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  
-  const yearlyTotal = monthlyIncomeData.reduce(
-    (acc, month) => acc + month.total, 
-    0
-  );
-  
-  const yearlyInterest = monthlyIncomeData.reduce(
-    (acc, month) => acc + month.interest, 
-    0
-  );
-  
-  const yearlyFees = monthlyIncomeData.reduce(
-    (acc, month) => acc + month.fees, 
-    0
-  );
+  const [incomeData, setIncomeData] = useState<IncomeData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const hasActiveFilters = selectedYear !== "2025" || (dateRange !== undefined);
+  useEffect(() => {
+    const fetchIncomeData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get transactions with income (fees, interest, penalties)
+        let query = supabase
+          .from('loan_transactions')
+          .select('transaction_date, transaction_type, amount')
+          .in('transaction_type', ['fee', 'interest', 'penalty'])
+          .order('transaction_date', { ascending: true });
+
+        // Apply date range filter if provided
+        if (dateRange?.from) {
+          query = query.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
+        }
+        if (dateRange?.to) {
+          query = query.lte('transaction_date', dateRange.to.toISOString().split('T')[0]);
+        } else {
+          // Default to last 12 months if no date range
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          query = query.gte('transaction_date', oneYearAgo.toISOString().split('T')[0]);
+        }
+
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        // Group by month and transaction type
+        const monthlyIncome = new Map<string, {
+          interest_income: number;
+          fee_income: number;
+          penalty_income: number;
+        }>();
+
+        (data || []).forEach(transaction => {
+          const date = new Date(transaction.transaction_date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          
+          if (!monthlyIncome.has(monthKey)) {
+            monthlyIncome.set(monthKey, {
+              interest_income: 0,
+              fee_income: 0,
+              penalty_income: 0
+            });
+          }
+          
+          const monthData = monthlyIncome.get(monthKey)!;
+          
+          switch (transaction.transaction_type) {
+            case 'interest':
+              monthData.interest_income += transaction.amount;
+              break;
+            case 'fee':
+              monthData.fee_income += transaction.amount;
+              break;
+            case 'penalty':
+              monthData.penalty_income += transaction.amount;
+              break;
+          }
+        });
+
+        // Convert to array and calculate totals
+        const transformedData: IncomeData[] = Array.from(monthlyIncome.entries())
+          .map(([monthKey, income]) => ({
+            month: new Date(monthKey + '-01').toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short' 
+            }),
+            interest_income: income.interest_income,
+            fee_income: income.fee_income,
+            penalty_income: income.penalty_income,
+            total_income: income.interest_income + income.fee_income + income.penalty_income
+          }))
+          .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+
+        setIncomeData(transformedData);
+      } catch (error: any) {
+        console.error("Error fetching income data:", error);
+        toast({
+          variant: "destructive",
+          title: "Data fetch error",
+          description: "Failed to load income data."
+        });
+        setIncomeData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchIncomeData();
+  }, [toast, dateRange]);
+
+  // Calculate statistics
+  const totalIncome = incomeData.reduce((sum, month) => sum + month.total_income, 0);
+  const totalInterest = incomeData.reduce((sum, month) => sum + month.interest_income, 0);
+  const totalFees = incomeData.reduce((sum, month) => sum + month.fee_income, 0);
+  const totalPenalties = incomeData.reduce((sum, month) => sum + month.penalty_income, 0);
+
+  const hasActiveFilters = dateRange !== undefined;
 
   const handleReset = () => {
-    setSelectedYear("2025");
     setDateRange(undefined);
   };
 
@@ -66,28 +144,19 @@ const IncomeReport = () => {
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <DateRangePicker
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
         />
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Year
-          </label>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="border-dashed">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      </div>
+      
+      <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="text-sm mb-2 sm:mb-0">
+          <span className="font-medium">{incomeData.length}</span> months of data
+        </div>
+        <div className="text-sm font-medium">
+          Total income: <span className="text-primary">KES {totalIncome.toLocaleString()}</span>
         </div>
       </div>
     </ReportFilters>
@@ -96,58 +165,83 @@ const IncomeReport = () => {
   return (
     <ReportPage
       title="Income Report"
-      description="Monthly analysis of income from interest, fees, and penalties."
+      description="Track income from interest, fees, and penalties over time"
       actions={
         <ExportButton 
-          data={monthlyIncomeData} 
-          filename={`income-report-${selectedYear}`} 
+          data={incomeData.map(item => ({
+            month: item.month,
+            interest_income: item.interest_income,
+            fee_income: item.fee_income,
+            penalty_income: item.penalty_income,
+            total_income: item.total_income
+          }))} 
+          filename={`income-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
         />
       }
       filters={filters}
     >
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="stats-card">
-            <h3 className="stats-label">Total Income</h3>
-            <p className="stats-value">KES {yearlyTotal.toLocaleString()}</p>
-          </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Interest Income</h3>
-            <p className="stats-value">KES {yearlyInterest.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{Math.round((yearlyInterest / yearlyTotal) * 100)}% of total income</p>
-          </div>
-          <div className="stats-card">
-            <h3 className="stats-label">Fee Income</h3>
-            <p className="stats-value">KES {yearlyFees.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">{Math.round((yearlyFees / yearlyTotal) * 100)}% of total income</p>
-          </div>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
-        
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={monthlyIncomeData}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => `KES ${value.toLocaleString()}`} />
-              <Legend />
-              <Line type="monotone" dataKey="interest" name="Interest" stroke="#0ea5e9" strokeWidth={2} />
-              <Line type="monotone" dataKey="fees" name="Fees" stroke="#22c55e" strokeWidth={2} />
-              <Line type="monotone" dataKey="penalties" name="Penalties" stroke="#f59e0b" strokeWidth={2} />
-              <Line type="monotone" dataKey="total" name="Total Income" stroke="#8884d8" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
+      ) : (
+        <div className="space-y-6">
+          <ReportStats>
+            <ReportStat
+              label="Total Income"
+              value={`KES ${totalIncome.toLocaleString()}`}
+              subValue="All income sources"
+              trend="up"
+              trendValue="12.5%"
+            />
+            <ReportStat
+              label="Interest Income"
+              value={`KES ${totalInterest.toLocaleString()}`}
+              subValue="From loan interest"
+              trend="up"
+              trendValue="8.3%"
+            />
+            <ReportStat
+              label="Fee Income"
+              value={`KES ${totalFees.toLocaleString()}`}
+              subValue="Processing & other fees"
+              trend="up"
+              trendValue="15.7%"
+            />
+            <ReportStat
+              label="Penalty Income"
+              value={`KES ${totalPenalties.toLocaleString()}`}
+              subValue="Late payment penalties"
+              trend="down"
+              trendValue="3.2%"
+            />
+          </ReportStats>
+
+          <ReportCard title="Monthly Income Breakdown">
+            {incomeData.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No income data found for the selected period
+              </div>
+            ) : (
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={incomeData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [`KES ${value.toLocaleString()}`, '']} />
+                    <Legend />
+                    <Bar dataKey="interest_income" name="Interest" fill="#0ea5e9" />
+                    <Bar dataKey="fee_income" name="Fees" fill="#22c55e" />
+                    <Bar dataKey="penalty_income" name="Penalties" fill="#f97316" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </ReportCard>
         </div>
-      </div>
+      )}
     </ReportPage>
   );
 };

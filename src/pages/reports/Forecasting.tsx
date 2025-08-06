@@ -1,261 +1,284 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { format, addDays } from "date-fns";
-import { CalendarRange } from "lucide-react";
-import { DateRange } from "react-day-picker";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { ExportButton } from "@/components/ui/export-button";
+import { ReportCard } from "@/components/reports/ReportCard";
+import { ReportStats, ReportStat } from "@/components/reports/ReportStats";
+import { ReportFilters } from "@/components/reports/ReportFilters";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ExportButton } from "@/components/ui/export-button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { DateRange } from "react-day-picker";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for forecasting
-const forecastingData = [
-  { id: 1, clientName: "Thomas Kariuki", phoneNumber: "0787654321", amountDue: 45000, dueDate: "2025-06-10", branch: "head-office", loanId: 201, disbursedDate: "2024-12-10", totalAmount: 50000 },
-  { id: 2, clientName: "Sophia Wambui", phoneNumber: "0798765432", amountDue: 37000, dueDate: "2025-06-08", branch: "westlands", loanId: 202, disbursedDate: "2024-12-08", totalAmount: 40000 },
-  { id: 3, clientName: "Victor Kimani", phoneNumber: "0709876543", amountDue: 28000, dueDate: "2025-06-15", branch: "mombasa", loanId: 203, disbursedDate: "2024-12-15", totalAmount: 30000 },
-  { id: 4, clientName: "Winnie Oduor", phoneNumber: "0721098765", amountDue: 52000, dueDate: "2025-06-12", branch: "kisumu", loanId: 204, disbursedDate: "2024-12-12", totalAmount: 60000 },
-  { id: 5, clientName: "Xavier Mwangi", phoneNumber: "0732109876", amountDue: 33000, dueDate: "2025-06-20", branch: "nakuru", loanId: 205, disbursedDate: "2024-12-20", totalAmount: 35000 },
-  { id: 6, clientName: "Yvonne Njeri", phoneNumber: "0743210987", amountDue: 41000, dueDate: "2025-06-18", branch: "head-office", loanId: 206, disbursedDate: "2024-12-18", totalAmount: 45000 },
-  { id: 7, clientName: "Zachary Omondi", phoneNumber: "0754321098", amountDue: 26000, dueDate: "2025-06-25", branch: "westlands", loanId: 207, disbursedDate: "2024-12-25", totalAmount: 30000 },
-  { id: 8, clientName: "Alice Wairimu", phoneNumber: "0765432109", amountDue: 63000, dueDate: "2025-07-05", branch: "mombasa", loanId: 208, disbursedDate: "2025-01-05", totalAmount: 70000 },
-  { id: 9, clientName: "Bernard Kipchoge", phoneNumber: "0776543210", amountDue: 39000, dueDate: "2025-07-10", branch: "kisumu", loanId: 209, disbursedDate: "2025-01-10", totalAmount: 42000 },
-  { id: 10, clientName: "Christine Muthoni", phoneNumber: "0787654321", amountDue: 47000, dueDate: "2025-07-15", branch: "nakuru", loanId: 210, disbursedDate: "2025-01-15", totalAmount: 50000 },
-  { id: 11, clientName: "Dennis Korir", phoneNumber: "0798765432", amountDue: 31000, dueDate: "2025-07-03", branch: "head-office", loanId: 211, disbursedDate: "2025-01-03", totalAmount: 35000 },
-  { id: 12, clientName: "Elizabeth Akinyi", phoneNumber: "0709876543", amountDue: 56000, dueDate: "2025-07-08", branch: "westlands", loanId: 212, disbursedDate: "2025-01-08", totalAmount: 60000 },
-  { id: 13, clientName: "Francis Njoroge", phoneNumber: "0721098765", amountDue: 25000, dueDate: "2025-08-12", branch: "mombasa", loanId: 213, disbursedDate: "2025-02-12", totalAmount: 28000 },
-  { id: 14, clientName: "Grace Atieno", phoneNumber: "0732109876", amountDue: 72000, dueDate: "2025-08-18", branch: "kisumu", loanId: 214, disbursedDate: "2025-02-18", totalAmount: 80000 },
-  { id: 15, clientName: "Henry Kiptoo", phoneNumber: "0743210987", amountDue: 29000, dueDate: "2025-08-22", branch: "nakuru", loanId: 215, disbursedDate: "2025-02-22", totalAmount: 32000 }
-];
-
-const branches = [
-  { value: "all", label: "All Branches" },
-  { value: "head-office", label: "HEAD OFFICE" },
-  { value: "westlands", label: "Westlands Branch" },
-  { value: "mombasa", label: "Mombasa Branch" },
-  { value: "kisumu", label: "Kisumu Branch" },
-  { value: "nakuru", label: "Nakuru Branch" }
-];
+interface ForecastingData {
+  id: string;
+  client_name: string;
+  loan_number: string;
+  amount_due: number;
+  due_date: string;
+  total_amount: number;
+  status: string;
+}
 
 const columns = [
-  { key: "clientName", header: "Client Name" },
-  { key: "phoneNumber", header: "Phone Number" },
-  { key: "loanId", header: "Loan ID" },
-  { key: "totalAmount", header: "Total Amount (KES)" },
-  { key: "disbursedDate", header: "Disbursed Date" },
-  { key: "amountDue", header: "Amount Due (KES)" },
-  { key: "dueDate", header: "Due Date" },
-  { key: "branch", header: "Branch" }
+  { key: "client_name", header: "Client Name" },
+  { key: "loan_number", header: "Loan Number" },
+  { key: "amount_due", header: "Amount Due" },
+  { key: "due_date", header: "Due Date" },
+  { key: "total_amount", header: "Total Amount" },
+  { key: "status", header: "Status" }
 ];
 
-// Helper function to group data by month
-const groupByMonth = (data: typeof forecastingData) => {
-  const grouped: Record<string, number> = {};
-  
-  data.forEach(loan => {
-    const dueDate = new Date(loan.dueDate);
-    const monthYear = format(dueDate, 'MMM yyyy');
-    
-    if (!grouped[monthYear]) {
-      grouped[monthYear] = 0;
-    }
-    
-    grouped[monthYear] += loan.amountDue;
-  });
-  
-  return Object.entries(grouped)
-    .sort((a, b) => {
-      const dateA = new Date(a[0]);
-      const dateB = new Date(b[0]);
-      return dateA.getTime() - dateB.getTime();
-    })
-    .map(([month, amount]) => ({ month, amount }));
-};
-
 const ForecastingReport = () => {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2025, 5, 1), // June 1, 2025
-    to: new Date(2025, 7, 31), // August 31, 2025
-  });
-  const [selectedBranch, setSelectedBranch] = useState("all");
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Filter data based on selected branch, date range and search query
-  const filteredLoans = forecastingData.filter(loan => {
-    const matchesBranch = selectedBranch === "all" || loan.branch === selectedBranch;
-    
-    // Check if loan falls within selected date range
-    const loanDate = new Date(loan.dueDate);
-    const isInDateRange = (!date?.from || loanDate >= date.from) && 
-                           (!date?.to || loanDate <= date.to);
-    
-    // Check if loan matches search query
-    const matchesSearch = searchQuery === "" || 
-                         loan.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         loan.phoneNumber.includes(searchQuery) ||
-                         loan.loanId.toString().includes(searchQuery);
-    
-    return matchesBranch && isInDateRange && matchesSearch;
-  });
-  
-  const totalAmountDue = filteredLoans.reduce((acc, loan) => acc + loan.amountDue, 0);
-  const monthlyForecast = groupByMonth(filteredLoans);
-  
-  return (
-    <ReportPage
-      title="Forecasting Report"
-      description="Forecast of future loan repayments"
-      actions={
-        <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={"outline"}
-                  className={cn(
-                    "justify-start text-left font-normal w-full sm:w-auto",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarRange className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, "LLL dd, y")} -{" "}
-                        {format(date.to, "LLL dd, y")}
-                      </>
-                    ) : (
-                      format(date.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-            
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Select Branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input 
-              placeholder="Search by client name, phone or loan ID" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full sm:w-auto flex-1"
-            />
-            
-            <ExportButton 
-              data={filteredLoans.map(loan => ({
-                ...loan,
-                branch: branches.find(b => b.value === loan.branch)?.label || loan.branch
-              }))} 
-              filename={`forecasting-report-${selectedBranch}-${format(new Date(), 'yyyy-MM-dd')}`} 
-              columns={columns} 
-            />
-          </div>
-          
-          <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md">
-            <div className="text-sm">
-              <span className="font-medium">{filteredLoans.length}</span> loans forecasted
-            </div>
-            <div className="text-sm font-medium">
-              Total amount due: <span className="text-primary">KES {totalAmountDue.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-medium mb-2">Monthly Forecast</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {monthlyForecast.length > 0 ? (
-              monthlyForecast.map((item, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="text-muted-foreground">{item.month}</div>
-                    <div className="text-2xl font-bold">KES {item.amount.toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground">Expected repayments</div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-3 text-center py-4 text-muted-foreground border rounded-md">
-                No forecasting data available for the selected criteria
-              </div>
-            )}
-          </div>
-        </div>
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [forecastingData, setForecastingData] = useState<ForecastingData[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchForecastingData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get upcoming loan schedule items that are due
+        let query = supabase
+          .from('loan_schedule')
+          .select(`
+            id,
+            loan_id,
+            due_date,
+            total_due,
+            amount_paid,
+            status,
+            loans!inner(
+              client,
+              loan_number,
+              amount
+            )
+          `)
+          .gte('due_date', new Date().toISOString().split('T')[0])
+          .order('due_date', { ascending: true });
+
+        // Apply date range filter if provided
+        if (dateRange?.from) {
+          query = query.gte('due_date', dateRange.from.toISOString().split('T')[0]);
+        }
+        if (dateRange?.to) {
+          query = query.lte('due_date', dateRange.to.toISOString().split('T')[0]);
+        }
+
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        const transformedData: ForecastingData[] = (data || []).map(item => {
+          const loan = (item.loans as any);
+          const outstandingAmount = item.total_due - (item.amount_paid || 0);
+          
+          return {
+            id: item.id,
+            client_name: loan.client,
+            loan_number: loan.loan_number || 'N/A',
+            amount_due: outstandingAmount,
+            due_date: item.due_date,
+            total_amount: loan.amount,
+            status: item.status
+          };
+        }).filter(item => item.amount_due > 0); // Only show items with outstanding amounts
+
+        setForecastingData(transformedData);
+      } catch (error: any) {
+        console.error("Error fetching forecasting data:", error);
+        toast({
+          variant: "destructive",
+          title: "Data fetch error",
+          description: "Failed to load forecasting data."
+        });
+        setForecastingData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchForecastingData();
+  }, [toast, dateRange]);
+
+  // Filter data based on search query
+  const filteredData = forecastingData.filter(item => {
+    if (!searchQuery) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      item.client_name.toLowerCase().includes(searchLower) ||
+      item.loan_number.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const hasActiveFilters = searchQuery !== "" || (dateRange !== undefined);
+
+  const handleReset = () => {
+    setSearchQuery("");
+    setDateRange(undefined);
+  };
+
+  // Calculate statistics
+  const totalExpectedAmount = filteredData.reduce((sum, item) => sum + item.amount_due, 0);
+  const upcomingThisWeek = filteredData.filter(item => {
+    const dueDate = new Date(item.due_date);
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+    return dueDate <= weekFromNow;
+  });
+  const upcomingThisMonth = filteredData.filter(item => {
+    const dueDate = new Date(item.due_date);
+    const monthFromNow = new Date();
+    monthFromNow.setMonth(monthFromNow.getMonth() + 1);
+    return dueDate <= monthFromNow;
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline">Pending</Badge>;
+      case "partial":
+        return <Badge variant="secondary">Partial</Badge>;
+      case "paid":
+        return <Badge variant="default">Paid</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const filters = (
+    <ReportFilters 
+      title="Cash Flow Forecasting Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+        />
+        
         <div>
-          <h3 className="text-lg font-medium mb-2">Detailed Forecast</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Loan ID</TableHead>
-                <TableHead>Total Amount</TableHead>
-                <TableHead>Amount Due</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Branch</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLoans.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
-                    No forecast data for the selected criteria
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredLoans.map((loan) => (
-                  <TableRow key={loan.id}>
-                    <TableCell className="font-medium">{loan.clientName}</TableCell>
-                    <TableCell>{loan.phoneNumber}</TableCell>
-                    <TableCell>{loan.loanId}</TableCell>
-                    <TableCell>KES {loan.totalAmount.toLocaleString()}</TableCell>
-                    <TableCell>KES {loan.amountDue.toLocaleString()}</TableCell>
-                    <TableCell>{loan.dueDate}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {branches.find(b => b.value === loan.branch)?.label || loan.branch}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Search
+          </label>
+          <Input 
+            placeholder="Search by client name or loan number" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-dashed"
+          />
         </div>
       </div>
+      
+      <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="text-sm mb-2 sm:mb-0">
+          <span className="font-medium">{filteredData.length}</span> upcoming payments
+        </div>
+        <div className="text-sm font-medium">
+          Expected amount: <span className="text-primary">KES {totalExpectedAmount.toLocaleString()}</span>
+        </div>
+      </div>
+    </ReportFilters>
+  );
+
+  return (
+    <ReportPage
+      title="Cash Flow Forecasting Report"
+      description="Predict upcoming cash flows based on expected loan repayments"
+      actions={
+        <ExportButton 
+          data={filteredData.map(item => ({
+            client_name: item.client_name,
+            loan_number: item.loan_number,
+            amount_due: item.amount_due,
+            due_date: new Date(item.due_date).toLocaleDateString(),
+            total_amount: item.total_amount,
+            status: item.status
+          }))} 
+          filename={`forecasting-report-${new Date().toISOString().slice(0, 10)}`} 
+          columns={columns} 
+        />
+      }
+      filters={filters}
+    >
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <ReportStats>
+            <ReportStat
+              label="Total Expected"
+              value={`KES ${totalExpectedAmount.toLocaleString()}`}
+              subValue="All upcoming payments"
+              trend="up"
+              trendValue="15%"
+            />
+            <ReportStat
+              label="This Week"
+              value={`KES ${upcomingThisWeek.reduce((sum, item) => sum + item.amount_due, 0).toLocaleString()}`}
+              subValue={`${upcomingThisWeek.length} payments`}
+              trend="up"
+              trendValue="8%"
+            />
+            <ReportStat
+              label="This Month"
+              value={`KES ${upcomingThisMonth.reduce((sum, item) => sum + item.amount_due, 0).toLocaleString()}`}
+              subValue={`${upcomingThisMonth.length} payments`}
+              trend="up"
+              trendValue="22%"
+            />
+            <ReportStat
+              label="Total Payments"
+              value={filteredData.length.toString()}
+              subValue="Scheduled payments"
+              trend="up"
+              trendValue="5%"
+            />
+          </ReportStats>
+
+          <ReportCard title="Upcoming Payments Schedule">
+            {filteredData.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No upcoming payments found for the selected criteria
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead>Loan Number</TableHead>
+                    <TableHead>Amount Due</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Total Loan</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.client_name}</TableCell>
+                      <TableCell className="font-mono text-sm">{item.loan_number}</TableCell>
+                      <TableCell className="font-medium">KES {item.amount_due.toLocaleString()}</TableCell>
+                      <TableCell>{new Date(item.due_date).toLocaleDateString()}</TableCell>
+                      <TableCell>KES {item.total_amount.toLocaleString()}</TableCell>
+                      <TableCell>{getStatusBadge(item.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ReportCard>
+        </div>
+      )}
     </ReportPage>
   );
 };
