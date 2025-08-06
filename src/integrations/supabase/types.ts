@@ -278,7 +278,15 @@ export type Database = {
           total_due?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_loan_schedule_loan_id"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       loan_transactions: {
         Row: {
