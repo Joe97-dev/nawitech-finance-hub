@@ -158,6 +158,8 @@ function parseCSV(text: string): ParsedRecord[] {
   const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
   const records: ParsedRecord[] = [];
 
+  console.log('CSV Headers found:', headers);
+
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
     const record: ParsedRecord = {};
@@ -169,6 +171,7 @@ function parseCSV(text: string): ParsedRecord[] {
     records.push(record);
   }
 
+  console.log('Sample record:', records[0]);
   return records;
 }
 
@@ -199,22 +202,44 @@ async function processRecord(supabase: any, dataType: string, record: ParsedReco
 }
 
 async function processClientRecord(supabase: any, record: ParsedRecord, mappingConfig?: any) {
-  const clientData = {
-    first_name: record.first_name || record.First_Name || record['Client Name']?.split(' ')[0] || '',
-    last_name: record.last_name || record.Last_Name || record['Client Name']?.split(' ').slice(1).join(' ') || '',
-    email: record.email || record.Email || null,
-    phone: record.phone || record.Phone || record.phone_number || '',
-    id_number: record.id_number || record.ID_Number || record.national_id || '',
-    gender: record.gender || record.Gender || null,
-    address: record.address || record.Address || null,
-    city: record.city || record.City || null,
-    region: record.region || record.Region || record.state || null,
-    occupation: record.occupation || record.Occupation || null,
-    employment_status: record.employment_status || record.Employment_Status || null,
-    monthly_income: record.monthly_income ? parseFloat(record.monthly_income) : null,
-    date_of_birth: record.date_of_birth || record.Date_of_Birth || null,
-    registration_date: record.registration_date || new Date().toISOString().split('T')[0]
+  console.log('Processing client record:', record);
+  
+  // Get all available keys in the record
+  const keys = Object.keys(record);
+  console.log('Available fields:', keys);
+  
+  // More flexible field mapping - case insensitive
+  const findField = (possibleNames: string[]) => {
+    for (const name of possibleNames) {
+      const found = keys.find(key => key.toLowerCase().includes(name.toLowerCase()));
+      if (found && record[found]) return record[found];
+    }
+    return null;
   };
+
+  const clientData = {
+    first_name: findField(['first', 'fname', 'firstname', 'name']) || 
+               record['Client Name']?.split(' ')[0] || 
+               keys[0] ? record[keys[0]] : '', // Use first column if nothing else matches
+    last_name: findField(['last', 'lname', 'lastname', 'surname']) || 
+              record['Client Name']?.split(' ').slice(1).join(' ') || 
+              keys[1] ? record[keys[1]] : '', // Use second column as fallback
+    email: findField(['email', 'mail', 'e-mail']),
+    phone: findField(['phone', 'mobile', 'tel', 'telephone', 'contact']),
+    id_number: findField(['id', 'national', 'identity', 'number']),
+    gender: findField(['gender', 'sex']),
+    address: findField(['address', 'location']),
+    city: findField(['city', 'town']),
+    region: findField(['region', 'state', 'county']),
+    occupation: findField(['occupation', 'job', 'work']),
+    employment_status: findField(['employment', 'status']),
+    monthly_income: findField(['income', 'salary', 'earning']) ? 
+                   parseFloat(findField(['income', 'salary', 'earning'])) : null,
+    date_of_birth: findField(['birth', 'dob', 'birthday']),
+    registration_date: findField(['registration', 'reg_date']) || new Date().toISOString().split('T')[0]
+  };
+
+  console.log('Mapped client data:', clientData);
 
   const { error } = await supabase
     .from('clients')
