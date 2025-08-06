@@ -404,7 +404,7 @@ const ArrearsReport = () => {
                           <div className="flex gap-1">
                             <button 
                               className="text-xs text-primary hover:underline"
-                              onClick={() => navigate(`/loans/${item.loanId}`)}
+                              onClick={() => navigate(`/loans/${item.id}`)}
                             >
                               View
                             </button>
