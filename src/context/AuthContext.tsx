@@ -13,6 +13,7 @@ type AuthContextType = {
   signUp: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  approvalStatus: 'pending' | 'approved' | 'rejected' | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +34,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
+          
+          // Check approval status
+          await checkApprovalStatus(currentSession.user.id);
         }
         
         // Mark auth initialization as complete only here
@@ -50,6 +55,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only update state, don't navigate here
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          await checkApprovalStatus(currentSession.user.id);
+        } else {
+          setApprovalStatus(null);
+        }
       }
     );
 
@@ -59,6 +70,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Cleanup subscription
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkApprovalStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_approvals')
+        .select('status')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error checking approval status:', error);
+        setApprovalStatus('pending'); // Default to pending if error
+        return;
+      }
+
+      setApprovalStatus(data?.status || 'pending');
+    } catch (error) {
+      console.error('Error checking approval status:', error);
+      setApprovalStatus('pending');
+    }
+  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -120,7 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login, 
       signUp, 
       logout, 
-      loading
+      loading,
+      approvalStatus
     }}>
       {children}
     </AuthContext.Provider>

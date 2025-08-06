@@ -5,6 +5,9 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
+import PendingApproval from "./pages/PendingApproval";
+import Rejected from "./pages/Rejected";
+import UserApprovals from "./pages/admin/UserApprovals";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
@@ -38,8 +41,13 @@ function App() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
+            <Route path="/rejected" element={<Rejected />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/user-approvals" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
 
             {/* Clients */}
             <Route path="/clients" element={<ProtectedRoute><ClientsIndex /></ProtectedRoute>} />

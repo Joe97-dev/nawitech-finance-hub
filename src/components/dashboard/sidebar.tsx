@@ -10,6 +10,7 @@ import {
   BarChartHorizontal,
   CalendarDays,
   Building,
+  UserCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -229,6 +230,26 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+            Administration
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {hasPermission(["admin"]) && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink to="/admin/user-approvals" className={getNavClass}>
+                      <UserCheck className="h-4 w-4" />
+                      {!collapsed && <span>User Approvals</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>

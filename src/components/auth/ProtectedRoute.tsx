@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, approvalStatus } = useAuth();
   const location = useLocation();
   const [authChecked, setAuthChecked] = useState(false);
   
@@ -23,7 +23,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (loading || !authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 border-4 border-superdon-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -35,7 +35,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Only render child routes if authenticated and authChecked
-  console.log("Authenticated, rendering protected route");
+  // Redirect to pending approval page if user is not approved
+  if (approvalStatus === 'pending') {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  // Redirect to rejection page if user is rejected
+  if (approvalStatus === 'rejected') {
+    return <Navigate to="/rejected" replace />;
+  }
+
+  // Only render child routes if authenticated and approved
+  console.log("Authenticated and approved, rendering protected route");
   return <>{children}</>;
 };

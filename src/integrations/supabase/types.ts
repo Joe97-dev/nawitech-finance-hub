@@ -399,6 +399,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_approvals: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["approval_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["approval_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -428,6 +461,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
       calculate_outstanding_balance: {
         Args: { p_loan_id: string }
         Returns: number
@@ -454,12 +491,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      reject_user: {
+        Args: { target_user_id: string; reason?: string }
+        Returns: undefined
+      }
       update_loan_status: {
         Args: { p_loan_id: string }
         Returns: undefined
       }
     }
     Enums: {
+      approval_status: "pending" | "approved" | "rejected"
       user_role: "admin" | "loan_officer" | "data_entry"
     }
     CompositeTypes: {
@@ -588,6 +630,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      approval_status: ["pending", "approved", "rejected"],
       user_role: ["admin", "loan_officer", "data_entry"],
     },
   },
