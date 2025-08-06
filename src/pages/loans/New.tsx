@@ -159,7 +159,10 @@ const NewLoanPage = () => {
         balance: amount, // Initially, the balance is the full amount
         type: loanType,
         status: "pending",
-        date: disbursementDate
+        date: disbursementDate,
+        frequency: repaymentFrequency,
+        term_months: parseInt(loanTerm),
+        interest_rate: parseFloat(interestRate)
       };
       
       console.log("Creating loan with data:", loanData);
@@ -173,9 +176,9 @@ const NewLoanPage = () => {
       
       if (error) throw error;
       
-      // Create loan schedule entries based on repayment frequency
+      // Generate loan schedule using the new database function
       if (loan) {
-        await createLoanSchedule(loan.id);
+        await generateLoanSchedule(loan.id, amount, parseFloat(interestRate), parseInt(loanTerm), repaymentFrequency, disbursementDate);
       }
       
       toast({
@@ -197,66 +200,28 @@ const NewLoanPage = () => {
   };
   
 
-  // Function to create the loan repayment schedule
-  const createLoanSchedule = async (loanId: string) => {
+  // Function to generate the loan repayment schedule using database function
+  const generateLoanSchedule = async (
+    loanId: string, 
+    amount: number, 
+    interestRate: number, 
+    termMonths: number, 
+    frequency: string, 
+    startDate: string
+  ) => {
     try {
-      const amount = parseFloat(loanAmount);
-      const rate = parseFloat(interestRate) / 100;
-      const months = parseInt(loanTerm);
-      
-      // Calculate interest based on selected method
-      let totalInterest;
-      if (interestCalculation === "monthly") {
-        // Monthly interest: rate per month
-        totalInterest = amount * rate * months;
-      } else {
-        // Annual interest: rate per year, calculated for the loan term
-        totalInterest = amount * rate * (months / 12);
-      }
-      
-      const totalAmount = amount + totalInterest;
-      const installmentAmount = totalAmount / months;
-      
-      // Determine interval based on repayment frequency
-      let intervalDays = 30; // Default for monthly
-      if (repaymentFrequency === "weekly") {
-        intervalDays = 7;
-      } else if (repaymentFrequency === "biweekly") {
-        intervalDays = 14;
-      }
-      
-      // Create schedule entries
-      const scheduleItems = [];
-      const baseDate = new Date(disbursementDate);
-      const interestPerInstallment = totalInterest / months;
-      const principalPerInstallment = amount / months;
-      
-      for (let i = 0; i < months; i++) {
-        // Calculate due date
-        const dueDate = new Date(baseDate);
-        dueDate.setDate(dueDate.getDate() + (i + 1) * intervalDays);
-        
-        // Create schedule item
-        scheduleItems.push({
-          loan_id: loanId,
-          due_date: dueDate.toISOString().split('T')[0],
-          principal_due: principalPerInstallment,
-          interest_due: interestPerInstallment,
-          total_due: installmentAmount,
-          status: "pending"
-        });
-      }
-      
-      console.log("Creating loan schedule with items:", scheduleItems);
-      
-      // Insert schedule items into database
-      const { error } = await supabase
-        .from('loan_schedule')
-        .insert(scheduleItems);
+      const { error } = await supabase.rpc('generate_loan_schedule', {
+        p_loan_id: loanId,
+        p_amount: amount,
+        p_interest_rate: interestRate,
+        p_term_months: termMonths,
+        p_frequency: frequency,
+        p_start_date: startDate
+      });
       
       if (error) throw error;
     } catch (error) {
-      console.error("Error creating loan schedule:", error);
+      console.error("Error generating loan schedule:", error);
       throw error;
     }
   };

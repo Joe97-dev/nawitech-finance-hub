@@ -62,6 +62,7 @@ const LoanDetailPage = () => {
   const [loan, setLoan] = useState<LoanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   
   useEffect(() => {
     const fetchLoanDetails = async () => {
@@ -239,7 +240,7 @@ const LoanDetailPage = () => {
                 </TabsList>
                 
                 <TabsContent value="schedule" className="p-4">
-                  <LoanRepaymentSchedule loanId={loanId || ""} />
+                  <LoanRepaymentSchedule loanId={loanId || ""} refreshKey={refreshKey} />
                 </TabsContent>
                 
                 <TabsContent value="transactions" className="p-4">
@@ -264,6 +265,9 @@ const LoanDetailPage = () => {
                         }
                       };
                       fetchLoanDetails();
+                      
+                      // Trigger refresh of schedule
+                      setRefreshKey(prev => prev + 1);
                     }}
                   />
                 </TabsContent>

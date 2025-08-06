@@ -18,14 +18,16 @@ interface ScheduleItem {
   principal_due: number;
   interest_due: number;
   total_due: number;
+  amount_paid: number;
   status: "pending" | "partial" | "paid" | "overdue";
 }
 
 interface LoanRepaymentScheduleProps {
   loanId: string;
+  refreshKey?: number;
 }
 
-export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
+export function LoanRepaymentSchedule({ loanId, refreshKey }: LoanRepaymentScheduleProps) {
   const { toast } = useToast();
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
     if (loanId) {
       fetchRepaymentSchedule();
     }
-  }, [loanId, toast]);
+  }, [loanId, refreshKey, toast]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -108,36 +110,47 @@ export function LoanRepaymentSchedule({ loanId }: LoanRepaymentScheduleProps) {
               <TableHead>Principal</TableHead>
               <TableHead>Interest</TableHead>
               <TableHead>Total Due</TableHead>
+              <TableHead>Amount Paid</TableHead>
+              <TableHead>Outstanding</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {scheduleItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   No repayment schedule available
                 </TableCell>
               </TableRow>
             ) : (
-              scheduleItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    {new Date(item.due_date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {formatCurrency(item.principal_due)}
-                  </TableCell>
-                  <TableCell>
-                    {formatCurrency(item.interest_due)}
-                  </TableCell>
-                  <TableCell>
-                    {formatCurrency(item.total_due)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(item.status)}
-                  </TableCell>
-                </TableRow>
-              ))
+              scheduleItems.map((item) => {
+                const outstandingAmount = item.total_due - (item.amount_paid || 0);
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {new Date(item.due_date).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(item.principal_due)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(item.interest_due)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(item.total_due)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(item.amount_paid || 0)}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(outstandingAmount)}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(item.status)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

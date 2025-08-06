@@ -161,6 +161,9 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
 
       if (updateError) throw updateError;
 
+      // Allocate payment to schedule items (oldest unpaid first)
+      await allocatePaymentToSchedule(loanId, paymentAmount);
+
       // Reset form
       setPaymentForm({
         amount: "",
@@ -197,6 +200,55 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
       });
     } finally {
       setIsProcessingPayment(false);
+    }
+  };
+
+  const allocatePaymentToSchedule = async (loanId: string, paymentAmount: number) => {
+    try {
+      // Get unpaid/partially paid schedule items ordered by due date
+      const { data: scheduleItems, error: scheduleError } = await supabase
+        .from('loan_schedule')
+        .select('*')
+        .eq('loan_id', loanId)
+        .neq('status', 'paid')
+        .order('due_date', { ascending: true });
+
+      if (scheduleError) throw scheduleError;
+
+      let remainingPayment = paymentAmount;
+      
+      for (const item of scheduleItems || []) {
+        if (remainingPayment <= 0) break;
+        
+        const outstandingAmount = item.total_due - (item.amount_paid || 0);
+        const allocationAmount = Math.min(remainingPayment, outstandingAmount);
+        const newAmountPaid = (item.amount_paid || 0) + allocationAmount;
+        
+        // Determine new status
+        let newStatus = 'pending';
+        if (newAmountPaid >= item.total_due) {
+          newStatus = 'paid';
+        } else if (newAmountPaid > 0) {
+          newStatus = 'partial';
+        }
+        
+        // Update schedule item
+        const { error: updateScheduleError } = await supabase
+          .from('loan_schedule')
+          .update({ 
+            amount_paid: newAmountPaid,
+            status: newStatus
+          })
+          .eq('id', item.id);
+        
+        if (updateScheduleError) throw updateScheduleError;
+        
+        remainingPayment -= allocationAmount;
+      }
+      
+    } catch (error) {
+      console.error('Error allocating payment to schedule:', error);
+      throw error;
     }
   };
 
