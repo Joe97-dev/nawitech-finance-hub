@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
+import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, ShieldCheck, BookText } from "lucide-react";
@@ -55,6 +56,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { user, isAuthenticated } = useAuth();
+  const { isAdmin, hasPermission } = useRole();
 
   const fetchUsers = async () => {
     try {
@@ -93,6 +95,12 @@ const Settings = () => {
   }, [isAuthenticated]);
 
   const inviteUser = async () => {
+    // SECURITY FIX: Only admins can invite users
+    if (!isAdmin) {
+      toast.error("Access denied: Only administrators can invite users");
+      return;
+    }
+
     if (!newUserEmail) {
       toast.error("Please enter an email address");
       return;
@@ -106,6 +114,9 @@ const Settings = () => {
       setDialogOpen(false);
       setNewUserEmail("");
       setNewUserRole("data_entry");
+      
+      // Log the invitation for audit purposes
+      console.log(`User invitation sent: ${newUserEmail} with role ${newUserRole} by admin ${user?.id}`);
     } catch (error: any) {
       toast.error("Failed to invite user: " + error.message);
     } finally {
@@ -114,6 +125,18 @@ const Settings = () => {
   };
 
   const updateUserRole = async (userId: string, newRole: "admin" | "loan_officer" | "data_entry") => {
+    // CRITICAL SECURITY FIX: Only admins can change user roles
+    if (!isAdmin) {
+      toast.error("Access denied: Only administrators can change user roles");
+      return;
+    }
+
+    // Prevent users from modifying their own roles (security best practice)
+    if (userId === user?.id) {
+      toast.error("Security restriction: You cannot modify your own role");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('user_roles')
@@ -129,6 +152,9 @@ const Settings = () => {
       setUsers(users.map(u => u.id === userId ? {...u, role: newRole} : u));
       
       toast.success("User role updated successfully");
+      
+      // Log the role change for audit purposes
+      console.log(`Role changed: User ${userId} role changed to ${newRole} by admin ${user?.id}`);
     } catch (error: any) {
       toast.error("Failed to update role: " + error.message);
     }
@@ -169,7 +195,7 @@ const Settings = () => {
                   </div>
                   <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button>Invite User</Button>
+                      <Button disabled={!isAdmin}>Invite User</Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
@@ -235,6 +261,7 @@ const Settings = () => {
                             <Select
                               value={user.role}
                               onValueChange={(value: any) => updateUserRole(user.id, value)}
+                              disabled={!isAdmin || user.id === user?.id}
                             >
                               <SelectTrigger className="w-32">
                                 <SelectValue />
