@@ -35,7 +35,7 @@ const columns = [
   { key: "days_inactive", header: "Days Inactive" }
 ];
 
-const DormantReport = () => {
+const DormantClientsReport = () => {
   const { toast } = useToast();
   const [selectedRange, setSelectedRange] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,4 +289,4 @@ const DormantReport = () => {
   );
 };
 
-export default DormantReport;
+export default DormantClientsReport;
