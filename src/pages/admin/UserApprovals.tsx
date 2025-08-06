@@ -30,13 +30,31 @@ const UserApprovals = () => {
 
   const fetchApprovals = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch user approvals
+      const { data: approvalsData, error: approvalsError } = await supabase
         .from('user_approvals')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setApprovals(data || []);
+      if (approvalsError) throw approvalsError;
+
+      // Fetch profiles for usernames
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username');
+
+      if (profilesError) throw profilesError;
+
+      // Combine the data
+      const combinedData = approvalsData?.map(approval => {
+        const profile = profilesData?.find(p => p.id === approval.user_id);
+        return {
+          ...approval,
+          profiles: profile ? { username: profile.username } : null
+        };
+      }) || [];
+
+      setApprovals(combinedData);
     } catch (error) {
       console.error('Error fetching approvals:', error);
       toast({
