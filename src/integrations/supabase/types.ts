@@ -243,6 +243,7 @@ export type Database = {
       }
       loan_schedule: {
         Row: {
+          amount_paid: number | null
           created_at: string
           due_date: string
           id: string
@@ -254,6 +255,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amount_paid?: number | null
           created_at?: string
           due_date: string
           id?: string
@@ -265,6 +267,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount_paid?: number | null
           created_at?: string
           due_date?: string
           id?: string
@@ -326,9 +329,12 @@ export type Database = {
           client: string
           created_at: string | null
           date: string
+          frequency: string | null
           id: string
+          interest_rate: number | null
           loan_number: string | null
           status: string
+          term_months: number | null
           type: string
           updated_at: string | null
         }
@@ -338,9 +344,12 @@ export type Database = {
           client: string
           created_at?: string | null
           date?: string
+          frequency?: string | null
           id?: string
+          interest_rate?: number | null
           loan_number?: string | null
           status: string
+          term_months?: number | null
           type: string
           updated_at?: string | null
         }
@@ -350,9 +359,12 @@ export type Database = {
           client?: string
           created_at?: string | null
           date?: string
+          frequency?: string | null
           id?: string
+          interest_rate?: number | null
           loan_number?: string | null
           status?: string
+          term_months?: number | null
           type?: string
           updated_at?: string | null
         }
@@ -411,6 +423,17 @@ export type Database = {
       generate_loan_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      generate_loan_schedule: {
+        Args: {
+          p_loan_id: string
+          p_amount: number
+          p_interest_rate: number
+          p_term_months: number
+          p_frequency: string
+          p_start_date: string
+        }
+        Returns: undefined
       }
       has_role: {
         Args: {
