@@ -178,6 +178,31 @@ export default function DataMigration() {
     return Math.round((job.processed_records / job.total_records) * 100);
   };
 
+  const startMigration = async (jobId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('process-migration', {
+        body: { jobId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Migration started successfully",
+      });
+
+      // Refresh jobs list
+      fetchMigrationJobs();
+    } catch (error) {
+      console.error("Error starting migration:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start migration",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <RoleGuard allowedRoles={["admin"]}>
       <div className="container mx-auto py-6">
@@ -367,7 +392,11 @@ export default function DataMigration() {
                                 <Eye className="h-4 w-4" />
                               </Button>
                               {job.status === 'pending' && (
-                                <Button size="sm" variant="outline">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => startMigration(job.id)}
+                                >
                                   <Play className="h-4 w-4" />
                                 </Button>
                               )}
