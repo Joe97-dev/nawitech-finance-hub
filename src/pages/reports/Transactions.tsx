@@ -45,7 +45,7 @@ const paymentMethods = [
 ];
 
 const columns = [
-  { key: "transaction_date", header: "Date" },
+  { key: "date", header: "Date" },
   { key: "client_name", header: "Client" },
   { key: "loan_number", header: "Loan Number" },
   { key: "transaction_type", header: "Type" },
@@ -208,7 +208,7 @@ const TransactionsReport = () => {
       actions={
         <ExportButton 
           data={filteredData.map(transaction => ({
-            date: new Date(transaction.transaction_date).toLocaleDateString(),
+            date: new Date(transaction.transaction_date).toLocaleDateString('en-US'),
             client_name: transaction.client_name,
             loan_number: transaction.loan_number,
             transaction_type: transaction.transaction_type,
