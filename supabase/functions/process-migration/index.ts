@@ -68,9 +68,13 @@ Deno.serve(async (req) => {
     // Convert file to text
     const fileText = await fileData.text();
     
-    // Parse CSV data
+    // Parse CSV data (handle both CSV and Excel exports)
     const records = parseCSV(fileText);
     console.log(`Parsed ${records.length} records from file`);
+
+    if (records.length === 0) {
+      throw new Error('No valid records found in the file. Please check the file format.');
+    }
 
     // Update total records count
     await supabase
@@ -155,20 +159,34 @@ function parseCSV(text: string): ParsedRecord[] {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-  const records: ParsedRecord[] = [];
+  // Handle different line endings and clean up
+  const cleanLines = lines.filter(line => line.trim().length > 0);
+  if (cleanLines.length < 2) return [];
 
+  // Parse headers - handle semicolon or comma separation
+  let headers = cleanLines[0].includes(';') 
+    ? cleanLines[0].split(';').map(h => h.trim().replace(/"/g, ''))
+    : cleanLines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+  const records: ParsedRecord[] = [];
   console.log('CSV Headers found:', headers);
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+  for (let i = 1; i < cleanLines.length; i++) {
+    // Use same delimiter as headers
+    const values = cleanLines[0].includes(';')
+      ? cleanLines[i].split(';').map(v => v.trim().replace(/"/g, ''))
+      : cleanLines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      
     const record: ParsedRecord = {};
     
     headers.forEach((header, index) => {
       record[header] = values[index] || '';
     });
     
-    records.push(record);
+    // Only include records that have at least one non-empty value
+    if (Object.values(record).some(value => value && value.trim().length > 0)) {
+      records.push(record);
+    }
   }
 
   console.log('Sample record:', records[0]);
