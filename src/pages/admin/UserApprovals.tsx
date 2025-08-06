@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Clock, User } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface UserApproval {
   id: string;
@@ -27,6 +29,8 @@ const UserApprovals = () => {
   const [approvals, setApprovals] = useState<UserApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
+  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchApprovals = async () => {
@@ -92,19 +96,22 @@ const UserApprovals = () => {
     }
   };
 
-  const handleApprove = async (userId: string) => {
+  const handleApprove = async (userId: string, role: "admin" | "loan_officer" | "data_entry" = "data_entry") => {
     try {
       const { error } = await supabase.rpc('approve_user', {
-        target_user_id: userId
+        target_user_id: userId,
+        assigned_role: role
       });
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "User approved successfully",
+        description: `User approved successfully with ${role.replace('_', ' ')} role`,
       });
 
+      setApprovingUserId(null);
+      setSelectedRole("data_entry");
       await fetchApprovals();
     } catch (error) {
       console.error('Error approving user:', error);
@@ -139,6 +146,15 @@ const UserApprovals = () => {
         description: "Failed to reject user",
         variant: "destructive",
       });
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Admin';
+      case 'loan_officer': return 'Loan Officer';
+      case 'data_entry': return 'Data Entry';
+      default: return role;
     }
   };
 
@@ -213,14 +229,51 @@ const UserApprovals = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(approval.status)}
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(approval.user_id)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Approve
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            onClick={() => setApprovingUserId(approval.user_id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Approve User Registration</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Select the role for this user and approve their registration.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="py-4">
+                            <Label htmlFor="role-select">Assign Role</Label>
+                            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as "admin" | "loan_officer" | "data_entry")}>
+                              <SelectTrigger className="mt-2">
+                                <SelectValue placeholder="Select a role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="data_entry">Data Entry</SelectItem>
+                                <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => {
+                              setApprovingUserId(null);
+                              setSelectedRole("data_entry");
+                            }}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleApprove(approval.user_id, selectedRole)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Approve with {getRoleDisplayName(selectedRole)} Role
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

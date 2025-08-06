@@ -462,7 +462,12 @@ export type Database = {
     }
     Functions: {
       approve_user: {
-        Args: { target_user_id: string }
+        Args:
+          | { target_user_id: string }
+          | {
+              target_user_id: string
+              assigned_role?: Database["public"]["Enums"]["user_role"]
+            }
         Returns: undefined
       }
       calculate_outstanding_balance: {
