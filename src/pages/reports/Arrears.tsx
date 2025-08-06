@@ -70,65 +70,73 @@ const ArrearsReport = () => {
   const [arrearsData, setArrearsData] = useState<ArrearsData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Simulate data fetching from Supabase
   useEffect(() => {
     const fetchArrearsData = async () => {
       try {
         setLoading(true);
-        // TODO: Implement actual Supabase query
-        // For now, using sample data
-        const sampleData: ArrearsData[] = [
-          {
-            id: "1",
-            clientName: "Jane Cooper",
-            loanId: "LN001",
-            principalAmount: 50000,
-            outstandingBalance: 35000,
-            daysOverdue: 15,
-            amountOverdue: 8500,
-            lastPaymentDate: "2024-01-15",
-            contactInfo: "(254) 555-0111",
-            riskCategory: "low"
-          },
-          {
-            id: "2",
-            clientName: "Wade Warren",
-            loanId: "LN002",
-            principalAmount: 75000,
-            outstandingBalance: 55000,
-            daysOverdue: 45,
-            amountOverdue: 12500,
-            lastPaymentDate: "2023-12-20",
-            contactInfo: "(254) 555-0222",
-            riskCategory: "medium"
-          },
-          {
-            id: "3",
-            clientName: "Esther Howard",
-            loanId: "LN003",
-            principalAmount: 30000,
-            outstandingBalance: 25000,
-            daysOverdue: 75,
-            amountOverdue: 6000,
-            lastPaymentDate: "2023-11-10",
-            contactInfo: "(254) 555-0333",
-            riskCategory: "high"
-          },
-          {
-            id: "4",
-            clientName: "Cameron Williamson",
-            loanId: "LN004",
-            principalAmount: 100000,
-            outstandingBalance: 90000,
-            daysOverdue: 120,
-            amountOverdue: 25000,
-            lastPaymentDate: "2023-10-05",
-            contactInfo: "(254) 555-0444",
-            riskCategory: "critical"
-          }
-        ];
         
-        setArrearsData(sampleData);
+        // Fetch loans with overdue payments from loan_schedule
+        const { data: overdueScheduleData, error: scheduleError } = await supabase
+          .from('loan_schedule')
+          .select(`
+            loan_id,
+            due_date,
+            total_due,
+            amount_paid,
+            loans!inner(
+              id,
+              client,
+              loan_number,
+              amount
+            )
+          `)
+          .lt('due_date', new Date().toISOString().split('T')[0])
+          .neq('status', 'paid');
+
+        if (scheduleError) throw scheduleError;
+
+        // Group by loan and calculate arrears data
+        const loanArrearsMap = new Map();
+        
+        (overdueScheduleData || []).forEach(item => {
+          const loanId = item.loan_id;
+          const loan = (item.loans as any);
+          const outstandingAmount = item.total_due - (item.amount_paid || 0);
+          
+          if (outstandingAmount > 0) {
+            const daysOverdue = Math.floor(
+              (new Date().getTime() - new Date(item.due_date).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            
+            if (loanArrearsMap.has(loanId)) {
+              const existing = loanArrearsMap.get(loanId);
+              existing.amountOverdue += outstandingAmount;
+              existing.daysOverdue = Math.max(existing.daysOverdue, daysOverdue);
+            } else {
+              // Determine risk category based on days overdue
+              let riskCategory: "low" | "medium" | "high" | "critical" = "low";
+              if (daysOverdue > 90) riskCategory = "critical";
+              else if (daysOverdue > 60) riskCategory = "high";
+              else if (daysOverdue > 30) riskCategory = "medium";
+              
+              loanArrearsMap.set(loanId, {
+                id: loanId,
+                clientName: loan.client,
+                loanId: loan.loan_number || loanId,
+                principalAmount: loan.amount,
+                outstandingBalance: loan.amount, // This would need to be calculated properly
+                daysOverdue,
+                amountOverdue: outstandingAmount,
+                lastPaymentDate: "N/A", // This would need to be fetched from transactions
+                contactInfo: "N/A", // This would need client phone data
+                riskCategory
+              });
+            }
+          }
+        });
+
+        const arrearsArray = Array.from(loanArrearsMap.values());
+        setArrearsData(arrearsArray);
       } catch (error: any) {
         console.error("Error fetching arrears data:", error);
         toast({
@@ -136,6 +144,7 @@ const ArrearsReport = () => {
           title: "Data fetch error",
           description: "Failed to load arrears data."
         });
+        setArrearsData([]);
       } finally {
         setLoading(false);
       }

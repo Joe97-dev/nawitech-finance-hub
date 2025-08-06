@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,39 +9,16 @@ import { ExportButton } from "@/components/ui/export-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for dormant clients
-const dormantClientsData = [
-  { id: 1, clientName: "Jane Akinyi", phoneNumber: "0767890123", lastActivity: "2024-12-15", daysInactive: 156, branch: "head-office" },
-  { id: 2, clientName: "Samuel Maina", phoneNumber: "0778901234", lastActivity: "2025-01-20", daysInactive: 120, branch: "head-office" },
-  { id: 3, clientName: "Grace Atieno", phoneNumber: "0789012345", lastActivity: "2025-02-05", daysInactive: 104, branch: "head-office" },
-  { id: 4, clientName: "Daniel Mutua", phoneNumber: "0790123456", lastActivity: "2025-01-10", daysInactive: 130, branch: "head-office" },
-  { id: 5, clientName: "Sarah Njeri", phoneNumber: "0701234567", lastActivity: "2024-11-30", daysInactive: 171, branch: "head-office" },
-  { id: 6, clientName: "Dennis Mutiso", phoneNumber: "0745678902", lastActivity: "2024-12-25", daysInactive: 146, branch: "westlands" },
-  { id: 7, clientName: "Elizabeth Njoki", phoneNumber: "0756789013", lastActivity: "2025-01-30", daysInactive: 110, branch: "westlands" },
-  { id: 8, clientName: "Hassan Ali", phoneNumber: "0789012346", lastActivity: "2025-01-05", daysInactive: 135, branch: "mombasa" },
-  { id: 9, clientName: "Isabella Mohammed", phoneNumber: "0790123457", lastActivity: "2024-12-10", daysInactive: 161, branch: "mombasa" },
-  { id: 10, clientName: "James Mbugua", phoneNumber: "0701234568", lastActivity: "2025-02-15", daysInactive: 94, branch: "mombasa" },
-  { id: 11, clientName: "Michael Oduor", phoneNumber: "0734567892", lastActivity: "2025-01-15", daysInactive: 125, branch: "kisumu" },
-  { id: 12, clientName: "Nancy Adhiambo", phoneNumber: "0745678903", lastActivity: "2024-11-20", daysInactive: 181, branch: "kisumu" },
-  { id: 13, clientName: "Quentin Korir", phoneNumber: "0778901236", lastActivity: "2025-02-10", daysInactive: 99, branch: "nakuru" },
-  { id: 14, clientName: "Rose Chebet", phoneNumber: "0789012347", lastActivity: "2025-01-25", daysInactive: 115, branch: "nakuru" },
-  { id: 15, clientName: "Titus Koech", phoneNumber: "0790123458", lastActivity: "2024-12-05", daysInactive: 166, branch: "head-office" },
-  { id: 16, clientName: "Vivian Chepkorir", phoneNumber: "0701234569", lastActivity: "2025-02-20", daysInactive: 89, branch: "westlands" },
-  { id: 17, clientName: "Walter Musyoka", phoneNumber: "0712345677", lastActivity: "2025-01-08", daysInactive: 132, branch: "mombasa" },
-  { id: 18, clientName: "Zipporah Muthoni", phoneNumber: "0723456788", lastActivity: "2024-11-15", daysInactive: 186, branch: "kisumu" },
-  { id: 19, clientName: "Aaron Kiprono", phoneNumber: "0734567893", lastActivity: "2025-02-25", daysInactive: 84, branch: "nakuru" },
-  { id: 20, clientName: "Beatrice Wangari", phoneNumber: "0745678904", lastActivity: "2025-01-18", daysInactive: 122, branch: "head-office" },
-];
-
-const branches = [
-  { value: "all", label: "All Branches" },
-  { value: "head-office", label: "HEAD OFFICE" },
-  { value: "westlands", label: "Westlands Branch" },
-  { value: "mombasa", label: "Mombasa Branch" },
-  { value: "kisumu", label: "Kisumu Branch" },
-  { value: "nakuru", label: "Nakuru Branch" }
-];
+interface DormantClientData {
+  id: string;
+  client_name: string;
+  phone_number: string;
+  last_activity: string;
+  days_inactive: number;
+}
 
 const inactivityRanges = [
   { value: "all", label: "All" },

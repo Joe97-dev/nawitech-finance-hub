@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { format } from "date-fns";
 import { CalendarRange } from "lucide-react";
@@ -14,25 +14,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-// Dummy data for loan disbursals
-const disbursalData = [
-  { id: 1, clientName: "John Kamau", phoneNumber: "0712345678", amount: 50000, disbursedDate: "2025-05-15", branch: "head-office", loanOfficer: "James Maina", loanTerm: "6 months", interestRate: 15 },
-  { id: 2, clientName: "Mary Wanjiku", phoneNumber: "0723456789", amount: 35000, disbursedDate: "2025-05-16", branch: "head-office", loanOfficer: "James Maina", loanTerm: "4 months", interestRate: 15 },
-  { id: 3, clientName: "Peter Ochieng", phoneNumber: "0734567890", amount: 25000, disbursedDate: "2025-05-17", branch: "westlands", loanOfficer: "Anne Wambui", loanTerm: "3 months", interestRate: 15 },
-  { id: 4, clientName: "Lucy Muthoni", phoneNumber: "0745678901", amount: 40000, disbursedDate: "2025-05-18", branch: "westlands", loanOfficer: "Anne Wambui", loanTerm: "6 months", interestRate: 15 },
-  { id: 5, clientName: "David Kiprop", phoneNumber: "0756789012", amount: 60000, disbursedDate: "2025-05-19", branch: "mombasa", loanOfficer: "Mark Otieno", loanTerm: "12 months", interestRate: 15 },
-  { id: 6, clientName: "Sarah Njeri", phoneNumber: "0767890123", amount: 20000, disbursedDate: "2025-05-20", branch: "mombasa", loanOfficer: "Mark Otieno", loanTerm: "3 months", interestRate: 15 },
-  { id: 7, clientName: "Michael Kamau", phoneNumber: "0778901234", amount: 30000, disbursedDate: "2025-05-15", branch: "kisumu", loanOfficer: "Susan Achieng", loanTerm: "6 months", interestRate: 15 },
-  { id: 8, clientName: "Elizabeth Mwangi", phoneNumber: "0789012345", amount: 45000, disbursedDate: "2025-05-16", branch: "kisumu", loanOfficer: "Susan Achieng", loanTerm: "9 months", interestRate: 15 },
-  { id: 9, clientName: "Robert Ndungu", phoneNumber: "0790123456", amount: 55000, disbursedDate: "2025-05-17", branch: "nakuru", loanOfficer: "Joseph Kirui", loanTerm: "12 months", interestRate: 15 },
-  { id: 10, clientName: "Ruth Akinyi", phoneNumber: "0701234567", amount: 25000, disbursedDate: "2025-05-18", branch: "nakuru", loanOfficer: "Joseph Kirui", loanTerm: "4 months", interestRate: 15 },
-  { id: 11, clientName: "Stephen Muthoni", phoneNumber: "0712345678", amount: 40000, disbursedDate: "2025-04-15", branch: "head-office", loanOfficer: "James Maina", loanTerm: "6 months", interestRate: 15 },
-  { id: 12, clientName: "Dorothy Wangari", phoneNumber: "0723456789", amount: 30000, disbursedDate: "2025-04-20", branch: "westlands", loanOfficer: "Anne Wambui", loanTerm: "6 months", interestRate: 15 },
-  { id: 13, clientName: "Henry Odhiambo", phoneNumber: "0734567890", amount: 50000, disbursedDate: "2025-04-25", branch: "mombasa", loanOfficer: "Mark Otieno", loanTerm: "12 months", interestRate: 15 },
-  { id: 14, clientName: "Grace Wambui", phoneNumber: "0745678901", amount: 15000, disbursedDate: "2025-04-30", branch: "kisumu", loanOfficer: "Susan Achieng", loanTerm: "3 months", interestRate: 15 },
-  { id: 15, clientName: "Martin Kiprono", phoneNumber: "0756789012", amount: 65000, disbursedDate: "2025-04-10", branch: "nakuru", loanOfficer: "Joseph Kirui", loanTerm: "12 months", interestRate: 15 }
-];
+interface DisbursalData {
+  id: string;
+  client_name: string;
+  loan_number: string;
+  amount: number;
+  disbursed_date: string;
+  term_months: number;
+  interest_rate: number;
+}
 
 const branches = [
   { value: "all", label: "All Branches" },
@@ -44,58 +37,87 @@ const branches = [
 ];
 
 const columns = [
-  { key: "clientName", header: "Client Name" },
-  { key: "phoneNumber", header: "Phone Number" },
+  { key: "client_name", header: "Client Name" },
+  { key: "loan_number", header: "Loan Number" },
   { key: "amount", header: "Amount (KES)" },
-  { key: "disbursedDate", header: "Disbursed Date" },
-  { key: "loanTerm", header: "Loan Term" },
-  { key: "interestRate", header: "Interest Rate (%)" },
-  { key: "loanOfficer", header: "Loan Officer" },
-  { key: "branch", header: "Branch" }
+  { key: "disbursed_date", header: "Disbursed Date" },
+  { key: "term_months", header: "Loan Term (Months)" },
+  { key: "interest_rate", header: "Interest Rate (%)" }
 ];
 
 const DisbursalReport = () => {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2025, 3, 1), // April 1, 2025
-    to: new Date(2025, 4, 31), // May 31, 2025
-  });
+  const { toast } = useToast();
+  const [date, setDate] = useState<DateRange | undefined>();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [disbursalData, setDisbursalData] = useState<DisbursalData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDisbursalData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch loans with status 'approved' or 'disbursed' that have been disbursed
+        let query = supabase
+          .from('loans')
+          .select('id, client, loan_number, amount, date, term_months, interest_rate')
+          .in('status', ['approved', 'disbursed', 'active'])
+          .order('date', { ascending: false });
+
+        // Apply date range filter
+        if (date?.from) {
+          query = query.gte('date', date.from.toISOString().split('T')[0]);
+        }
+        if (date?.to) {
+          query = query.lte('date', date.to.toISOString().split('T')[0]);
+        }
+
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        const transformedData: DisbursalData[] = (data || []).map(loan => ({
+          id: loan.id,
+          client_name: loan.client,
+          loan_number: loan.loan_number || 'N/A',
+          amount: loan.amount,
+          disbursed_date: loan.date,
+          term_months: loan.term_months || 12,
+          interest_rate: loan.interest_rate || 15
+        }));
+
+        setDisbursalData(transformedData);
+      } catch (error: any) {
+        console.error("Error fetching disbursal data:", error);
+        toast({
+          variant: "destructive",
+          title: "Data fetch error",
+          description: "Failed to load disbursal data."
+        });
+        setDisbursalData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDisbursalData();
+  }, [toast, date]);
   
-  // Filter data based on selected branch, date range and search query
+  // Filter data based on search query
   const filteredDisbursals = disbursalData.filter(loan => {
-    const matchesBranch = selectedBranch === "all" || loan.branch === selectedBranch;
-    
-    // Check if loan falls within selected date range
-    const disbursedDate = new Date(loan.disbursedDate);
-    const isInDateRange = (!date?.from || disbursedDate >= date.from) && 
-                           (!date?.to || disbursedDate <= date.to);
-    
-    // Check if loan matches search query
     const matchesSearch = searchQuery === "" || 
-                         loan.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         loan.phoneNumber.includes(searchQuery) ||
-                         loan.loanOfficer.toLowerCase().includes(searchQuery.toLowerCase());
+                         loan.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         loan.loan_number.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesBranch && isInDateRange && matchesSearch;
+    return matchesSearch;
   });
   
   const totalDisbursed = filteredDisbursals.reduce((acc, loan) => acc + loan.amount, 0);
-  
-  // Group by branch
-  const branchTotals = filteredDisbursals.reduce((acc: {[key: string]: number}, loan) => {
-    const branch = loan.branch;
-    if (!acc[branch]) {
-      acc[branch] = 0;
-    }
-    acc[branch] += loan.amount;
-    return acc;
-  }, {});
 
-  const hasActiveFilters = selectedBranch !== "all" || searchQuery !== "" || (date !== undefined);
+  const hasActiveFilters = searchQuery !== "" || (date !== undefined);
 
   const handleReset = () => {
-    setSelectedBranch("all");
     setSearchQuery("");
     setDate(undefined);
   };
@@ -106,37 +128,18 @@ const DisbursalReport = () => {
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <DateRangePicker
           dateRange={date}
           onDateRangeChange={setDate}
-          className="sm:col-span-2 lg:col-span-1"
         />
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Branch
-          </label>
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="border-dashed">
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((branch) => (
-                <SelectItem key={branch.value} value={branch.value}>
-                  {branch.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
             Search
           </label>
           <Input 
-            placeholder="Search by client name, phone or loan officer" 
+            placeholder="Search by client name or loan number" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border-dashed"
@@ -162,81 +165,70 @@ const DisbursalReport = () => {
       actions={
         <ExportButton 
           data={filteredDisbursals.map(loan => ({
-            ...loan,
-            branch: branches.find(b => b.value === loan.branch)?.label || loan.branch,
-            amount: loan.amount.toLocaleString()
+            client_name: loan.client_name,
+            loan_number: loan.loan_number,
+            amount: loan.amount.toLocaleString(),
+            disbursed_date: new Date(loan.disbursed_date).toLocaleDateString(),
+            term_months: loan.term_months,
+            interest_rate: loan.interest_rate
           }))} 
-          filename={`disbursal-report-${selectedBranch}`} 
+          filename={`disbursal-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
         />
       }
       filters={filters}
     >
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.keys(branchTotals).length > 0 ? (
-            Object.entries(branchTotals).map(([branch, total]) => (
-              <div key={branch} className="bg-card border rounded-lg p-4 shadow-sm">
-                <div className="text-sm text-muted-foreground">
-                  {branches.find(b => b.value === branch)?.label || branch}
-                </div>
-                <div className="text-2xl font-bold mt-1">KES {total.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {filteredDisbursals.filter(loan => loan.branch === branch).length} loans
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-3 text-center py-8 text-muted-foreground border rounded-md">
-              No disbursal data available for the selected criteria
-            </div>
-          )}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-card border rounded-lg p-4 shadow-sm">
+            <div className="text-sm text-muted-foreground">Total Disbursed</div>
+            <div className="text-2xl font-bold mt-1">KES {totalDisbursed.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {filteredDisbursals.length} loans
+            </div>
+          </div>
 
-        <div>
-          <h3 className="text-lg font-medium mb-2">Loan Disbursals</h3>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Amount (KES)</TableHead>
-                <TableHead>Disbursed Date</TableHead>
-                <TableHead>Loan Term</TableHead>
-                <TableHead>Interest Rate</TableHead>
-                <TableHead>Loan Officer</TableHead>
-                <TableHead>Branch</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDisbursals.length === 0 ? (
+          <div>
+            <h3 className="text-lg font-medium mb-2">Loan Disbursals</h3>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
-                    No disbursals found in the selected date range
-                  </TableCell>
+                  <TableHead>Client Name</TableHead>
+                  <TableHead>Loan Number</TableHead>
+                  <TableHead>Amount (KES)</TableHead>
+                  <TableHead>Disbursed Date</TableHead>
+                  <TableHead>Loan Term</TableHead>
+                  <TableHead>Interest Rate</TableHead>
                 </TableRow>
-              ) : (
-                filteredDisbursals.map((loan) => (
-                  <TableRow key={loan.id}>
-                    <TableCell className="font-medium">{loan.clientName}</TableCell>
-                    <TableCell>{loan.phoneNumber}</TableCell>
-                    <TableCell>{loan.amount.toLocaleString()}</TableCell>
-                    <TableCell>{loan.disbursedDate}</TableCell>
-                    <TableCell>{loan.loanTerm}</TableCell>
-                    <TableCell>{loan.interestRate}%</TableCell>
-                    <TableCell>{loan.loanOfficer}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {branches.find(b => b.value === loan.branch)?.label || loan.branch}
-                      </Badge>
+              </TableHeader>
+              <TableBody>
+                {filteredDisbursals.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                      No disbursals found for the selected criteria
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredDisbursals.map((loan) => (
+                    <TableRow key={loan.id}>
+                      <TableCell className="font-medium">{loan.client_name}</TableCell>
+                      <TableCell className="font-mono text-sm">{loan.loan_number}</TableCell>
+                      <TableCell>{loan.amount.toLocaleString()}</TableCell>
+                      <TableCell>{new Date(loan.disbursed_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{loan.term_months} months</TableCell>
+                      <TableCell>{loan.interest_rate}%</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
     </ReportPage>
   );
 };
