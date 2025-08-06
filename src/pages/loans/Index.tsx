@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Loan {
   id: string;
+  loan_number: string;
   client: string;
   amount: number;
   balance: number;
@@ -68,6 +69,7 @@ const LoansPage = () => {
         // Transform data to match our Loan interface
         const formattedLoans: Loan[] = (data || []).map((loan: any) => ({
           id: loan.id,
+          loan_number: loan.loan_number,
           client: loan.client,
           amount: loan.amount,
           balance: loan.balance,
@@ -94,7 +96,7 @@ const LoansPage = () => {
   
   const filteredLoans = loans.filter(loan => 
     loan.client.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    loan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.loan_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     loan.type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -102,7 +104,7 @@ const LoansPage = () => {
     // Implement CSV export functionality here
     const headers = ["Loan ID", "Client", "Amount", "Balance", "Type", "Date", "Status"];
     const dataRows = filteredLoans.map(loan => [
-      loan.id,
+      loan.loan_number || loan.id,
       loan.client,
       loan.amount.toString(),
       loan.balance.toString(),
@@ -202,7 +204,7 @@ const LoansPage = () => {
                         to={`/loans/${loan.id}`}
                         className="font-medium text-primary hover:underline"
                       >
-                        {loan.id.substring(0, 8)}...
+                        {loan.loan_number || `${loan.id.substring(0, 8)}...`}
                       </Link>
                     </TableCell>
                     <TableCell>{loan.client}</TableCell>

@@ -17,6 +17,7 @@ import { format } from "date-fns";
 
 interface LoanData {
   id: string;
+  loan_number: string;
   client: string;
   amount: number;
   balance: number;
@@ -163,7 +164,7 @@ const LoanDetailPage = () => {
               Back to Loans
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Loan #{loan.id.substring(0, 8)}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Loan {loan.loan_number || `#${loan.id.substring(0, 8)}`}</h1>
               <p className="text-muted-foreground">Client: {loan.client}</p>
             </div>
           </div>
