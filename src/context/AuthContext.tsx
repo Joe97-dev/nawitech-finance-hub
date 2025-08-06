@@ -76,11 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkApprovalStatus = async (userId: string) => {
     try {
+      console.log("Checking approval status for user:", userId);
       const { data, error } = await supabase
         .from('user_approvals')
         .select('status')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error checking approval status:', error);
@@ -88,7 +89,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      setApprovalStatus(data?.status || 'pending');
+      const status = data?.status || 'pending';
+      console.log("Approval status:", status);
+      setApprovalStatus(status);
     } catch (error) {
       console.error('Error checking approval status:', error);
       setApprovalStatus('pending');
