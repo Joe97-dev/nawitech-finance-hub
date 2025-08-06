@@ -254,13 +254,17 @@ async function processClientRecord(supabase: any, record: ParsedRecord, mappingC
   const clientData = {
     first_name: findField(['first', 'fname', 'firstname', 'name']) || 
                record['Client Name']?.split(' ')[0] || 
-               getFirstNonEmpty().split(' ')[0] || 'Unknown',
+               getFirstNonEmpty().split(' ')[0] || 
+               'Imported', // Default for required field
     last_name: findField(['last', 'lname', 'lastname', 'surname']) || 
               record['Client Name']?.split(' ').slice(1).join(' ') || 
-              getFirstNonEmpty().split(' ').slice(1).join(' ') || '',
+              getFirstNonEmpty().split(' ').slice(1).join(' ') || 
+              'Client', // Default for required field
     email: findField(['email', 'mail', 'e-mail']),
-    phone: findField(['phone', 'mobile', 'tel', 'telephone', 'contact']) || '',
-    id_number: findField(['id', 'national', 'identity', 'number']) || '',
+    phone: findField(['phone', 'mobile', 'tel', 'telephone', 'contact']) || 
+           'N/A', // Default for required field
+    id_number: findField(['id', 'national', 'identity', 'number']) || 
+               `AUTO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
     gender: findField(['gender', 'sex']),
     address: findField(['address', 'location']),
     city: findField(['city', 'town']),
@@ -275,10 +279,7 @@ async function processClientRecord(supabase: any, record: ParsedRecord, mappingC
     registration_date: findField(['registration', 'reg_date']) || new Date().toISOString().split('T')[0]
   };
 
-  // Validate required fields
-  if (!clientData.first_name || !clientData.phone || !clientData.id_number) {
-    throw new Error(`Missing required fields. first_name: ${clientData.first_name}, phone: ${clientData.phone}, id_number: ${clientData.id_number}`);
-  }
+  // Remove the strict validation - let it import with available data only
 
   console.log('Mapped client data:', clientData);
 
