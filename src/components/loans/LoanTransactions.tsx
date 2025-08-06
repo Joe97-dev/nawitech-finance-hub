@@ -2,6 +2,11 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -24,12 +29,20 @@ interface Transaction {
 
 interface LoanTransactionsProps {
   loanId: string;
+  onBalanceUpdate?: () => void;
 }
 
-export function LoanTransactions({ loanId }: LoanTransactionsProps) {
+export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsProps) {
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    receipt_number: "",
+    payment_method: "",
+    notes: ""
+  });
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -86,6 +99,107 @@ export function LoanTransactions({ loanId }: LoanTransactionsProps) {
     }).format(amount);
   };
 
+  const handlePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!paymentForm.amount || !paymentForm.receipt_number || !paymentForm.payment_method) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required fields"
+      });
+      return;
+    }
+
+    const paymentAmount = parseFloat(paymentForm.amount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid payment amount"
+      });
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Insert the transaction
+      const { error: transactionError } = await supabase
+        .from('loan_transactions')
+        .insert({
+          loan_id: loanId,
+          amount: paymentAmount,
+          transaction_type: 'repayment',
+          payment_method: paymentForm.payment_method,
+          receipt_number: paymentForm.receipt_number,
+          notes: paymentForm.notes || null,
+          created_by: user.id
+        });
+
+      if (transactionError) throw transactionError;
+
+      // Get current loan balance
+      const { data: loanData, error: loanError } = await supabase
+        .from('loans')
+        .select('balance')
+        .eq('id', loanId)
+        .single();
+
+      if (loanError) throw loanError;
+
+      // Update loan balance
+      const newBalance = Math.max(0, loanData.balance - paymentAmount);
+      const { error: updateError } = await supabase
+        .from('loans')
+        .update({ balance: newBalance })
+        .eq('id', loanId);
+
+      if (updateError) throw updateError;
+
+      // Reset form
+      setPaymentForm({
+        amount: "",
+        receipt_number: "",
+        payment_method: "",
+        notes: ""
+      });
+
+      // Refresh transactions
+      const { data, error } = await supabase
+        .from('loan_transactions')
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('transaction_date', { ascending: false });
+      
+      if (error) throw error;
+      setTransactions((data || []) as Transaction[]);
+
+      // Notify parent component to update balance
+      if (onBalanceUpdate) {
+        onBalanceUpdate();
+      }
+
+      toast({
+        title: "Success",
+        description: `Payment of ${formatCurrency(paymentAmount)} processed successfully`
+      });
+
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to process payment: ${error.message}`
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -95,8 +209,71 @@ export function LoanTransactions({ loanId }: LoanTransactionsProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Transactions</h3>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Transactions</h3>
+      </div>
+
+      {/* Payment Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Make Payment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePayment} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Payment Amount *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter amount"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="receipt_number">Reference/Receipt Number *</Label>
+                <Input
+                  id="receipt_number"
+                  placeholder="Enter reference code"
+                  value={paymentForm.receipt_number}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, receipt_number: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payment_method">Payment Method *</Label>
+                <Select value={paymentForm.payment_method} onValueChange={(value) => setPaymentForm(prev => ({ ...prev, payment_method: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Input
+                  id="notes"
+                  placeholder="Additional notes"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+            <Button type="submit" disabled={isProcessingPayment} className="w-full md:w-auto">
+              {isProcessingPayment ? "Processing..." : "Process Payment"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
       
       <div className="border rounded-lg overflow-hidden">
         <Table>

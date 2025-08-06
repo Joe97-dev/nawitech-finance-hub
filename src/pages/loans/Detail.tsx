@@ -243,7 +243,29 @@ const LoanDetailPage = () => {
                 </TabsContent>
                 
                 <TabsContent value="transactions" className="p-4">
-                  <LoanTransactions loanId={loanId || ""} />
+                  <LoanTransactions 
+                    loanId={loanId || ""} 
+                    onBalanceUpdate={() => {
+                      // Refetch loan data when payment is made
+                      const fetchLoanDetails = async () => {
+                        try {
+                          const { data, error } = await supabase
+                            .from('loans')
+                            .select('*')
+                            .eq('id', loanId)
+                            .single();
+                          
+                          if (error) throw error;
+                          if (data) {
+                            setLoan(data as LoanData);
+                          }
+                        } catch (error: any) {
+                          console.error('Error fetching loan data:', error);
+                        }
+                      };
+                      fetchLoanDetails();
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </CardContent>
