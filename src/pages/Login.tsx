@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   // Login form state
@@ -17,6 +18,7 @@ const Login = () => {
   const { login, signUp, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   
   // Get redirect path from location state or default to home
   const from = location.state?.from || "/";
@@ -45,6 +47,13 @@ const Login = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     await signUp(email, password);
+    
+    // Show pending approval notification
+    toast({
+      title: "Account Created",
+      description: "Your account is pending approval from an administrator. You will be notified once approved.",
+      duration: 5000,
+    });
   };
 
   const togglePasswordVisibility = () => {
