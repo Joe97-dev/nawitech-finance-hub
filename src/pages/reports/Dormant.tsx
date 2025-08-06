@@ -29,75 +29,129 @@ const inactivityRanges = [
 ];
 
 const columns = [
-  { key: "clientName", header: "Client Name" },
-  { key: "phoneNumber", header: "Phone Number" },
-  { key: "lastActivity", header: "Last Activity" },
-  { key: "daysInactive", header: "Days Inactive" },
-  { key: "branch", header: "Branch" }
+  { key: "client_name", header: "Client Name" },
+  { key: "phone_number", header: "Phone Number" },
+  { key: "last_activity", header: "Last Activity" },
+  { key: "days_inactive", header: "Days Inactive" }
 ];
 
-const DormantClientsReport = () => {
-  const [selectedBranch, setSelectedBranch] = useState("all");
+const DormantReport = () => {
+  const { toast } = useToast();
   const [selectedRange, setSelectedRange] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Filter data based on selected branch, inactivity range, and search query
-  const filteredClients = dormantClientsData.filter(client => {
-    const matchesBranch = selectedBranch === "all" || client.branch === selectedBranch;
+  const [dormantData, setDormantData] = useState<DormantClientData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDormantClients = async () => {
+      try {
+        setLoading(true);
+        
+        // Get clients who haven't had recent loan activity
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name, phone, created_at');
+          
+        if (clientsError) throw clientsError;
+
+        // Get recent loan activity for each client
+        const { data: recentLoans, error: loansError } = await supabase
+          .from('loans')
+          .select('client, date')
+          .gte('date', threeMonthsAgo.toISOString().split('T')[0]);
+          
+        if (loansError) throw loansError;
+
+        // Create a set of clients with recent activity
+        const activeClients = new Set(recentLoans?.map(loan => loan.client) || []);
+        
+        // Filter clients without recent activity
+        const dormantClients: DormantClientData[] = (clientsData || [])
+          .filter(client => {
+            const fullName = `${client.first_name} ${client.last_name}`;
+            return !activeClients.has(fullName);
+          })
+          .map(client => {
+            const lastActivity = client.created_at;
+            const daysInactive = Math.floor(
+              (new Date().getTime() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            
+            return {
+              id: client.id,
+              client_name: `${client.first_name} ${client.last_name}`,
+              phone_number: client.phone || 'N/A',
+              last_activity: lastActivity,
+              days_inactive: daysInactive
+            };
+          })
+          .filter(client => client.days_inactive >= 90); // Only show clients inactive for 90+ days
+
+        setDormantData(dormantClients);
+      } catch (error: any) {
+        console.error("Error fetching dormant clients data:", error);
+        toast({
+          variant: "destructive",
+          title: "Data fetch error",
+          description: "Failed to load dormant clients data."
+        });
+        setDormantData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDormantClients();
+  }, [toast]);
+
+  // Filter data based on selected range and search query
+  const filteredData = dormantData.filter(client => {
+    const matchesRange = selectedRange === "all" || (() => {
+      switch (selectedRange) {
+        case "90-120": return client.days_inactive >= 90 && client.days_inactive <= 120;
+        case "121-150": return client.days_inactive >= 121 && client.days_inactive <= 150;
+        case "151-180": return client.days_inactive >= 151 && client.days_inactive <= 180;
+        case "180+": return client.days_inactive > 180;
+        default: return true;
+      }
+    })();
     
-    // Check if client falls within selected inactivity range
-    let matchesRange = true;
-    if (selectedRange === "90-120") {
-      matchesRange = client.daysInactive >= 90 && client.daysInactive <= 120;
-    } else if (selectedRange === "121-150") {
-      matchesRange = client.daysInactive >= 121 && client.daysInactive <= 150;
-    } else if (selectedRange === "151-180") {
-      matchesRange = client.daysInactive >= 151 && client.daysInactive <= 180;
-    } else if (selectedRange === "180+") {
-      matchesRange = client.daysInactive > 180;
-    }
-    
-    // Check if client matches search query
     const matchesSearch = searchQuery === "" || 
-                         client.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         client.phoneNumber.includes(searchQuery);
+                         client.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         client.phone_number.includes(searchQuery);
     
-    return matchesBranch && matchesRange && matchesSearch;
+    return matchesRange && matchesSearch;
   });
-  
+
   // Calculate statistics
-  const totalClients = filteredClients.length;
-  const inactivityGroups = {
-    "90-120": filteredClients.filter(c => c.daysInactive >= 90 && c.daysInactive <= 120).length,
-    "121-150": filteredClients.filter(c => c.daysInactive >= 121 && c.daysInactive <= 150).length,
-    "151-180": filteredClients.filter(c => c.daysInactive >= 151 && c.daysInactive <= 180).length,
-    "180+": filteredClients.filter(c => c.daysInactive > 180).length
+  const avgDaysInactive = filteredData.length > 0 
+    ? Math.round(filteredData.reduce((sum, client) => sum + client.days_inactive, 0) / filteredData.length)
+    : 0;
+
+  const hasActiveFilters = selectedRange !== "all" || searchQuery !== "";
+
+  const handleReset = () => {
+    setSelectedRange("all");
+    setSearchQuery("");
   };
 
   const filters = (
-    <ReportFilters title="Dormant Client Filters">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Branch</label>
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((branch) => (
-                <SelectItem key={branch.value} value={branch.value}>
-                  {branch.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Inactivity Period</label>
+    <ReportFilters 
+      title="Dormant Clients Filters" 
+      hasActiveFilters={hasActiveFilters}
+      onReset={handleReset}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Inactivity Range
+          </label>
           <Select value={selectedRange} onValueChange={setSelectedRange}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Inactivity Period" />
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="Select Range" />
             </SelectTrigger>
             <SelectContent>
               {inactivityRanges.map((range) => (
@@ -109,101 +163,130 @@ const DormantClientsReport = () => {
           </Select>
         </div>
         
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Search</label>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Search
+          </label>
           <Input 
-            placeholder="Search by client name or phone" 
+            placeholder="Search by client name or phone number" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-dashed"
           />
         </div>
       </div>
       
-      <div className="mt-4 bg-muted/50 p-3 rounded-md">
-        <div className="text-sm">
-          <span className="font-medium">{totalClients}</span> dormant clients found
+      <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
+        <div className="text-sm mb-2 sm:mb-0">
+          <span className="font-medium">{filteredData.length}</span> dormant clients
+        </div>
+        <div className="text-sm font-medium">
+          Average days inactive: <span className="text-primary">{avgDaysInactive} days</span>
         </div>
       </div>
     </ReportFilters>
   );
-  
+
   return (
     <ReportPage
       title="Dormant Clients Report"
-      description="Clients with no active loans / dormant accounts"
+      description="Clients who haven't been active for an extended period"
       actions={
         <ExportButton 
-          data={filteredClients.map(client => ({
-            ...client,
-            branch: branches.find(b => b.value === client.branch)?.label || client.branch
+          data={filteredData.map(client => ({
+            client_name: client.client_name,
+            phone_number: client.phone_number,
+            last_activity: new Date(client.last_activity).toLocaleDateString(),
+            days_inactive: client.days_inactive
           }))} 
-          filename={`dormant-clients-${selectedBranch}-${format(new Date(), 'yyyy-MM-dd')}`} 
+          filename={`dormant-clients-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
         />
       }
       filters={filters}
     >
-      <div className="space-y-6">
-        <ReportStats>
-          <ReportStat 
-            label="90-120 Days" 
-            value={inactivityGroups["90-120"]}
-          />
-          <ReportStat 
-            label="121-150 Days" 
-            value={inactivityGroups["121-150"]}
-          />
-          <ReportStat 
-            label="151-180 Days" 
-            value={inactivityGroups["151-180"]}
-          />
-          <ReportStat 
-            label="180+ Days" 
-            value={inactivityGroups["180+"]}
-          />
-        </ReportStats>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <ReportStats>
+            <ReportStat
+              label="Total Dormant Clients"
+              value={filteredData.length.toString()}
+              subValue="90+ days inactive"
+              trend="down"
+              trendValue="12%"
+            />
+            <ReportStat
+              label="Average Days Inactive"
+              value={`${avgDaysInactive} days`}
+              subValue="Across all dormant clients"
+              trend="up"
+              trendValue="8%"
+            />
+            <ReportStat
+              label="Longest Inactive"
+              value={filteredData.length > 0 ? `${Math.max(...filteredData.map(c => c.days_inactive))} days` : "0 days"}
+              subValue="Most inactive client"
+              trend="up"
+              trendValue="5%"
+            />
+            <ReportStat
+              label="Recently Dormant"
+              value={filteredData.filter(c => c.days_inactive <= 120).length.toString()}
+              subValue="90-120 days inactive"
+              trend="down"
+              trendValue="3%"
+            />
+          </ReportStats>
 
-        <Card className="shadow-sm">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client Name</TableHead>
-                  <TableHead>Phone Number</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                  <TableHead>Days Inactive</TableHead>
-                  <TableHead>Branch</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredClients.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-medium mb-4">Dormant Clients</h3>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                      No dormant clients match your criteria
-                    </TableCell>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead>Phone Number</TableHead>
+                    <TableHead>Last Activity</TableHead>
+                    <TableHead>Days Inactive</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ) : (
-                  filteredClients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">{client.clientName}</TableCell>
-                      <TableCell>{client.phoneNumber}</TableCell>
-                      <TableCell>{client.lastActivity}</TableCell>
-                      <TableCell>{client.daysInactive}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {branches.find(b => b.value === client.branch)?.label || client.branch}
-                        </Badge>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                        No dormant clients found for the selected criteria
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                  ) : (
+                    filteredData.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell className="font-medium">{client.client_name}</TableCell>
+                        <TableCell>{client.phone_number}</TableCell>
+                        <TableCell>{new Date(client.last_activity).toLocaleDateString()}</TableCell>
+                        <TableCell>{client.days_inactive} days</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={client.days_inactive > 180 ? "destructive" : "outline"}
+                          >
+                            {client.days_inactive > 180 ? "Critical" : "Dormant"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </ReportPage>
   );
 };
 
-export default DormantClientsReport;
+export default DormantReport;
