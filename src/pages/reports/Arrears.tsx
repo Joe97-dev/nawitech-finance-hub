@@ -27,6 +27,8 @@ interface ArrearsData {
   amountOverdue: number;
   lastPaymentDate: string;
   contactInfo: string;
+  phone?: string;
+  email?: string;
   riskCategory: "low" | "medium" | "high" | "critical";
   photoUrl?: string;
 }
@@ -75,7 +77,7 @@ const ArrearsReport = () => {
       try {
         setLoading(true);
         
-        // Fetch loans with overdue payments from loan_schedule
+        // Fetch loans with overdue payments from loan_schedule and join with clients
         const { data: overdueScheduleData, error: scheduleError } = await supabase
           .from('loan_schedule')
           .select(`
@@ -95,6 +97,13 @@ const ArrearsReport = () => {
 
         if (scheduleError) throw scheduleError;
 
+        // Fetch clients data to get contact information
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('first_name, last_name, phone, email');
+
+        if (clientsError) throw clientsError;
+
         // Group by loan and calculate arrears data
         const loanArrearsMap = new Map();
         
@@ -106,6 +115,12 @@ const ArrearsReport = () => {
           if (outstandingAmount > 0) {
             const daysOverdue = Math.floor(
               (new Date().getTime() - new Date(item.due_date).getTime()) / (1000 * 60 * 60 * 24)
+            );
+            
+            // Find client contact info
+            const clientFullName = loan.client;
+            const client = clientsData?.find(c => 
+              `${c.first_name} ${c.last_name}` === clientFullName
             );
             
             if (loanArrearsMap.has(loanId)) {
@@ -128,7 +143,9 @@ const ArrearsReport = () => {
                 daysOverdue,
                 amountOverdue: outstandingAmount,
                 lastPaymentDate: "N/A", // This would need to be fetched from transactions
-                contactInfo: "N/A", // This would need client phone data
+                contactInfo: client ? `${client.phone || 'N/A'} | ${client.email || 'N/A'}` : 'N/A',
+                phone: client?.phone,
+                email: client?.email,
                 riskCategory
               });
             }
@@ -409,7 +426,18 @@ const ArrearsReport = () => {
                               View
                             </button>
                             <span className="text-muted-foreground">|</span>
-                            <button className="text-xs text-primary hover:underline">
+                            <button 
+                              className="text-xs text-primary hover:underline"
+                              onClick={() => {
+                                if (item.phone) {
+                                  window.open(`tel:${item.phone}`, '_self');
+                                } else if (item.email) {
+                                  window.open(`mailto:${item.email}`, '_self');
+                                } else {
+                                  alert('No contact information available');
+                                }
+                              }}
+                            >
                               Contact
                             </button>
                           </div>
