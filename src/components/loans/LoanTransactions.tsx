@@ -143,26 +143,11 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
 
       if (transactionError) throw transactionError;
 
-      // Get current loan balance
-      const { data: loanData, error: loanError } = await supabase
-        .from('loans')
-        .select('balance')
-        .eq('id', loanId)
-        .single();
-
-      if (loanError) throw loanError;
-
-      // Update loan balance
-      const newBalance = Math.max(0, loanData.balance - paymentAmount);
-      const { error: updateError } = await supabase
-        .from('loans')
-        .update({ balance: newBalance })
-        .eq('id', loanId);
-
-      if (updateError) throw updateError;
-
       // Allocate payment to schedule items (oldest unpaid first)
       await allocatePaymentToSchedule(loanId, paymentAmount);
+      
+      // Note: The loan balance will be automatically updated by the database trigger
+      // when we update the loan_schedule amount_paid values
 
       // Reset form
       setPaymentForm({

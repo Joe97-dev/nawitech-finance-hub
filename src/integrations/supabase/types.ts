@@ -420,6 +420,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_outstanding_balance: {
+        Args: { p_loan_id: string }
+        Returns: number
+      }
       generate_loan_number: {
         Args: Record<PropertyKey, never>
         Returns: string

@@ -152,11 +152,22 @@ const NewLoanPage = () => {
       
       // Prepare loan data with pending status
       const amount = parseFloat(loanAmount);
+      const rate = parseFloat(interestRate);
+      const months = parseInt(loanTerm);
+      
+      // Calculate total amount with interest (this will be the initial balance)
+      let totalInterest;
+      if (interestCalculation === "monthly") {
+        totalInterest = (amount * rate / 100) * months;
+      } else {
+        totalInterest = (amount * rate / 100) * (months / 12);
+      }
+      const totalAmountWithInterest = amount + totalInterest;
       
       const loanData = {
         client: clientName,
         amount: amount,
-        balance: amount, // Initially, the balance is the full amount
+        balance: totalAmountWithInterest, // Set initial balance to include interest
         type: loanType,
         status: "pending",
         date: disbursementDate,
