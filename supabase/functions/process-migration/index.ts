@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
       throw new Error(`Job not found: ${jobError?.message}`);
     }
 
+    console.log('Job details:', job);
+
     // Update job status to processing
     await supabase
       .from('migration_jobs')
