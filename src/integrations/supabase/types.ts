@@ -327,6 +327,7 @@ export type Database = {
           created_at: string | null
           date: string
           id: string
+          loan_number: string | null
           status: string
           type: string
           updated_at: string | null
@@ -338,6 +339,7 @@ export type Database = {
           created_at?: string | null
           date?: string
           id?: string
+          loan_number?: string | null
           status: string
           type: string
           updated_at?: string | null
@@ -349,6 +351,7 @@ export type Database = {
           created_at?: string | null
           date?: string
           id?: string
+          loan_number?: string | null
           status?: string
           type?: string
           updated_at?: string | null
@@ -405,6 +408,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_loan_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_role: {
         Args: {
           _user_id: string
