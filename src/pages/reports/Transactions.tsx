@@ -69,40 +69,55 @@ const TransactionsReport = () => {
       try {
         setLoading(true);
         
-        let query = supabase
+        // First, get transactions
+        let transactionQuery = supabase
           .from('loan_transactions')
-          .select(`
-            *,
-            loans!inner(client)
-          `)
+          .select('*')
           .order('transaction_date', { ascending: false });
 
         // Apply date range filter
         if (dateRange?.from) {
-          query = query.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
+          transactionQuery = transactionQuery.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
         }
         if (dateRange?.to) {
-          query = query.lte('transaction_date', dateRange.to.toISOString().split('T')[0]);
+          transactionQuery = transactionQuery.lte('transaction_date', dateRange.to.toISOString().split('T')[0]);
         }
 
         // Apply transaction type filter
         if (selectedType !== "all") {
-          query = query.eq('transaction_type', selectedType);
+          transactionQuery = transactionQuery.eq('transaction_type', selectedType);
         }
 
         // Apply payment method filter
         if (selectedPaymentMethod !== "all") {
-          query = query.eq('payment_method', selectedPaymentMethod);
+          transactionQuery = transactionQuery.eq('payment_method', selectedPaymentMethod);
         }
 
-        const { data, error } = await query;
+        const { data: transactionData, error: transactionError } = await transactionQuery;
         
-        if (error) throw error;
+        if (transactionError) throw transactionError;
+        
+        // Get unique loan IDs from transactions
+        const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
+        
+        // Fetch loan data for client names
+        const { data: loanData, error: loanError } = await supabase
+          .from('loans')
+          .select('id, client')
+          .in('id', loanIds);
+          
+        if (loanError) throw loanError;
+        
+        // Create a map of loan_id to client name
+        const loanClientMap = new Map();
+        loanData?.forEach(loan => {
+          loanClientMap.set(loan.id, loan.client);
+        });
         
         // Transform data to include client name
-        const transformedData: TransactionData[] = (data || []).map(transaction => ({
+        const transformedData: TransactionData[] = (transactionData || []).map(transaction => ({
           ...transaction,
-          client_name: (transaction.loans as any)?.client || 'Unknown Client'
+          client_name: loanClientMap.get(transaction.loan_id) || 'Unknown Client'
         }));
 
         setTransactions(transformedData);
