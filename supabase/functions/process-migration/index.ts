@@ -160,12 +160,21 @@ Deno.serve(async (req) => {
 });
 
 function parseCSV(text: string): ParsedRecord[] {
+  // Check if this is binary data (Excel file) instead of CSV
+  if (text.includes('PK\x03\x04') || text.includes('\x00') || text.includes('xl/')) {
+    throw new Error('Excel files (.xlsx, .xls) are not supported. Please export your data as CSV format and try again.');
+  }
+
   const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) {
+    throw new Error('File appears to be empty or has no data rows. Please check your file format.');
+  }
 
   // Handle different line endings and clean up
   const cleanLines = lines.filter(line => line.trim().length > 0);
-  if (cleanLines.length < 2) return [];
+  if (cleanLines.length < 2) {
+    throw new Error('No valid data rows found after cleaning. Please check your file format.');
+  }
 
   // Parse headers - handle semicolon or comma separation
   let headers = cleanLines[0].includes(';') 
