@@ -484,6 +484,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_user_email: {
+        Args: { user_id_input: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _user_id: string

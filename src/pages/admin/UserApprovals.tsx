@@ -17,6 +17,7 @@ interface UserApproval {
   approved_at?: string;
   rejection_reason?: string;
   created_at: string;
+  email?: string; // Add email field
   profiles?: {
     username?: string;
   } | null;
@@ -30,7 +31,7 @@ const UserApprovals = () => {
 
   const fetchApprovals = async () => {
     try {
-      // Fetch user approvals with user emails from auth.users
+      // Fetch user approvals
       const { data: approvalsData, error: approvalsError } = await supabase
         .from('user_approvals')
         .select('*')
@@ -45,23 +46,40 @@ const UserApprovals = () => {
 
       if (profilesError) throw profilesError;
 
-      // For pending users, we need to get their email from auth.users
-      // since profiles might not exist yet
-      const { data: authUsersData, error: authError } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', approvalsData?.map(a => a.user_id) || []);
+      // Get emails for users who don't have profiles yet (pending users)
+      const approvalsWithEmails = await Promise.all(
+        (approvalsData || []).map(async (approval) => {
+          const profile = profilesData?.find(p => p.id === approval.user_id);
+          
+          // If no profile exists, get email from auth.users via RPC
+          if (!profile) {
+            try {
+              const { data: email } = await supabase.rpc('get_user_email', {
+                user_id_input: approval.user_id
+              });
+              return {
+                ...approval,
+                email,
+                profiles: null
+              };
+            } catch (error) {
+              console.error('Error fetching email for user:', approval.user_id, error);
+              return {
+                ...approval,
+                email: null,
+                profiles: null
+              };
+            }
+          }
+          
+          return {
+            ...approval,
+            profiles: { username: profile.username }
+          };
+        })
+      );
 
-      // Combine the data
-      const combinedData = approvalsData?.map(approval => {
-        const profile = profilesData?.find(p => p.id === approval.user_id);
-        return {
-          ...approval,
-          profiles: profile ? { username: profile.username } : null
-        };
-      }) || [];
-
-      setApprovals(combinedData);
+      setApprovals(approvalsWithEmails);
     } catch (error) {
       console.error('Error fetching approvals:', error);
       toast({
@@ -186,7 +204,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || `User ${approval.user_id.slice(0, 8)}`}
+                          {approval.profiles?.username || approval.email || `User ${approval.user_id.slice(0, 8)}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Registered: {new Date(approval.created_at).toLocaleDateString()}
@@ -268,7 +286,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || 'No username'}
+                          {approval.profiles?.username || approval.email || `User ${approval.user_id.slice(0, 8)}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Processed: {approval.approved_at ? new Date(approval.approved_at).toLocaleDateString() : 'N/A'}
