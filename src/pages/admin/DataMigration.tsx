@@ -42,6 +42,21 @@ export default function DataMigration() {
     schedule_frequency: ""
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [startingMigrations, setStartingMigrations] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchMigrationJobs();
+    
+    // Set up auto-refresh for processing jobs
+    const interval = setInterval(() => {
+      const hasProcessingJobs = jobs.some(job => job.status === 'processing');
+      if (hasProcessingJobs) {
+        fetchMigrationJobs();
+      }
+    }, 3000); // Refresh every 3 seconds if there are processing jobs
+
+    return () => clearInterval(interval);
+  }, [jobs]);
 
   useEffect(() => {
     fetchMigrationJobs();
@@ -179,7 +194,15 @@ export default function DataMigration() {
   };
 
   const startMigration = async (jobId: string) => {
+    // Add to starting migrations set to show loading state
+    setStartingMigrations(prev => new Set(prev).add(jobId));
+    
     try {
+      toast({
+        title: "Starting Migration",
+        description: "Migration process is beginning. Please wait...",
+      });
+
       const { error } = await supabase.functions.invoke('process-migration', {
         body: { jobId }
       });
@@ -187,8 +210,8 @@ export default function DataMigration() {
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Migration started successfully",
+        title: "Migration Started",
+        description: "Migration is now running. The status will update automatically.",
       });
 
       // Refresh jobs list
@@ -196,9 +219,16 @@ export default function DataMigration() {
     } catch (error) {
       console.error("Error starting migration:", error);
       toast({
-        title: "Error",
-        description: "Failed to start migration",
+        title: "Migration Failed",
+        description: error?.message || "Failed to start migration. Please try again.",
         variant: "destructive",
+      });
+    } finally {
+      // Remove from starting migrations set
+      setStartingMigrations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
       });
     }
   };
@@ -396,13 +426,18 @@ export default function DataMigration() {
                                   size="sm" 
                                   variant="outline"
                                   onClick={() => startMigration(job.id)}
+                                  disabled={startingMigrations.has(job.id)}
                                 >
-                                  <Play className="h-4 w-4" />
+                                  {startingMigrations.has(job.id) ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Play className="h-4 w-4" />
+                                  )}
                                 </Button>
                               )}
                               {job.status === 'processing' && (
-                                <Button size="sm" variant="outline">
-                                  <Square className="h-4 w-4" />
+                                <Button size="sm" variant="outline" disabled>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
                                 </Button>
                               )}
                             </div>
