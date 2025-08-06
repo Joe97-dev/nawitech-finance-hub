@@ -54,13 +54,6 @@ const NewLoanPage = () => {
   const [loadingClients, setLoadingClients] = useState(true);
   const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   
-  // Disbursal workflow states
-  const [workflowAction, setWorkflowAction] = useState<"request" | "approve" | "disburse">("request");
-  const [requesterNotes, setRequesterNotes] = useState("");
-  const [approvalNotes, setApprovalNotes] = useState("");
-  const [disbursalNotes, setDisbursalNotes] = useState("");
-  const [disbursalMethod, setDisbursalMethod] = useState<"bank_transfer" | "cash" | "mobile_money" | "cheque">("bank_transfer");
-  const [disbursalReference, setDisbursalReference] = useState("");
   
   // Fetch clients from Supabase
   useEffect(() => {
@@ -145,15 +138,6 @@ const NewLoanPage = () => {
       return;
     }
     
-    // Validate disbursal fields if disbursing
-    if (workflowAction === "disburse" && (!disbursalMethod || !disbursalReference)) {
-      toast({
-        variant: "destructive",
-        title: "Missing disbursal information",
-        description: "Please fill in disbursal method and reference.",
-      });
-      return;
-    }
     
     setIsSubmitting(true);
     
@@ -166,18 +150,15 @@ const NewLoanPage = () => {
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
       
-      // Prepare loan data with status based on workflow action
+      // Prepare loan data with pending status
       const amount = parseFloat(loanAmount);
-      let loanStatus = "pending";
-      if (workflowAction === "approve") loanStatus = "approved";
-      if (workflowAction === "disburse") loanStatus = "active";
       
       const loanData = {
         client: clientName,
         amount: amount,
         balance: amount, // Initially, the balance is the full amount
         type: loanType,
-        status: loanStatus,
+        status: "pending",
         date: disbursementDate
       };
       
@@ -195,16 +176,11 @@ const NewLoanPage = () => {
       // Create loan schedule entries based on repayment frequency
       if (loan) {
         await createLoanSchedule(loan.id);
-        await createDisbursalRequest(loan.id);
       }
       
-      let message = "The loan has been successfully created";
-      if (workflowAction === "approve") message += " and approved";
-      if (workflowAction === "disburse") message += " and disbursed";
-      
       toast({
-        title: "Loan processed",
-        description: message + ".",
+        title: "Loan created",
+        description: "The loan has been successfully created with pending status.",
       });
       
       navigate("/loans");
@@ -220,51 +196,6 @@ const NewLoanPage = () => {
     }
   };
   
-  // Function to create disbursal request
-  const createDisbursalRequest = async (loanId: string) => {
-    try {
-      const amount = parseFloat(loanAmount);
-      const currentUser = (await supabase.auth.getUser()).data.user;
-      
-      if (!currentUser) throw new Error("User not authenticated");
-      
-      const disbursalData: any = {
-        loan_id: loanId,
-        requested_amount: amount,
-        requester_id: currentUser.id,
-        requester_notes: requesterNotes || null,
-        status: "pending_approval"
-      };
-      
-      // If approving or disbursing immediately
-      if (workflowAction === "approve" || workflowAction === "disburse") {
-        disbursalData.status = "approved";
-        disbursalData.approver_id = currentUser.id;
-        disbursalData.approval_date = new Date().toISOString();
-        disbursalData.approval_notes = approvalNotes || null;
-      }
-      
-      // If disbursing immediately
-      if (workflowAction === "disburse") {
-        disbursalData.status = "disbursed";
-        disbursalData.disburser_id = currentUser.id;
-        disbursalData.disbursal_date = new Date().toISOString();
-        disbursalData.disbursal_notes = disbursalNotes || null;
-        disbursalData.actual_amount_disbursed = amount;
-        disbursalData.disbursal_method = disbursalMethod;
-        disbursalData.disbursal_reference = disbursalReference;
-      }
-      
-      const { error } = await supabase
-        .from('loan_disbursal_requests' as any)
-        .insert(disbursalData);
-      
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error creating disbursal request:", error);
-      throw error;
-    }
-  };
 
   // Function to create the loan repayment schedule
   const createLoanSchedule = async (loanId: string) => {
@@ -563,123 +494,14 @@ const NewLoanPage = () => {
               </CardContent>
             </Card>
 
-            {/* Workflow Actions Card */}
-            {(isAdmin || isLoanOfficer) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workflow Action</CardTitle>
-                  <CardDescription>
-                    Choose what action to take with this loan.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Action</Label>
-                    <RadioGroup 
-                      value={workflowAction}
-                      onValueChange={(value: "request" | "approve" | "disburse") => setWorkflowAction(value)}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="request" id="request" />
-                        <Label htmlFor="request">Request Approval</Label>
-                      </div>
-                      {isLoanOfficer && (
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="approve" id="approve" />
-                          <Label htmlFor="approve">Approve & Request Disbursal</Label>
-                        </div>
-                      )}
-                      {isAdmin && (
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="disburse" id="disburse" />
-                          <Label htmlFor="disburse">Approve & Disburse Immediately</Label>
-                        </div>
-                      )}
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Request Notes</Label>
-                    <Textarea 
-                      placeholder="Additional notes for the request" 
-                      value={requesterNotes}
-                      onChange={(e) => setRequesterNotes(e.target.value)}
-                    />
-                  </div>
-
-                  {(workflowAction === "approve" || workflowAction === "disburse") && (
-                    <div className="space-y-2">
-                      <Label>Approval Notes</Label>
-                      <Textarea 
-                        placeholder="Notes for approval" 
-                        value={approvalNotes}
-                        onChange={(e) => setApprovalNotes(e.target.value)}
-                      />
-                    </div>
-                  )}
-
-                  {workflowAction === "disburse" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Disbursal Method</Label>
-                        <Select
-                          value={disbursalMethod}
-                          onValueChange={(value: "bank_transfer" | "cash" | "mobile_money" | "cheque") => setDisbursalMethod(value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select disbursal method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                            <SelectItem value="cash">Cash</SelectItem>
-                            <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                            <SelectItem value="cheque">Cheque</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Disbursal Reference</Label>
-                        <Input 
-                          placeholder="Transaction reference/receipt number" 
-                          value={disbursalReference}
-                          onChange={(e) => setDisbursalReference(e.target.value)}
-                          required={workflowAction === "disburse"}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Disbursal Notes</Label>
-                        <Textarea 
-                          placeholder="Notes for disbursal" 
-                          value={disbursalNotes}
-                          onChange={(e) => setDisbursalNotes(e.target.value)}
-                        />
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Processing..." : 
-                     workflowAction === "request" ? "Create & Request Approval" :
-                     workflowAction === "approve" ? "Create & Approve" : 
-                     "Create & Disburse"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
-
-            {/* Simple create button for data entry users */}
-            {!isAdmin && !isLoanOfficer && (
-              <Card>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating Loan..." : "Create Loan"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
+            {/* Create Loan Button */}
+            <Card>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating Loan..." : "Create Loan"}
+                </Button>
+              </CardFooter>
+            </Card>
             </div>
           </div>
         </form>

@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, FileText, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, CreditCard, FileText, Calendar, Edit } from "lucide-react";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useRole } from "@/context/RoleContext";
 import { format } from "date-fns";
 
 interface LoanData {
@@ -40,6 +42,10 @@ const getStatusClass = (status: string) => {
       return "bg-green-100 text-green-800";
     case "pending":
       return "bg-yellow-100 text-yellow-800";
+    case "rejected":
+      return "bg-red-100 text-red-800";
+    case "postponed":
+      return "bg-blue-100 text-blue-800";
     case "closed":
       return "bg-gray-100 text-gray-800";
     default:
@@ -51,8 +57,10 @@ const LoanDetailPage = () => {
   const { loanId } = useParams<{ loanId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin, isLoanOfficer } = useRole();
   const [loan, setLoan] = useState<LoanData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   
   useEffect(() => {
     const fetchLoanDetails = async () => {
@@ -85,6 +93,35 @@ const LoanDetailPage = () => {
     
     fetchLoanDetails();
   }, [loanId, toast]);
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!loan) return;
+    
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('loans')
+        .update({ status: newStatus })
+        .eq('id', loan.id);
+      
+      if (error) throw error;
+      
+      setLoan({ ...loan, status: newStatus });
+      toast({
+        title: "Status updated",
+        description: `Loan status changed to ${newStatus}.`,
+      });
+    } catch (error: any) {
+      console.error("Error updating loan status:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to update status",
+        description: error.message || "An error occurred."
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
   
   if (loading) {
     return (
@@ -141,9 +178,23 @@ const LoanDetailPage = () => {
             <CardContent className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="font-medium text-lg">{loan.type} Loan</h3>
-                <Badge className={getStatusClass(loan.status)}>
-                  {loan.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusClass(loan.status)}>
+                    {loan.status}
+                  </Badge>
+                  {(isAdmin || isLoanOfficer) && loan.status === "pending" && (
+                    <Select value={loan.status} onValueChange={handleStatusUpdate} disabled={updatingStatus}>
+                      <SelectTrigger className="w-32">
+                        <Edit className="h-4 w-4" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="postponed">Postponed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
               
               <div className="space-y-4">
