@@ -55,11 +55,11 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-nawitech-600">Nawitech</h1>
+          <h1 className="text-3xl font-bold text-superdon-600">Superdon</h1>
           <p className="text-muted-foreground">Microfinance Management System</p>
         </div>
         
-        <Card className="border-nawitech-200 shadow-lg">
+        <Card className="border-superdon-200 shadow-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Welcome</CardTitle>
             <CardDescription className="text-center">
@@ -118,7 +118,7 @@ const Login = () => {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-nawitech-600 hover:bg-nawitech-700" 
+                    className="w-full bg-superdon-600 hover:bg-superdon-700"
                     disabled={loading}
                   >
                     {loading ? (
@@ -181,7 +181,7 @@ const Login = () => {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-nawitech-600 hover:bg-nawitech-700" 
+                    className="w-full bg-superdon-600 hover:bg-superdon-700" 
                     disabled={loading}
                   >
                     {loading ? (
@@ -202,7 +202,7 @@ const Login = () => {
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-center text-sm text-muted-foreground">
-              <span className="hover:text-nawitech-600 cursor-pointer">
+              <span className="hover:text-superdon-600 cursor-pointer">
                 Forgot your password?
               </span>
             </div>
@@ -210,7 +210,7 @@ const Login = () => {
         </Card>
         
         <div className="mt-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Nawitech Microfinance. All rights reserved.
+          &copy; {new Date().getFullYear()} Superdon Microfinance. All rights reserved.
         </div>
       </div>
     </div>

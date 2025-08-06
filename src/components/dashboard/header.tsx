@@ -18,7 +18,7 @@ export function AppHeader() {
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <SidebarTrigger />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">Nawitech Microfinance</h1>
+          <h1 className="text-lg font-semibold">Superdon Microfinance</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export function AppHeader() {
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <SidebarTrigger />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">Nawitech Microfinance</h1>
+          <h1 className="text-lg font-semibold">Superdon Microfinance</h1>
         </div>
       </header>
     );

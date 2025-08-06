@@ -23,7 +23,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   if (loading || !authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 border-4 border-nawitech-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="h-8 w-8 border-4 border-superdon-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

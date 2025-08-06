@@ -156,7 +156,7 @@ export function AppSidebar() {
     return (
       <Sidebar className={`border-r ${collapsed ? "w-14" : "w-64"} transition-all duration-200`}>
         <div className="flex h-16 items-center justify-center border-b">
-          <span className="text-xl font-bold text-nawitech-600">N</span>
+          <span className="text-xl font-bold text-superdon-600">S</span>
         </div>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -172,9 +172,9 @@ export function AppSidebar() {
     >
       <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-6" : ""}`}>
         {collapsed ? (
-          <span className="text-xl font-bold text-nawitech-600">N</span>
+          <span className="text-xl font-bold text-superdon-600">S</span>
         ) : (
-          <span className="text-xl font-bold text-nawitech-600">Nawitech</span>
+          <span className="text-xl font-bold text-superdon-600">Superdon</span>
         )}
       </div>
       <SidebarContent className="p-2">

@@ -16,7 +16,7 @@ export const DashboardLayout = ({ children }: PropsWithChildren) => {
             {children}
           </main>
           <footer className="border-t p-4 text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Nawitech Microfinance. All rights reserved.
+            &copy; {new Date().getFullYear()} Superdon Microfinance. All rights reserved.
           </footer>
         </div>
       </div>

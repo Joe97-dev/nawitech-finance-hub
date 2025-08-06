@@ -167,7 +167,7 @@ const ClientsPage = () => {
                             <AvatarImage src={client.photo_url || undefined} />
                             <AvatarFallback>{`${client.first_name[0]}${client.last_name[0]}`}</AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-nawitech-600">{getFullName(client)}</span>
+                          <span className="font-medium text-superdon-600">{getFullName(client)}</span>
                         </Link>
                       </TableCell>
                       <TableCell>{client.phone}</TableCell>
