@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, User } from "lucide-react";
+import { CheckCircle, XCircle, Clock, User, UserX } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 interface UserApproval {
   id: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'deactivated';
   approved_by?: string;
   approved_at?: string;
   rejection_reason?: string;
@@ -29,6 +29,7 @@ const UserApprovals = () => {
   const [approvals, setApprovals] = useState<UserApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [deactivationReason, setDeactivationReason] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
   const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -149,6 +150,32 @@ const UserApprovals = () => {
     }
   };
 
+  const handleDeactivate = async (userId: string) => {
+    try {
+      const { error } = await supabase.rpc('deactivate_user', {
+        target_user_id: userId,
+        reason: deactivationReason || null
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User access has been removed successfully",
+      });
+
+      setDeactivationReason("");
+      await fetchApprovals();
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove user access",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getRoleDisplayName = (role: string) => {
     switch (role) {
       case 'admin': return 'Admin';
@@ -166,6 +193,8 @@ const UserApprovals = () => {
         return <Badge variant="default" className="gap-1 bg-green-500"><CheckCircle className="h-3 w-3" />Approved</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Rejected</Badge>;
+      case 'deactivated':
+        return <Badge variant="destructive" className="gap-1"><UserX className="h-3 w-3" />Deactivated</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -353,6 +382,44 @@ const UserApprovals = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(approval.status)}
+                      {approval.status === 'approved' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                            >
+                              <UserX className="h-4 w-4 mr-1" />
+                              Remove Access
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove User Access</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove this user's access to the system? This will revoke all their permissions and they will no longer be able to log in. You can optionally provide a reason.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="py-4">
+                              <Textarea
+                                placeholder="Reason for removing access (optional)"
+                                value={deactivationReason}
+                                onChange={(e) => setDeactivationReason(e.target.value)}
+                                className="min-h-[100px]"
+                              />
+                            </div>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeactivate(approval.user_id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Remove Access
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 ))}

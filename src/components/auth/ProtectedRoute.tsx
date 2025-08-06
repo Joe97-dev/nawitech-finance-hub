@@ -40,8 +40,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/pending-approval" replace />;
   }
 
-  // Redirect to rejection page if user is rejected
-  if (approvalStatus === 'rejected') {
+  // Redirect to rejection page if user is rejected or deactivated
+  if (approvalStatus === 'rejected' || approvalStatus === 'deactivated') {
     return <Navigate to="/rejected" replace />;
   }
 

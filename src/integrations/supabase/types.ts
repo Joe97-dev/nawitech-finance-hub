@@ -474,6 +474,10 @@ export type Database = {
         Args: { p_loan_id: string }
         Returns: number
       }
+      deactivate_user: {
+        Args: { target_user_id: string; reason?: string }
+        Returns: undefined
+      }
       generate_loan_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -510,7 +514,7 @@ export type Database = {
       }
     }
     Enums: {
-      approval_status: "pending" | "approved" | "rejected"
+      approval_status: "pending" | "approved" | "rejected" | "deactivated"
       user_role: "admin" | "loan_officer" | "data_entry"
     }
     CompositeTypes: {
@@ -639,7 +643,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      approval_status: ["pending", "approved", "rejected"],
+      approval_status: ["pending", "approved", "rejected", "deactivated"],
       user_role: ["admin", "loan_officer", "data_entry"],
     },
   },
