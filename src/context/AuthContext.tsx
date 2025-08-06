@@ -57,7 +57,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          await checkApprovalStatus(currentSession.user.id);
+          // Use setTimeout to prevent blocking the auth state change
+          setTimeout(() => {
+            checkApprovalStatus(currentSession.user.id);
+          }, 0);
         } else {
           setApprovalStatus(null);
         }
