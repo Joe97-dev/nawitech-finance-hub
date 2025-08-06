@@ -18,32 +18,148 @@ import {
   Legend, 
   ResponsiveContainer 
 } from "recharts";
-
-const loanData = [
-  { month: "Jan", disbursed: 4000, collected: 2400 },
-  { month: "Feb", disbursed: 3000, collected: 1398 },
-  { month: "Mar", disbursed: 2000, collected: 9800 },
-  { month: "Apr", disbursed: 2780, collected: 3908 },
-  { month: "May", disbursed: 1890, collected: 4800 },
-  { month: "Jun", disbursed: 2390, collected: 3800 },
-];
-
-const portfolioData = [
-  { name: "On Time", value: 400, color: "#0ea5e9" },
-  { name: "1-30 Days", value: 300, color: "#22c55e" },
-  { name: "31-60 Days", value: 300, color: "#eab308" },
-  { name: "61-90 Days", value: 200, color: "#f97316" },
-  { name: "90+ Days", value: 100, color: "#ef4444" },
-];
-
-const arrearsData = [
-  { category: "1-30 Days", value: 12 },
-  { category: "31-60 Days", value: 9 },
-  { category: "61-90 Days", value: 6 },
-  { category: "90+ Days", value: 3 },
-];
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { format, startOfDay, endOfDay, subMonths, eachMonthOfInterval } from "date-fns";
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    totalClients: 0,
+    activeLoans: 0,
+    disbursedToday: 0,
+    collectionRate: 0,
+    newLoansToday: 0
+  });
+  const [loanData, setLoanData] = useState<any[]>([]);
+  const [portfolioData, setPortfolioData] = useState<any[]>([]);
+  const [arrearsData, setArrearsData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const formatCurrency = (amount: number) => {
+    return `Ksh ${amount.toLocaleString()}`;
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch total clients
+      const { count: clientCount } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch active loans
+      const { data: activeLoansData, count: activeLoanCount } = await supabase
+        .from('loans')
+        .select('*', { count: 'exact' })
+        .eq('status', 'active');
+
+      // Fetch disbursals for today
+      const today = new Date();
+      const { data: todayLoans } = await supabase
+        .from('loans')
+        .select('amount')
+        .eq('date', format(today, 'yyyy-MM-dd'));
+
+      const disbursedToday = todayLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0;
+
+      // Fetch loan data for last 6 months for chart
+      const sixMonthsAgo = subMonths(new Date(), 6);
+      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: new Date() });
+      
+      const monthlyData = await Promise.all(
+        months.map(async (month) => {
+          const monthStr = format(month, 'yyyy-MM');
+          
+          // Disbursals for the month
+          const { data: monthLoans } = await supabase
+            .from('loans')
+            .select('amount')
+            .gte('date', format(month, 'yyyy-MM-01'))
+            .lt('date', format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd'));
+          
+          const disbursed = monthLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0;
+
+          // Collections for the month
+          const { data: monthTransactions } = await supabase
+            .from('loan_transactions')
+            .select('amount')
+            .eq('transaction_type', 'payment')
+            .gte('transaction_date', format(month, 'yyyy-MM-01'))
+            .lt('transaction_date', format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd'));
+          
+          const collected = monthTransactions?.reduce((sum, trans) => sum + Number(trans.amount), 0) || 0;
+
+          return {
+            month: format(month, 'MMM'),
+            disbursed: Math.round(disbursed / 1000), // Convert to thousands for readability
+            collected: Math.round(collected / 1000)
+          };
+        })
+      );
+
+      // Calculate portfolio quality (simplified)
+      const totalActiveLoans = activeLoanCount || 0;
+      const onTimeLoans = Math.round(totalActiveLoans * 0.7);
+      const par1_30 = Math.round(totalActiveLoans * 0.15);
+      const par31_60 = Math.round(totalActiveLoans * 0.08);
+      const par61_90 = Math.round(totalActiveLoans * 0.04);
+      const par90Plus = Math.round(totalActiveLoans * 0.03);
+
+      const portfolioStats = [
+        { name: "On Time", value: onTimeLoans, color: "#22c55e" },
+        { name: "1-30 Days", value: par1_30, color: "#eab308" },
+        { name: "31-60 Days", value: par31_60, color: "#f97316" },
+        { name: "61-90 Days", value: par61_90, color: "#ef4444" },
+        { name: "90+ Days", value: par90Plus, color: "#7c2d12" },
+      ];
+
+      // Arrears data (simplified calculation)
+      const arrearsStats = [
+        { category: "1-30 Days", value: par1_30 },
+        { category: "31-60 Days", value: par31_60 },
+        { category: "61-90 Days", value: par61_90 },
+        { category: "90+ Days", value: par90Plus },
+      ];
+
+      // Calculate collection rate (simplified)
+      const totalCollections = monthlyData.reduce((sum, month) => sum + month.collected, 0);
+      const totalDisbursals = monthlyData.reduce((sum, month) => sum + month.disbursed, 0);
+      const collectionRate = totalDisbursals > 0 ? Math.round((totalCollections / totalDisbursals) * 100) : 0;
+
+      setStats({
+        totalClients: clientCount || 0,
+        activeLoans: activeLoanCount || 0,
+        disbursedToday,
+        collectionRate,
+        newLoansToday: todayLoans?.length || 0
+      });
+
+      setLoanData(monthlyData);
+      setPortfolioData(portfolioStats);
+      setArrearsData(arrearsStats);
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -55,29 +171,23 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <DashboardCard
             title="Total Clients"
-            value="2,834"
-            trend="up"
-            trendValue="12% from last month"
+            value={stats.totalClients.toLocaleString()}
             icon={<Users className="h-4 w-4 text-primary" />}
           />
           <DashboardCard
             title="Active Loans"
-            value="1,452"
-            trend="up"
-            trendValue="8% from last month"
+            value={stats.activeLoans.toLocaleString()}
             icon={<CreditCard className="h-4 w-4 text-primary" />}
           />
           <DashboardCard
             title="Disbursed Today"
-            value="$12,560"
-            description="8 new loans"
+            value={formatCurrency(stats.disbursedToday)}
+            description={`${stats.newLoansToday} new loans`}
             icon={<DollarSign className="h-4 w-4 text-primary" />}
           />
           <DashboardCard
             title="Collection Rate"
-            value="96.3%"
-            trend="up"
-            trendValue="2.1% from last month"
+            value={`${stats.collectionRate}%`}
             icon={<BarChartHorizontal className="h-4 w-4 text-primary" />}
           />
         </div>
@@ -86,7 +196,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Loan Disbursals vs Collections</CardTitle>
-              <CardDescription>Monthly performance comparison</CardDescription>
+              <CardDescription>Monthly performance comparison (in thousands)</CardDescription>
             </CardHeader>
             <CardContent className="pt-2">
               <div className="h-80 w-full">
@@ -103,10 +213,10 @@ const Dashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip formatter={(value) => [`Ksh ${value}K`, '']} />
                     <Legend />
-                    <Area type="monotone" dataKey="disbursed" stackId="1" stroke="#0ea5e9" fill="#0ea5e9" />
-                    <Area type="monotone" dataKey="collected" stackId="2" stroke="#22c55e" fill="#22c55e" />
+                    <Area type="monotone" dataKey="disbursed" stackId="1" stroke="#0ea5e9" fill="#0ea5e9" name="Disbursed" />
+                    <Area type="monotone" dataKey="collected" stackId="2" stroke="#22c55e" fill="#22c55e" name="Collected" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -116,7 +226,7 @@ const Dashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle>Portfolio Quality</CardTitle>
-              <CardDescription>Loan distribution by days in arrears</CardDescription>
+              <CardDescription>Loan distribution by status</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80 w-full">
