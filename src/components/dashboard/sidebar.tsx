@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Building,
   UserCheck,
+  Database,
 } from "lucide-react";
 import {
   Sidebar,
@@ -238,14 +239,24 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {hasPermission(["admin"]) && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink to="/admin/user-approvals" className={getNavClass}>
-                      <UserCheck className="h-4 w-4" />
-                      {!collapsed && <span>User Approvals</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/user-approvals" className={getNavClass}>
+                        <UserCheck className="h-4 w-4" />
+                        {!collapsed && <span>User Approvals</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/data-migration" className={getNavClass}>
+                        <Database className="h-4 w-4" />
+                        {!collapsed && <span>Data Migration</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

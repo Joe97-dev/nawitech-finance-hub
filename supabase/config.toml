@@ -8,3 +8,6 @@ name = "client_photos"
 public = true
 file_size_limit = "5MB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
+
+[functions.process-migration]
+verify_jwt = true

@@ -378,6 +378,75 @@ export type Database = {
         }
         Relationships: []
       }
+      migration_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          data_type: string
+          error_summary: Json | null
+          failed_records: number | null
+          id: string
+          is_scheduled: boolean
+          job_name: string
+          mapping_config: Json | null
+          processed_records: number | null
+          schedule_frequency: string | null
+          source_file_name: string
+          source_file_path: string
+          started_at: string | null
+          status: string
+          successful_records: number | null
+          total_records: number | null
+          updated_at: string
+          validation_results: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          data_type: string
+          error_summary?: Json | null
+          failed_records?: number | null
+          id?: string
+          is_scheduled?: boolean
+          job_name: string
+          mapping_config?: Json | null
+          processed_records?: number | null
+          schedule_frequency?: string | null
+          source_file_name: string
+          source_file_path: string
+          started_at?: string | null
+          status?: string
+          successful_records?: number | null
+          total_records?: number | null
+          updated_at?: string
+          validation_results?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          data_type?: string
+          error_summary?: Json | null
+          failed_records?: number | null
+          id?: string
+          is_scheduled?: boolean
+          job_name?: string
+          mapping_config?: Json | null
+          processed_records?: number | null
+          schedule_frequency?: string | null
+          source_file_name?: string
+          source_file_path?: string
+          started_at?: string | null
+          status?: string
+          successful_records?: number | null
+          total_records?: number | null
+          updated_at?: string
+          validation_results?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

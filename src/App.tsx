@@ -8,6 +8,7 @@ import Settings from "./pages/Settings";
 import PendingApproval from "./pages/PendingApproval";
 import Rejected from "./pages/Rejected";
 import UserApprovals from "./pages/admin/UserApprovals";
+import DataMigration from "./pages/admin/DataMigration";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
@@ -48,6 +49,7 @@ function App() {
             
             {/* Admin Routes */}
             <Route path="/admin/user-approvals" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
+            <Route path="/admin/data-migration" element={<ProtectedRoute><DataMigration /></ProtectedRoute>} />
 
             {/* Clients */}
             <Route path="/clients" element={<ProtectedRoute><ClientsIndex /></ProtectedRoute>} />
