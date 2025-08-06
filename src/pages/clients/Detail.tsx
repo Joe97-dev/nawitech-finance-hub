@@ -14,9 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText } from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { EditClientDialog } from "@/components/clients/EditClientDialog";
 
 interface Loan {
   id: string;
@@ -30,6 +31,7 @@ interface Loan {
 
 interface Client {
   id: string;
+  client_number?: string;
   first_name: string;
   last_name: string;
   phone: string;
@@ -56,6 +58,7 @@ const ClientDetailPage = () => {
   const { toast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchClientData = async () => {
@@ -149,6 +152,10 @@ const ClientDetailPage = () => {
   const activeLoans = client.loans.filter(loan => loan.status === "active");
   const closedLoans = client.loans.filter(loan => loan.status === "closed");
   const totalLoanAmount = client.loans.reduce((acc, loan) => acc + loan.amount, 0);
+
+  const handleClientUpdated = (updatedClient: Client) => {
+    setClient(prev => prev ? { ...prev, ...updatedClient } : null);
+  };
   
   return (
     <DashboardLayout>
@@ -166,11 +173,20 @@ const ClientDetailPage = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{getFullName()}</h1>
-              <p className="text-muted-foreground">Client ID: {clientId}</p>
+              <div className="flex items-center gap-4 text-muted-foreground">
+                <span>Client ID: {client.client_number || clientId}</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">Edit Client</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setEditDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Client
+            </Button>
             <Button onClick={() => navigate("/loans/new")}>New Loan</Button>
           </div>
         </div>
@@ -386,6 +402,16 @@ const ClientDetailPage = () => {
             </Card>
           </div>
         </div>
+
+        {/* Edit Client Dialog */}
+        {client && (
+          <EditClientDialog
+            client={client}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onClientUpdated={handleClientUpdated}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
