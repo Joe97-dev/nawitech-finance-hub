@@ -89,16 +89,20 @@ Deno.serve(async (req) => {
     // Process records based on data type
     for (let i = 0; i < records.length; i++) {
       try {
+        console.log(`Processing record ${i + 1}/${records.length}`);
         await processRecord(supabase, job.data_type, records[i], job.mapping_config);
         successCount++;
+        console.log(`Successfully processed record ${i + 1}`);
       } catch (error) {
         failCount++;
-        errors.push({
+        const errorDetail = {
           row: i + 1,
           data: records[i],
-          error: error.message
-        });
-        console.error(`Error processing record ${i + 1}:`, error);
+          error: error.message,
+          stack: error.stack
+        };
+        errors.push(errorDetail);
+        console.error(`Error processing record ${i + 1}:`, errorDetail);
       }
 
       // Update progress every 10 records
@@ -230,32 +234,51 @@ async function processClientRecord(supabase: any, record: ParsedRecord, mappingC
   const findField = (possibleNames: string[]) => {
     for (const name of possibleNames) {
       const found = keys.find(key => key.toLowerCase().includes(name.toLowerCase()));
-      if (found && record[found]) return record[found];
+      if (found && record[found] && record[found].trim().length > 0) {
+        return record[found].trim();
+      }
     }
     return null;
+  };
+
+  // Get first non-empty value for name fallback
+  const getFirstNonEmpty = () => {
+    for (const key of keys) {
+      if (record[key] && record[key].trim().length > 0) {
+        return record[key].trim();
+      }
+    }
+    return 'Unknown';
   };
 
   const clientData = {
     first_name: findField(['first', 'fname', 'firstname', 'name']) || 
                record['Client Name']?.split(' ')[0] || 
-               keys[0] ? record[keys[0]] : '', // Use first column if nothing else matches
+               getFirstNonEmpty().split(' ')[0] || 'Unknown',
     last_name: findField(['last', 'lname', 'lastname', 'surname']) || 
               record['Client Name']?.split(' ').slice(1).join(' ') || 
-              keys[1] ? record[keys[1]] : '', // Use second column as fallback
+              getFirstNonEmpty().split(' ').slice(1).join(' ') || '',
     email: findField(['email', 'mail', 'e-mail']),
-    phone: findField(['phone', 'mobile', 'tel', 'telephone', 'contact']),
-    id_number: findField(['id', 'national', 'identity', 'number']),
+    phone: findField(['phone', 'mobile', 'tel', 'telephone', 'contact']) || '',
+    id_number: findField(['id', 'national', 'identity', 'number']) || '',
     gender: findField(['gender', 'sex']),
     address: findField(['address', 'location']),
     city: findField(['city', 'town']),
     region: findField(['region', 'state', 'county']),
     occupation: findField(['occupation', 'job', 'work']),
     employment_status: findField(['employment', 'status']),
-    monthly_income: findField(['income', 'salary', 'earning']) ? 
-                   parseFloat(findField(['income', 'salary', 'earning'])) : null,
+    monthly_income: (() => {
+      const income = findField(['income', 'salary', 'earning']);
+      return income ? parseFloat(income.replace(/[^\d.-]/g, '')) || null : null;
+    })(),
     date_of_birth: findField(['birth', 'dob', 'birthday']),
     registration_date: findField(['registration', 'reg_date']) || new Date().toISOString().split('T')[0]
   };
+
+  // Validate required fields
+  if (!clientData.first_name || !clientData.phone || !clientData.id_number) {
+    throw new Error(`Missing required fields. first_name: ${clientData.first_name}, phone: ${clientData.phone}, id_number: ${clientData.id_number}`);
+  }
 
   console.log('Mapped client data:', clientData);
 
@@ -264,7 +287,8 @@ async function processClientRecord(supabase: any, record: ParsedRecord, mappingC
     .insert(clientData);
 
   if (error) {
-    throw new Error(`Client insert error: ${error.message}`);
+    console.error('Database insert error:', error);
+    throw new Error(`Client insert error: ${error.message} - Data: ${JSON.stringify(clientData)}`);
   }
 }
 
