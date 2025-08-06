@@ -30,7 +30,7 @@ const UserApprovals = () => {
 
   const fetchApprovals = async () => {
     try {
-      // Fetch user approvals
+      // Fetch user approvals with user emails from auth.users
       const { data: approvalsData, error: approvalsError } = await supabase
         .from('user_approvals')
         .select('*')
@@ -44,6 +44,13 @@ const UserApprovals = () => {
         .select('id, username');
 
       if (profilesError) throw profilesError;
+
+      // For pending users, we need to get their email from auth.users
+      // since profiles might not exist yet
+      const { data: authUsersData, error: authError } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', approvalsData?.map(a => a.user_id) || []);
 
       // Combine the data
       const combinedData = approvalsData?.map(approval => {
@@ -179,7 +186,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || 'No username'}
+                          {approval.profiles?.username || `User ${approval.user_id.slice(0, 8)}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Registered: {new Date(approval.created_at).toLocaleDateString()}
