@@ -28,6 +28,7 @@ import IncomeReport from "./pages/reports/Income";
 import ArrearsReport from "./pages/reports/Arrears";
 import DormantReport from "./pages/reports/Dormant";
 import ForecastingReport from "./pages/reports/Forecasting";
+import TransactionsReport from "./pages/reports/Transactions";
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
             <Route path="/reports/arrears" element={<ProtectedRoute><ArrearsReport /></ProtectedRoute>} />
             <Route path="/reports/dormant" element={<ProtectedRoute><DormantReport /></ProtectedRoute>} />
             <Route path="/reports/forecasting" element={<ProtectedRoute><ForecastingReport /></ProtectedRoute>} />
+            <Route path="/reports/transactions" element={<ProtectedRoute><TransactionsReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
