@@ -120,13 +120,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({ email, password });
+      
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error, data } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
       
       if (error) {
         throw error;
       }
+
+      // If the user is immediately confirmed (email confirmation disabled)
+      if (data.user && !data.user.email_confirmed_at) {
+        toast.success("Sign up successful! Please check your email to verify your account.");
+      } else if (data.user) {
+        toast.success("Account created successfully! Pending admin approval.");
+      }
       
-      toast.success("Sign up successful! Please check your email to verify your account.");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
       console.error("Signup error:", error);
