@@ -340,6 +340,7 @@ export type Database = {
           client: string
           created_at: string | null
           date: string
+          draw_down_balance: number
           frequency: string | null
           id: string
           interest_rate: number | null
@@ -355,6 +356,7 @@ export type Database = {
           client: string
           created_at?: string | null
           date?: string
+          draw_down_balance?: number
           frequency?: string | null
           id?: string
           interest_rate?: number | null
@@ -370,6 +372,7 @@ export type Database = {
           client?: string
           created_at?: string | null
           date?: string
+          draw_down_balance?: number
           frequency?: string | null
           id?: string
           interest_rate?: number | null

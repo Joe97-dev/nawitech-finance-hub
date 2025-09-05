@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { DrawDownPayment } from "./DrawDownPayment";
 
 interface Transaction {
   id: string;
@@ -29,10 +30,11 @@ interface Transaction {
 
 interface LoanTransactionsProps {
   loanId: string;
+  drawDownBalance?: number;
   onBalanceUpdate?: () => void;
 }
 
-export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsProps) {
+export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate }: LoanTransactionsProps) {
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,8 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
     switch (type) {
       case "repayment":
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Repayment</Badge>;
+      case "draw_down_payment":
+        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Draw Down</Badge>;
       case "disbursement":
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Disbursement</Badge>;
       case "fee":
@@ -231,6 +235,26 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
         remainingPayment -= allocationAmount;
       }
       
+      // If there's remaining payment after all schedule items are paid, add to draw down account
+      if (remainingPayment > 0) {
+        const { data: currentLoan, error: loanError } = await supabase
+          .from('loans')
+          .select('draw_down_balance')
+          .eq('id', loanId)
+          .single();
+        
+        if (loanError) throw loanError;
+        
+        const newDrawDownBalance = (currentLoan.draw_down_balance || 0) + remainingPayment;
+        
+        const { error: updateLoanError } = await supabase
+          .from('loans')
+          .update({ draw_down_balance: newDrawDownBalance })
+          .eq('id', loanId);
+        
+        if (updateLoanError) throw updateLoanError;
+      }
+      
     } catch (error) {
       console.error('Error allocating payment to schedule:', error);
       throw error;
@@ -250,6 +274,13 @@ export function LoanTransactions({ loanId, onBalanceUpdate }: LoanTransactionsPr
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Transactions</h3>
       </div>
+
+      {/* Draw Down Payment Component */}
+      <DrawDownPayment 
+        loanId={loanId}
+        drawDownBalance={drawDownBalance}
+        onPaymentMade={onBalanceUpdate}
+      />
 
       {/* Payment Form */}
       <Card>

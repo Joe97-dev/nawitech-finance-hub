@@ -26,6 +26,7 @@ interface LoanData {
   date: string;
   created_at: string | null;
   updated_at: string | null;
+  draw_down_balance?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -210,6 +211,12 @@ const LoanDetailPage = () => {
                   <p className="text-2xl font-semibold">{formatCurrency(loan.balance)}</p>
                 </div>
                 
+                <div>
+                  <p className="text-sm text-muted-foreground">Draw Down Account</p>
+                  <p className="text-lg font-semibold text-green-600">{formatCurrency(loan.draw_down_balance || 0)}</p>
+                  <p className="text-xs text-muted-foreground">Available excess funds</p>
+                </div>
+                
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Disbursed Date</span>
@@ -246,6 +253,7 @@ const LoanDetailPage = () => {
                 <TabsContent value="transactions" className="p-4">
                   <LoanTransactions 
                     loanId={loanId || ""} 
+                    drawDownBalance={loan?.draw_down_balance || 0}
                     onBalanceUpdate={() => {
                       // Refetch loan data when payment is made
                       const fetchLoanDetails = async () => {
