@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -535,11 +535,11 @@ export type Database = {
     Functions: {
       approve_user: {
         Args:
-          | { target_user_id: string }
           | {
-              target_user_id: string
               assigned_role?: Database["public"]["Enums"]["user_role"]
+              target_user_id: string
             }
+          | { target_user_id: string }
         Returns: undefined
       }
       calculate_outstanding_balance: {
@@ -547,7 +547,7 @@ export type Database = {
         Returns: number
       }
       deactivate_user: {
-        Args: { target_user_id: string; reason?: string }
+        Args: { reason?: string; target_user_id: string }
         Returns: undefined
       }
       generate_client_number: {
@@ -560,12 +560,12 @@ export type Database = {
       }
       generate_loan_schedule: {
         Args: {
-          p_loan_id: string
           p_amount: number
-          p_interest_rate: number
-          p_term_months: number
           p_frequency: string
+          p_interest_rate: number
+          p_loan_id: string
           p_start_date: string
+          p_term_months: number
         }
         Returns: undefined
       }
@@ -575,13 +575,13 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["user_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       reject_user: {
-        Args: { target_user_id: string; reason?: string }
+        Args: { reason?: string; target_user_id: string }
         Returns: undefined
       }
       update_loan_status: {
