@@ -39,6 +39,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [totalDrawDownBalance, setTotalDrawDownBalance] = useState(0);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     receipt_number: "",
@@ -74,8 +75,24 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       }
     };
 
+    const fetchTotalDrawDownBalance = async () => {
+      try {
+        const { data: loans, error } = await supabase
+          .from('loans')
+          .select('draw_down_balance');
+        
+        if (error) throw error;
+        
+        const total = loans?.reduce((sum, loan) => sum + (loan.draw_down_balance || 0), 0) || 0;
+        setTotalDrawDownBalance(total);
+      } catch (error: any) {
+        console.error('Error fetching total draw down balance:', error);
+      }
+    };
+
     if (loanId) {
       fetchTransactions();
+      fetchTotalDrawDownBalance();
     }
   }, [loanId, toast]);
 
@@ -125,6 +142,16 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       return;
     }
 
+    // Check if using draw down and validate available balance
+    if (paymentForm.payment_method === 'draw_down' && paymentAmount > totalDrawDownBalance) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Amount exceeds available draw down balance"
+      });
+      return;
+    }
+
     setIsProcessingPayment(true);
 
     try {
@@ -132,13 +159,18 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // If using draw down payment method, deduct from draw down balances first
+      if (paymentForm.payment_method === 'draw_down') {
+        await deductFromDrawDownBalance(paymentAmount);
+      }
+
       // Insert the transaction
       const { error: transactionError } = await supabase
         .from('loan_transactions')
         .insert({
           loan_id: loanId,
           amount: paymentAmount,
-          transaction_type: 'repayment',
+          transaction_type: paymentForm.payment_method === 'draw_down' ? 'draw_down_payment' : 'repayment',
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
@@ -261,6 +293,45 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
     }
   };
 
+  const deductFromDrawDownBalance = async (paymentAmount: number) => {
+    try {
+      // Find loans with draw down balance to deduct from
+      const { data: sourceLoans, error: sourceError } = await supabase
+        .from('loans')
+        .select('id, draw_down_balance')
+        .gt('draw_down_balance', 0)
+        .order('draw_down_balance', { ascending: false });
+
+      if (sourceError) throw sourceError;
+
+      let remainingAmount = paymentAmount;
+      
+      // Deduct from loans with draw down balance
+      for (const sourceLoan of sourceLoans || []) {
+        if (remainingAmount <= 0) break;
+        
+        const deductAmount = Math.min(remainingAmount, sourceLoan.draw_down_balance);
+        const newDrawDownBalance = sourceLoan.draw_down_balance - deductAmount;
+        
+        const { error: updateError } = await supabase
+          .from('loans')
+          .update({ draw_down_balance: newDrawDownBalance })
+          .eq('id', sourceLoan.id);
+        
+        if (updateError) throw updateError;
+        
+        remainingAmount -= deductAmount;
+      }
+      
+      // Update total draw down balance
+      setTotalDrawDownBalance(prev => prev - paymentAmount);
+      
+    } catch (error) {
+      console.error('Error deducting from draw down balance:', error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -290,6 +361,13 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
         <CardContent>
           <form onSubmit={handlePayment} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paymentForm.payment_method === 'draw_down' && (
+                <div className="md:col-span-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700">
+                    <strong>Available Draw Down Balance:</strong> {formatCurrency(totalDrawDownBalance)}
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="amount">Payment Amount *</Label>
                 <Input
@@ -299,6 +377,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
                   placeholder="Enter amount"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                  max={paymentForm.payment_method === 'draw_down' ? totalDrawDownBalance : undefined}
                   required
                 />
               </div>
@@ -323,6 +402,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
                     <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                     <SelectItem value="mobile_money">Mobile Money</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="draw_down">Draw Down Account</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
