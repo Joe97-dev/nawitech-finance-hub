@@ -12,12 +12,10 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Download, Loader2, ArrowDown } from "lucide-react";
+import { Plus, Search, Download, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { DrawDownPayment } from "@/components/loans/DrawDownPayment";
 
 interface Loan {
   id: string;
@@ -171,41 +169,6 @@ const LoansPage = () => {
           <Button variant="outline">Filter</Button>
         </div>
         
-        {/* Draw Down Summary */}
-        {loans.some(loan => loan.draw_down_balance > 0) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ArrowDown className="h-5 w-5 text-green-600" />
-                Draw Down Accounts Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4">
-                {loans
-                  .filter(loan => loan.draw_down_balance > 0)
-                  .map(loan => (
-                    <div key={loan.id} className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{loan.loan_number} - {loan.client}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Available: {formatCurrency(loan.draw_down_balance)}
-                          </p>
-                        </div>
-                      </div>
-                      <DrawDownPayment 
-                        loanId={loan.id}
-                        drawDownBalance={loan.draw_down_balance}
-                        onPaymentMade={() => window.location.reload()}
-                      />
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="rounded-md border">
           <Table>
             <TableHeader>

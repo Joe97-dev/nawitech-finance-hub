@@ -13,6 +13,7 @@ import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
+import { GlobalDrawDownPayment } from "@/components/loans/GlobalDrawDownPayment";
 import { format } from "date-fns";
 
 interface LoanData {
@@ -251,6 +252,34 @@ const LoanDetailPage = () => {
                 </TabsContent>
                 
                 <TabsContent value="transactions" className="p-4">
+                  {/* Global Draw Down Component */}
+                  <GlobalDrawDownPayment 
+                    currentLoanId={loan.id}
+                    onPaymentMade={() => {
+                      // Refetch loan data when payment is made
+                      const fetchLoanDetails = async () => {
+                        try {
+                          const { data, error } = await supabase
+                            .from('loans')
+                            .select('*')
+                            .eq('id', loanId)
+                            .single();
+                          
+                          if (error) throw error;
+                          if (data) {
+                            setLoan(data as LoanData);
+                          }
+                        } catch (error: any) {
+                          console.error('Error fetching loan data:', error);
+                        }
+                      };
+                      fetchLoanDetails();
+                      
+                      // Trigger refresh of schedule
+                      setRefreshKey(prev => prev + 1);
+                    }}
+                  />
+
                   <LoanTransactions 
                     loanId={loanId || ""} 
                     drawDownBalance={loan?.draw_down_balance || 0}
