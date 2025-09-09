@@ -47,6 +47,69 @@ export type Database = {
         }
         Relationships: []
       }
+      client_documents: {
+        Row: {
+          client_id: string
+          created_at: string
+          document_name: string
+          document_type: string
+          file_path: string
+          id: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          document_name: string
+          document_type: string
+          file_path: string
+          id?: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          file_path?: string
+          id?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
+      client_referees: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          relationship: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          relationship: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          relationship?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
@@ -62,6 +125,7 @@ export type Database = {
           id: string
           id_number: string
           last_name: string
+          marital_status: string | null
           monthly_income: number | null
           occupation: string | null
           phone: string
@@ -85,6 +149,7 @@ export type Database = {
           id?: string
           id_number: string
           last_name: string
+          marital_status?: string | null
           monthly_income?: number | null
           occupation?: string | null
           phone: string
@@ -108,6 +173,7 @@ export type Database = {
           id?: string
           id_number?: string
           last_name?: string
+          marital_status?: string | null
           monthly_income?: number | null
           occupation?: string | null
           phone?: string

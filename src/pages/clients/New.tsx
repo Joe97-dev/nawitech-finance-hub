@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Image } from "lucide-react";
+import { ArrowLeft, Upload, Image, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,7 +37,16 @@ const NewClientPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [idPhotos, setIdPhotos] = useState<File[]>([]);
+  const [businessPhotos, setBusinessPhotos] = useState<File[]>([]);
+  const [documents, setDocuments] = useState<File[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [referees, setReferees] = useState([
+    { name: "", phone: "", relationship: "" },
+    { name: "", phone: "", relationship: "" },
+    { name: "", phone: "", relationship: "" },
+    { name: "", phone: "", relationship: "" }
+  ]);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -52,7 +61,8 @@ const NewClientPage = () => {
     branch_id: "",
     occupation: "",
     employmentStatus: "",
-    monthlyIncome: ""
+    monthlyIncome: "",
+    maritalStatus: ""
   });
   
   // Fetch branches
@@ -90,6 +100,12 @@ const NewClientPage = () => {
     setFormData({ ...formData, [id]: value });
   };
   
+  const handleRefereeChange = (index: number, field: string, value: string) => {
+    const updatedReferees = [...referees];
+    updatedReferees[index] = { ...updatedReferees[index], [field]: value };
+    setReferees(updatedReferees);
+  };
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -122,6 +138,31 @@ const NewClientPage = () => {
       setPhotoFile(file);
     }
   };
+
+  const handleIdPhotosUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setIdPhotos(prevFiles => [...prevFiles, ...files]);
+  };
+
+  const handleBusinessPhotosUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setBusinessPhotos(prevFiles => [...prevFiles, ...files]);
+  };
+
+  const handleDocumentsUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setDocuments(prevFiles => [...prevFiles, ...files]);
+  };
+
+  const removeFile = (index: number, type: 'id' | 'business' | 'documents') => {
+    if (type === 'id') {
+      setIdPhotos(prev => prev.filter((_, i) => i !== index));
+    } else if (type === 'business') {
+      setBusinessPhotos(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setDocuments(prev => prev.filter((_, i) => i !== index));
+    }
+  };
   
   const uploadPhoto = async (clientId: string): Promise<string | null> => {
     if (!photoFile) return null;
@@ -146,6 +187,56 @@ const NewClientPage = () => {
     } catch (error: any) {
       console.error("Error uploading photo:", error);
       return null;
+    }
+  };
+
+  const uploadFiles = async (files: File[], bucket: string, clientId: string, prefix: string) => {
+    const uploadPromises = files.map(async (file) => {
+      const filePath = `${prefix}/${clientId}/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      return filePath;
+    });
+    
+    return Promise.all(uploadPromises);
+  };
+
+  const saveClientDocuments = async (clientId: string, filePaths: string[], documentType: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+
+    const documentRecords = filePaths.map(filePath => ({
+      client_id: clientId,
+      document_name: filePath.split('/').pop() || 'Unknown',
+      file_path: filePath,
+      document_type: documentType,
+      uploaded_by: user.id
+    }));
+
+    const { error } = await supabase
+      .from('client_documents')
+      .insert(documentRecords);
+    
+    if (error) throw error;
+  };
+
+  const saveReferees = async (clientId: string) => {
+    const validReferees = referees.filter(ref => ref.name && ref.phone && ref.relationship);
+    
+    if (validReferees.length > 0) {
+      const { error } = await supabase
+        .from('client_referees')
+        .insert(validReferees.map(ref => ({
+          client_id: clientId,
+          name: ref.name,
+          phone: ref.phone,
+          relationship: ref.relationship
+        })));
+      
+      if (error) throw error;
     }
   };
   
@@ -179,6 +270,7 @@ const NewClientPage = () => {
         occupation: formData.occupation || null,
         employment_status: formData.employmentStatus || null,
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
+        marital_status: formData.maritalStatus || null,
         photo_url: null, // Will update this after uploading the photo
         status: 'active'
       };
@@ -206,6 +298,45 @@ const NewClientPage = () => {
           if (updateError) {
             console.error("Error updating client photo URL:", updateError);
           }
+        }
+      }
+
+      // Upload ID photos
+      if (idPhotos.length > 0 && newClient) {
+        try {
+          const idPhotoPaths = await uploadFiles(idPhotos, 'client-id-photos', newClient.id, 'id_photos');
+          await saveClientDocuments(newClient.id, idPhotoPaths, 'id_photo');
+        } catch (error) {
+          console.error("Error uploading ID photos:", error);
+        }
+      }
+
+      // Upload business photos
+      if (businessPhotos.length > 0 && newClient) {
+        try {
+          const businessPhotoPaths = await uploadFiles(businessPhotos, 'client-business-photos', newClient.id, 'business_photos');
+          await saveClientDocuments(newClient.id, businessPhotoPaths, 'business_photo');
+        } catch (error) {
+          console.error("Error uploading business photos:", error);
+        }
+      }
+
+      // Upload documents
+      if (documents.length > 0 && newClient) {
+        try {
+          const documentPaths = await uploadFiles(documents, 'client-documents', newClient.id, 'documents');
+          await saveClientDocuments(newClient.id, documentPaths, 'document');
+        } catch (error) {
+          console.error("Error uploading documents:", error);
+        }
+      }
+
+      // Save referees
+      if (newClient) {
+        try {
+          await saveReferees(newClient.id);
+        } catch (error) {
+          console.error("Error saving referees:", error);
         }
       }
       
@@ -367,6 +498,24 @@ const NewClientPage = () => {
                     onChange={handleInputChange}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="maritalStatus">Marital Status</Label>
+                  <Select
+                    value={formData.maritalStatus}
+                    onValueChange={(value) => handleSelectChange('maritalStatus', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select marital status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">Single</SelectItem>
+                      <SelectItem value="married">Married</SelectItem>
+                      <SelectItem value="divorced">Divorced</SelectItem>
+                      <SelectItem value="widowed">Widowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
             
@@ -465,6 +614,182 @@ const NewClientPage = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Document Uploads Section */}
+          <div className="grid gap-6 md:grid-cols-2 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>ID & Business Photos</CardTitle>
+                <CardDescription>
+                  Upload client ID and business photos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="idPhotos">ID Photos</Label>
+                  <div className="border border-dashed rounded-md p-4">
+                    <input
+                      type="file"
+                      id="idPhotos"
+                      accept="image/*"
+                      multiple
+                      onChange={handleIdPhotosUpload}
+                      className="sr-only"
+                    />
+                    <Label htmlFor="idPhotos" className="cursor-pointer flex flex-col items-center">
+                      <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Upload ID photos</p>
+                    </Label>
+                  </div>
+                  {idPhotos.length > 0 && (
+                    <div className="space-y-2">
+                      {idPhotos.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-sm">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index, 'id')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessPhotos">Business Photos</Label>
+                  <div className="border border-dashed rounded-md p-4">
+                    <input
+                      type="file"
+                      id="businessPhotos"
+                      accept="image/*"
+                      multiple
+                      onChange={handleBusinessPhotosUpload}
+                      className="sr-only"
+                    />
+                    <Label htmlFor="businessPhotos" className="cursor-pointer flex flex-col items-center">
+                      <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Upload business photos</p>
+                    </Label>
+                  </div>
+                  {businessPhotos.length > 0 && (
+                    <div className="space-y-2">
+                      {businessPhotos.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-sm">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index, 'business')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>
+                  Upload client documents and files.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="documents">Client Documents</Label>
+                  <div className="border border-dashed rounded-md p-4">
+                    <input
+                      type="file"
+                      id="documents"
+                      multiple
+                      onChange={handleDocumentsUpload}
+                      className="sr-only"
+                    />
+                    <Label htmlFor="documents" className="cursor-pointer flex flex-col items-center">
+                      <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Upload documents</p>
+                      <p className="text-xs text-muted-foreground">Any file type allowed</p>
+                    </Label>
+                  </div>
+                  {documents.length > 0 && (
+                    <div className="space-y-2">
+                      {documents.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-sm">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index, 'documents')}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Referees Section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Referees/Guarantors</CardTitle>
+              <CardDescription>
+                Add up to 4 referees or guarantors for this client.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {referees.map((referee, index) => (
+                <div key={index} className="border rounded-lg p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Referee {index + 1}</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`referee-name-${index}`}>Full Name</Label>
+                      <Input
+                        id={`referee-name-${index}`}
+                        value={referee.name}
+                        onChange={(e) => handleRefereeChange(index, 'name', e.target.value)}
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`referee-phone-${index}`}>Phone Number</Label>
+                      <Input
+                        id={`referee-phone-${index}`}
+                        value={referee.phone}
+                        onChange={(e) => handleRefereeChange(index, 'phone', e.target.value)}
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`referee-relationship-${index}`}>Relationship</Label>
+                      <Input
+                        id={`referee-relationship-${index}`}
+                        value={referee.relationship}
+                        onChange={(e) => handleRefereeChange(index, 'relationship', e.target.value)}
+                        placeholder="e.g., Spouse, Friend, Colleague"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
           
           <CardFooter className="flex justify-end pt-6">
             <Button
