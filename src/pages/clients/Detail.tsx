@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText, Edit } from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText, Edit, Users, Image, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
@@ -27,6 +27,21 @@ interface Loan {
   status: string;
   type: string;
   balance: number;
+}
+
+interface ClientDocument {
+  id: string;
+  document_type: string;
+  document_name: string;
+  file_path: string;
+  created_at: string;
+}
+
+interface ClientReferee {
+  id: string;
+  name: string;
+  phone: string;
+  relationship: string;
 }
 
 interface Client {
@@ -49,7 +64,13 @@ interface Client {
   registration_date: string | null;
   photo_url: string | null;
   employment_status: string | null;
+  marital_status: string | null;
+  id_photo_front_url: string | null;
+  id_photo_back_url: string | null;
+  business_photo_url: string | null;
   loans: Loan[];
+  documents: ClientDocument[];
+  referees: ClientReferee[];
 }
 
 const ClientDetailPage = () => {
@@ -93,11 +114,33 @@ const ClientDetailPage = () => {
           console.error("Error fetching loans:", loansError);
           // Don't throw here, just log the error and continue without loans
         }
+
+        // Fetch client documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('client_documents')
+          .select('*')
+          .eq('client_id', clientId);
+
+        if (documentsError) {
+          console.error("Error fetching documents:", documentsError);
+        }
+
+        // Fetch client referees
+        const { data: refereesData, error: refereesError } = await supabase
+          .from('client_referees')
+          .select('*')
+          .eq('client_id', clientId);
+
+        if (refereesError) {
+          console.error("Error fetching referees:", refereesError);
+        }
         
-        // Combine client data with loans
+        // Combine client data with loans, documents, and referees
         const enrichedClient = {
           ...clientData,
-          loans: loansData || []
+          loans: loansData || [],
+          documents: documentsData || [],
+          referees: refereesData || []
         };
         
         setClient(enrichedClient);
@@ -191,8 +234,8 @@ const ClientDetailPage = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Client Information</CardTitle>
@@ -241,15 +284,20 @@ const ClientDetailPage = () => {
                     <span className="font-medium">{client.date_of_birth || "Not specified"}</span>
                   </div>
                   
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Gender</span>
-                    <span className="font-medium">{client.gender || "Not specified"}</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Registration Date</span>
-                    <span className="font-medium">{client.registration_date || "Not specified"}</span>
-                  </div>
+                   <div className="flex justify-between">
+                     <span className="text-sm text-muted-foreground">Gender</span>
+                     <span className="font-medium">{client.gender || "Not specified"}</span>
+                   </div>
+                   
+                   <div className="flex justify-between">
+                     <span className="text-sm text-muted-foreground">Marital Status</span>
+                     <span className="font-medium">{client.marital_status || "Not specified"}</span>
+                   </div>
+                   
+                   <div className="flex justify-between">
+                     <span className="text-sm text-muted-foreground">Registration Date</span>
+                     <span className="font-medium">{client.registration_date || "Not specified"}</span>
+                   </div>
                 </div>
                 
                 <div className="border-t pt-4 space-y-2">
@@ -264,12 +312,133 @@ const ClientDetailPage = () => {
                       {client.monthly_income ? `KES ${client.monthly_income.toLocaleString()}` : "Not specified"}
                     </span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                 </div>
+               </CardContent>
+             </Card>
+
+             {/* ID and Business Photos */}
+             <Card>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                   <Image className="h-4 w-4" />
+                   Photos
+                 </CardTitle>
+                 <CardDescription>ID and business photos</CardDescription>
+               </CardHeader>
+               <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 gap-4">
+                   {client.id_photo_front_url && (
+                     <div>
+                       <label className="text-sm font-medium">ID Photo (Front)</label>
+                       <img 
+                         src={client.id_photo_front_url} 
+                         alt="ID Front" 
+                         className="w-full h-32 object-cover rounded-md border mt-1"
+                       />
+                     </div>
+                   )}
+                   {client.id_photo_back_url && (
+                     <div>
+                       <label className="text-sm font-medium">ID Photo (Back)</label>
+                       <img 
+                         src={client.id_photo_back_url} 
+                         alt="ID Back" 
+                         className="w-full h-32 object-cover rounded-md border mt-1"
+                       />
+                     </div>
+                   )}
+                   {client.business_photo_url && (
+                     <div>
+                       <label className="text-sm font-medium">Business Photo</label>
+                       <img 
+                         src={client.business_photo_url} 
+                         alt="Business" 
+                         className="w-full h-32 object-cover rounded-md border mt-1"
+                       />
+                     </div>
+                   )}
+                   {!client.id_photo_front_url && !client.id_photo_back_url && !client.business_photo_url && (
+                     <p className="text-sm text-muted-foreground">No photos available</p>
+                   )}
+                 </div>
+               </CardContent>
+             </Card>
+
+             {/* Documents */}
+             <Card>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                   <FileText className="h-4 w-4" />
+                   Documents ({client.documents.length})
+                 </CardTitle>
+                 <CardDescription>Client uploaded documents</CardDescription>
+               </CardHeader>
+               <CardContent>
+                 {client.documents.length > 0 ? (
+                   <div className="space-y-2">
+                     {client.documents.map((doc) => (
+                       <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
+                         <div>
+                           <p className="font-medium text-sm">{doc.document_name}</p>
+                           <p className="text-xs text-muted-foreground">{doc.document_type}</p>
+                         </div>
+                         <Button 
+                           size="sm" 
+                           variant="outline"
+                           onClick={async () => {
+                             const { data } = await supabase.storage
+                               .from('client-documents')
+                               .createSignedUrl(doc.file_path, 3600);
+                             if (data?.signedUrl) {
+                               window.open(data.signedUrl, '_blank');
+                             }
+                           }}
+                         >
+                           <Download className="h-3 w-3" />
+                         </Button>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-sm text-muted-foreground">No documents uploaded</p>
+                 )}
+               </CardContent>
+             </Card>
+
+             {/* Referees */}
+             <Card>
+               <CardHeader>
+                 <CardTitle className="flex items-center gap-2">
+                   <Users className="h-4 w-4" />
+                   Referees ({client.referees.length})
+                 </CardTitle>
+                 <CardDescription>Client references and guarantors</CardDescription>
+               </CardHeader>
+               <CardContent>
+                 {client.referees.length > 0 ? (
+                   <div className="space-y-3">
+                     {client.referees.map((referee) => (
+                       <div key={referee.id} className="p-3 border rounded">
+                         <div className="flex justify-between items-start">
+                           <div>
+                             <p className="font-medium">{referee.name}</p>
+                             <p className="text-sm text-muted-foreground">{referee.relationship}</p>
+                           </div>
+                           <div className="text-right">
+                             <p className="text-sm font-mono">{referee.phone}</p>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <p className="text-sm text-muted-foreground">No referees added</p>
+                 )}
+               </CardContent>
+             </Card>
+           </div>
           
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2">
             <Card className="h-full">
               <CardHeader>
                 <CardTitle>Loan History</CardTitle>
