@@ -114,6 +114,7 @@ export type Database = {
         Row: {
           address: string | null
           branch_id: string | null
+          business_photo_url: string | null
           city: string | null
           client_number: string | null
           created_at: string | null
@@ -124,6 +125,8 @@ export type Database = {
           gender: string | null
           id: string
           id_number: string
+          id_photo_back_url: string | null
+          id_photo_front_url: string | null
           last_name: string
           marital_status: string | null
           monthly_income: number | null
@@ -138,6 +141,7 @@ export type Database = {
         Insert: {
           address?: string | null
           branch_id?: string | null
+          business_photo_url?: string | null
           city?: string | null
           client_number?: string | null
           created_at?: string | null
@@ -148,6 +152,8 @@ export type Database = {
           gender?: string | null
           id?: string
           id_number: string
+          id_photo_back_url?: string | null
+          id_photo_front_url?: string | null
           last_name: string
           marital_status?: string | null
           monthly_income?: number | null
@@ -162,6 +168,7 @@ export type Database = {
         Update: {
           address?: string | null
           branch_id?: string | null
+          business_photo_url?: string | null
           city?: string | null
           client_number?: string | null
           created_at?: string | null
@@ -172,6 +179,8 @@ export type Database = {
           gender?: string | null
           id?: string
           id_number?: string
+          id_photo_back_url?: string | null
+          id_photo_front_url?: string | null
           last_name?: string
           marital_status?: string | null
           monthly_income?: number | null

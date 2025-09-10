@@ -136,8 +136,11 @@ const ClientDetailPage = () => {
         }
         
         // Combine client data with loans, documents, and referees
-        const enrichedClient = {
+        const enrichedClient: Client = {
           ...clientData,
+          id_photo_front_url: clientData.id_photo_front_url || null,
+          id_photo_back_url: clientData.id_photo_back_url || null,
+          business_photo_url: clientData.business_photo_url || null,
           loans: loansData || [],
           documents: documentsData || [],
           referees: refereesData || []
