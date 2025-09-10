@@ -13,13 +13,14 @@ import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
-import { GlobalDrawDownPayment } from "@/components/loans/GlobalDrawDownPayment";
+
 import { format } from "date-fns";
 
 interface LoanData {
   id: string;
   loan_number: string;
   client: string;
+  client_id?: string;
   amount: number;
   balance: number;
   type: string;
@@ -81,7 +82,19 @@ const LoanDetailPage = () => {
         if (error) throw error;
         
         if (data) {
-          setLoan(data as LoanData);
+          // Find the client by matching the name to get client_id
+          const { data: clientData, error: clientError } = await supabase
+            .from('clients')
+            .select('id, first_name, last_name')
+            .or(`first_name.ilike.%${data.client.split(' ')[0]}%,last_name.ilike.%${data.client.split(' ').slice(-1)[0]}%`)
+            .limit(1)
+            .single();
+            
+          const loanData = {
+            ...data,
+            client_id: clientData?.id || '',
+          } as LoanData;
+          setLoan(loanData);
         }
       } catch (error: any) {
         console.error("Error fetching loan details:", error);
@@ -252,36 +265,9 @@ const LoanDetailPage = () => {
                 </TabsContent>
                 
                 <TabsContent value="transactions" className="p-4">
-                  {/* Global Draw Down Component */}
-                  <GlobalDrawDownPayment 
-                    currentLoanId={loan.id}
-                    onPaymentMade={() => {
-                      // Refetch loan data when payment is made
-                      const fetchLoanDetails = async () => {
-                        try {
-                          const { data, error } = await supabase
-                            .from('loans')
-                            .select('*')
-                            .eq('id', loanId)
-                            .single();
-                          
-                          if (error) throw error;
-                          if (data) {
-                            setLoan(data as LoanData);
-                          }
-                        } catch (error: any) {
-                          console.error('Error fetching loan data:', error);
-                        }
-                      };
-                      fetchLoanDetails();
-                      
-                      // Trigger refresh of schedule
-                      setRefreshKey(prev => prev + 1);
-                    }}
-                  />
-
-                  <LoanTransactions 
+                  <LoanTransactions
                     loanId={loanId || ""} 
+                    clientId={loan?.client_id || ""}
                     drawDownBalance={loan?.draw_down_balance || 0}
                     onBalanceUpdate={() => {
                       // Refetch loan data when payment is made
@@ -295,7 +281,18 @@ const LoanDetailPage = () => {
                           
                           if (error) throw error;
                           if (data) {
-                            setLoan(data as LoanData);
+                            const { data: clientData } = await supabase
+                              .from('clients')
+                              .select('id')
+                              .or(`first_name.ilike.%${data.client.split(' ')[0]}%,last_name.ilike.%${data.client.split(' ').slice(-1)[0]}%`)
+                              .limit(1)
+                              .single();
+                              
+                            const loanData = {
+                              ...data,
+                              client_id: clientData?.id || '',
+                            } as LoanData;
+                            setLoan(loanData);
                           }
                         } catch (error: any) {
                           console.error('Error fetching loan data:', error);

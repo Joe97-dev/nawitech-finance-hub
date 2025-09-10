@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
-import { DrawDownPayment } from "./DrawDownPayment";
+import { ClientDrawDownPayment } from "./ClientDrawDownPayment";
 
 interface Transaction {
   id: string;
@@ -30,16 +30,17 @@ interface Transaction {
 
 interface LoanTransactionsProps {
   loanId: string;
+  clientId: string;
   drawDownBalance?: number;
   onBalanceUpdate?: () => void;
 }
 
-export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate }: LoanTransactionsProps) {
+export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBalanceUpdate }: LoanTransactionsProps) {
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [totalDrawDownBalance, setTotalDrawDownBalance] = useState(0);
+  const [clientDrawDownBalance, setClientDrawDownBalance] = useState(0);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     receipt_number: "",
@@ -75,24 +76,26 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       }
     };
 
-    const fetchTotalDrawDownBalance = async () => {
+    const fetchClientDrawDownBalance = async () => {
       try {
-        const { data: loans, error } = await supabase
-          .from('loans')
-          .select('draw_down_balance');
+        const { data: drawDownAccount, error } = await supabase
+          .from('client_draw_down_accounts')
+          .select('balance')
+          .eq('client_id', clientId)
+          .single();
         
-        if (error) throw error;
+        if (error && error.code !== 'PGRST116') throw error;
         
-        const total = loans?.reduce((sum, loan) => sum + (loan.draw_down_balance || 0), 0) || 0;
-        setTotalDrawDownBalance(total);
+        const balance = drawDownAccount?.balance || 0;
+        setClientDrawDownBalance(balance);
       } catch (error: any) {
-        console.error('Error fetching total draw down balance:', error);
+        console.error('Error fetching client draw down balance:', error);
       }
     };
 
-    if (loanId) {
+    if (loanId && clientId) {
       fetchTransactions();
-      fetchTotalDrawDownBalance();
+      fetchClientDrawDownBalance();
     }
   }, [loanId, toast]);
 
@@ -142,12 +145,12 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       return;
     }
 
-    // Check if using draw down and validate available balance
-    if (paymentForm.payment_method === 'draw_down' && paymentAmount > totalDrawDownBalance) {
+    // Check if using client draw down and validate available balance
+    if (paymentForm.payment_method === 'client_draw_down' && paymentAmount > clientDrawDownBalance) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Amount exceeds available draw down balance"
+        description: "Amount exceeds available client draw down balance"
       });
       return;
     }
@@ -159,9 +162,9 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // If using draw down payment method, deduct from draw down balances first
-      if (paymentForm.payment_method === 'draw_down') {
-        await deductFromDrawDownBalance(paymentAmount);
+      // If using client draw down payment method, deduct from client's draw down account
+      if (paymentForm.payment_method === 'client_draw_down') {
+        await deductFromClientDrawDownBalance(paymentAmount);
       }
 
       // Insert the transaction
@@ -170,7 +173,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
         .insert({
           loan_id: loanId,
           amount: paymentAmount,
-          transaction_type: paymentForm.payment_method === 'draw_down' ? 'draw_down_payment' : 'repayment',
+          transaction_type: paymentForm.payment_method === 'client_draw_down' ? 'draw_down_payment' : 'repayment',
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
@@ -267,24 +270,36 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
         remainingPayment -= allocationAmount;
       }
       
-      // If there's remaining payment after all schedule items are paid, add to draw down account
+      // If there's remaining payment after all schedule items are paid, add to client's draw down account
       if (remainingPayment > 0) {
-        const { data: currentLoan, error: loanError } = await supabase
-          .from('loans')
-          .select('draw_down_balance')
-          .eq('id', loanId)
+        const { data: currentDrawDownAccount, error: drawDownError } = await supabase
+          .from('client_draw_down_accounts')
+          .select('balance')
+          .eq('client_id', clientId)
           .single();
         
-        if (loanError) throw loanError;
+        let currentBalance = 0;
+        if (drawDownError && drawDownError.code !== 'PGRST116') {
+          throw drawDownError;
+        } else if (currentDrawDownAccount) {
+          currentBalance = currentDrawDownAccount.balance;
+        }
         
-        const newDrawDownBalance = (currentLoan.draw_down_balance || 0) + remainingPayment;
+        const newDrawDownBalance = currentBalance + remainingPayment;
         
-        const { error: updateLoanError } = await supabase
-          .from('loans')
-          .update({ draw_down_balance: newDrawDownBalance })
-          .eq('id', loanId);
+        const { error: updateDrawDownError } = await supabase
+          .from('client_draw_down_accounts')
+          .upsert({
+            client_id: clientId,
+            balance: newDrawDownBalance
+          }, {
+            onConflict: 'client_id'
+          });
         
-        if (updateLoanError) throw updateLoanError;
+        if (updateDrawDownError) throw updateDrawDownError;
+        
+        // Update local state
+        setClientDrawDownBalance(newDrawDownBalance);
       }
       
     } catch (error) {
@@ -293,41 +308,26 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
     }
   };
 
-  const deductFromDrawDownBalance = async (paymentAmount: number) => {
+  const deductFromClientDrawDownBalance = async (paymentAmount: number) => {
     try {
-      // Find loans with draw down balance to deduct from
-      const { data: sourceLoans, error: sourceError } = await supabase
-        .from('loans')
-        .select('id, draw_down_balance')
-        .gt('draw_down_balance', 0)
-        .order('draw_down_balance', { ascending: false });
-
-      if (sourceError) throw sourceError;
-
-      let remainingAmount = paymentAmount;
+      const newBalance = clientDrawDownBalance - paymentAmount;
       
-      // Deduct from loans with draw down balance
-      for (const sourceLoan of sourceLoans || []) {
-        if (remainingAmount <= 0) break;
-        
-        const deductAmount = Math.min(remainingAmount, sourceLoan.draw_down_balance);
-        const newDrawDownBalance = sourceLoan.draw_down_balance - deductAmount;
-        
-        const { error: updateError } = await supabase
-          .from('loans')
-          .update({ draw_down_balance: newDrawDownBalance })
-          .eq('id', sourceLoan.id);
-        
-        if (updateError) throw updateError;
-        
-        remainingAmount -= deductAmount;
-      }
+      const { error: updateError } = await supabase
+        .from('client_draw_down_accounts')
+        .upsert({
+          client_id: clientId,
+          balance: newBalance
+        }, {
+          onConflict: 'client_id'
+        });
       
-      // Update total draw down balance
-      setTotalDrawDownBalance(prev => prev - paymentAmount);
+      if (updateError) throw updateError;
+      
+      // Update local state
+      setClientDrawDownBalance(newBalance);
       
     } catch (error) {
-      console.error('Error deducting from draw down balance:', error);
+      console.error('Error deducting from client draw down balance:', error);
       throw error;
     }
   };
@@ -346,10 +346,10 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
         <h3 className="text-lg font-semibold">Transactions</h3>
       </div>
 
-      {/* Draw Down Payment Component */}
-      <DrawDownPayment 
-        loanId={loanId}
-        drawDownBalance={drawDownBalance}
+      {/* Client Draw Down Payment Component */}
+      <ClientDrawDownPayment 
+        clientId={clientId}
+        currentLoanId={loanId}
         onPaymentMade={onBalanceUpdate}
       />
 
@@ -361,10 +361,10 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
         <CardContent>
           <form onSubmit={handlePayment} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {paymentForm.payment_method === 'draw_down' && (
+              {paymentForm.payment_method === 'client_draw_down' && (
                 <div className="md:col-span-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-700">
-                    <strong>Available Draw Down Balance:</strong> {formatCurrency(totalDrawDownBalance)}
+                    <strong>Available Client Draw Down Balance:</strong> {formatCurrency(clientDrawDownBalance)}
                   </p>
                 </div>
               )}
@@ -377,7 +377,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
                   placeholder="Enter amount"
                   value={paymentForm.amount}
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
-                  max={paymentForm.payment_method === 'draw_down' ? totalDrawDownBalance : undefined}
+                  max={paymentForm.payment_method === 'client_draw_down' ? clientDrawDownBalance : undefined}
                   required
                 />
               </div>
@@ -402,7 +402,7 @@ export function LoanTransactions({ loanId, drawDownBalance = 0, onBalanceUpdate 
                     <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                     <SelectItem value="mobile_money">Mobile Money</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
-                    <SelectItem value="draw_down">Draw Down Account</SelectItem>
+                    <SelectItem value="client_draw_down">Client Draw Down Account</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

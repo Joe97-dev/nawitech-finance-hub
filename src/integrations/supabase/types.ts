@@ -80,6 +80,38 @@ export type Database = {
         }
         Relationships: []
       }
+      client_draw_down_accounts: {
+        Row: {
+          balance: number
+          client_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_draw_down_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_referees: {
         Row: {
           client_id: string
@@ -646,6 +678,10 @@ export type Database = {
           p_term_months: number
         }
         Returns: undefined
+      }
+      get_or_create_client_draw_down_account: {
+        Args: { p_client_id: string }
+        Returns: string
       }
       get_user_email: {
         Args: { user_id_input: string }
