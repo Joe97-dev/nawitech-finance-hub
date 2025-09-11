@@ -425,10 +425,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          is_reverted: boolean
           loan_id: string
           notes: string | null
           payment_method: string | null
           receipt_number: string | null
+          reversal_reason: string | null
+          reverted_at: string | null
+          reverted_by: string | null
           transaction_date: string
           transaction_type: string
           updated_at: string
@@ -438,10 +442,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_reverted?: boolean
           loan_id: string
           notes?: string | null
           payment_method?: string | null
           receipt_number?: string | null
+          reversal_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
           transaction_date?: string
           transaction_type: string
           updated_at?: string
@@ -451,10 +459,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_reverted?: boolean
           loan_id?: string
           notes?: string | null
           payment_method?: string | null
           receipt_number?: string | null
+          reversal_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
           transaction_date?: string
           transaction_type?: string
           updated_at?: string

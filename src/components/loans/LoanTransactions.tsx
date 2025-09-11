@@ -15,8 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientDrawDownPayment } from "./ClientDrawDownPayment";
+import { RevertPaymentDialog } from "./RevertPaymentDialog";
+import { useRole } from "@/context/RoleContext";
 
 interface Transaction {
   id: string;
@@ -26,6 +29,9 @@ interface Transaction {
   payment_method: string | null;
   receipt_number: string | null;
   notes: string | null;
+  is_reverted?: boolean;
+  reverted_at?: string | null;
+  reversal_reason?: string | null;
 }
 
 interface LoanTransactionsProps {
@@ -37,10 +43,13 @@ interface LoanTransactionsProps {
 
 export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBalanceUpdate }: LoanTransactionsProps) {
   const { toast } = useToast();
+  const { isAdmin, isLoanOfficer } = useRole();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [clientDrawDownBalance, setClientDrawDownBalance] = useState(0);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     receipt_number: "",
@@ -332,6 +341,42 @@ export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBala
     }
   };
 
+  const handleRevertClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setRevertDialogOpen(true);
+  };
+
+  const handlePaymentReverted = () => {
+    // Refresh transactions
+    const fetchTransactions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('loan_transactions')
+          .select('*')
+          .eq('loan_id', loanId)
+          .order('transaction_date', { ascending: false });
+        
+        if (error) throw error;
+        setTransactions((data || []) as Transaction[]);
+      } catch (error: any) {
+        console.error('Error fetching transactions:', error);
+      }
+    };
+
+    fetchTransactions();
+    
+    // Notify parent component to update balance
+    if (onBalanceUpdate) {
+      onBalanceUpdate();
+    }
+  };
+
+  const canRevertTransaction = (transaction: Transaction) => {
+    return (isAdmin || isLoanOfficer) && 
+           !transaction.is_reverted && 
+           (transaction.transaction_type === 'repayment' || transaction.transaction_type === 'draw_down_payment');
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
@@ -433,26 +478,36 @@ export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBala
               <TableHead>Payment Method</TableHead>
               <TableHead>Receipt #</TableHead>
               <TableHead>Notes</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {transactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                   No transactions available
                 </TableCell>
               </TableRow>
             ) : (
               transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
+                <TableRow key={transaction.id} className={transaction.is_reverted ? "bg-red-50" : ""}>
                   <TableCell>
                     {new Date(transaction.transaction_date).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {getTransactionBadge(transaction.transaction_type)}
+                    <div className="flex items-center gap-2">
+                      {getTransactionBadge(transaction.transaction_type)}
+                      {transaction.is_reverted && (
+                        <Badge variant="destructive" className="text-xs">
+                          Reverted
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(transaction.amount)}
+                    <span className={transaction.is_reverted ? "line-through text-muted-foreground" : ""}>
+                      {formatCurrency(transaction.amount)}
+                    </span>
                   </TableCell>
                   <TableCell>
                     {transaction.payment_method || "—"}
@@ -461,7 +516,29 @@ export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBala
                     {transaction.receipt_number || "—"}
                   </TableCell>
                   <TableCell>
-                    {transaction.notes || "—"}
+                    <div className="space-y-1">
+                      <div>{transaction.notes || "—"}</div>
+                      {transaction.is_reverted && transaction.reversal_reason && (
+                        <div className="text-xs text-red-600">
+                          <strong>Reversal reason:</strong> {transaction.reversal_reason}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {canRevertTransaction(transaction) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevertClick(transaction)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Revert
+                      </Button>
+                    ) : (
+                      "—"
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -469,6 +546,15 @@ export function LoanTransactions({ loanId, clientId, drawDownBalance = 0, onBala
           </TableBody>
         </Table>
       </div>
+
+      <RevertPaymentDialog
+        transaction={selectedTransaction}
+        open={revertDialogOpen}
+        onOpenChange={setRevertDialogOpen}
+        onReverted={handlePaymentReverted}
+        loanId={loanId}
+        clientId={clientId}
+      />
     </div>
   );
 }
