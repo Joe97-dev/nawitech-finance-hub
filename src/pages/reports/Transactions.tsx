@@ -34,6 +34,8 @@ const transactionTypes = [
   { value: "repayment", label: "Repayments" },
   { value: "disbursement", label: "Disbursements" },
   { value: "fee", label: "Fees" },
+  { value: "draw_down_payment", label: "Draw Down Payments" },
+  { value: "draw_down_deposit", label: "Draw Down Deposits" },
 ];
 
 const paymentMethods = [
@@ -42,6 +44,7 @@ const paymentMethods = [
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "mobile_money", label: "Mobile Money" },
   { value: "cheque", label: "Cheque" },
+  { value: "client_draw_down", label: "Client Draw Down" },
 ];
 
 const columns = [
@@ -178,6 +181,10 @@ const TransactionsReport = () => {
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Disbursement</Badge>;
       case "fee":
         return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Fee</Badge>;
+      case "draw_down_payment":
+        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Draw Down Payment</Badge>;
+      case "draw_down_deposit":
+        return <Badge variant="outline" className="bg-cyan-50 text-cyan-700 border-cyan-200">Draw Down Deposit</Badge>;
       default:
         return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">{type}</Badge>;
     }
