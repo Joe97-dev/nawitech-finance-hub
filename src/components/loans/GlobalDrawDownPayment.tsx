@@ -45,18 +45,24 @@ export const GlobalDrawDownPayment: React.FC<GlobalDrawDownPaymentProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get total draw down balance across all loans
+        // Get total balance from global draw down account
+        const { data: globalAccount, error: globalError } = await supabase
+          .from('global_draw_down_account')
+          .select('total_balance')
+          .single();
+
+        if (globalError) throw globalError;
+
+        setTotalDrawDownBalance(globalAccount?.total_balance || 0);
+
+        // Get available loans for selection
         const { data: loans, error: loansError } = await supabase
           .from('loans')
-          .select('id, loan_number, client, balance, draw_down_balance')
+          .select('id, loan_number, client, balance')
           .gt('balance', 0); // Only loans with outstanding balance
 
         if (loansError) throw loansError;
 
-        const totalBalance = loans?.reduce((sum, loan) => sum + (loan.draw_down_balance || 0), 0) || 0;
-        setTotalDrawDownBalance(totalBalance);
-
-        // Set available loans for selection
         const loansList: Loan[] = (loans || []).map(loan => ({
           id: loan.id,
           loan_number: loan.loan_number,
@@ -110,33 +116,22 @@ export const GlobalDrawDownPayment: React.FC<GlobalDrawDownPaymentProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Find loans with draw down balance to deduct from
-      const { data: sourceLoans, error: sourceError } = await supabase
-        .from('loans')
-        .select('id, draw_down_balance')
-        .gt('draw_down_balance', 0)
-        .order('draw_down_balance', { ascending: false });
+      // Update global draw down account balance
+      const { data: globalAccount, error: globalAccountError } = await supabase
+        .from('global_draw_down_account')
+        .select('total_balance')
+        .single();
 
-      if (sourceError) throw sourceError;
+      if (globalAccountError) throw globalAccountError;
 
-      let remainingAmount = paymentAmount;
+      const newGlobalBalance = globalAccount.total_balance - paymentAmount;
       
-      // Deduct from loans with draw down balance
-      for (const sourceLoan of sourceLoans || []) {
-        if (remainingAmount <= 0) break;
-        
-        const deductAmount = Math.min(remainingAmount, sourceLoan.draw_down_balance);
-        const newDrawDownBalance = sourceLoan.draw_down_balance - deductAmount;
-        
-        const { error: updateError } = await supabase
-          .from('loans')
-          .update({ draw_down_balance: newDrawDownBalance })
-          .eq('id', sourceLoan.id);
-        
-        if (updateError) throw updateError;
-        
-        remainingAmount -= deductAmount;
-      }
+      const { error: updateGlobalError } = await supabase
+        .from('global_draw_down_account')
+        .update({ total_balance: newGlobalBalance })
+        .single();
+
+      if (updateGlobalError) throw updateGlobalError;
 
       // Create transaction record for the target loan
       const { error: transactionError } = await supabase
@@ -160,14 +155,14 @@ export const GlobalDrawDownPayment: React.FC<GlobalDrawDownPaymentProps> = ({
       setAmount("");
       setNotes("");
       
-      // Refresh data
-      const { data: updatedLoans, error: refreshError } = await supabase
-        .from('loans')
-        .select('draw_down_balance');
+      // Refresh global balance
+      const { data: refreshedGlobal, error: refreshError } = await supabase
+        .from('global_draw_down_account')
+        .select('total_balance')
+        .single();
       
       if (!refreshError) {
-        const newTotal = updatedLoans?.reduce((sum, loan) => sum + (loan.draw_down_balance || 0), 0) || 0;
-        setTotalDrawDownBalance(newTotal);
+        setTotalDrawDownBalance(refreshedGlobal?.total_balance || 0);
       }
 
       toast({

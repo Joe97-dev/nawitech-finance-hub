@@ -234,6 +234,27 @@ export type Database = {
           },
         ]
       }
+      global_draw_down_account: {
+        Row: {
+          created_at: string
+          id: string
+          total_balance: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          total_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          total_balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       loan_documents: {
         Row: {
           created_at: string
@@ -651,6 +672,10 @@ export type Database = {
             }
           | { target_user_id: string }
         Returns: undefined
+      }
+      calculate_global_draw_down_balance: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       calculate_outstanding_balance: {
         Args: { p_loan_id: string }
