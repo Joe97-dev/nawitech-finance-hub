@@ -159,8 +159,9 @@ export function RevertPaymentDialog({
         amountToReverse -= reverseAmount;
       }
       
-      // If amount was taken from client draw down account, restore it
+      // Restore draw down account balances based on payment method
       if (paymentMethod === 'client_draw_down' || transactionType === 'draw_down_payment') {
+        // Restore client draw down account
         const { data: currentDrawDownAccount, error: drawDownError } = await supabase
           .from('client_draw_down_accounts')
           .select('balance')
@@ -186,6 +187,22 @@ export function RevertPaymentDialog({
           });
         
         if (updateDrawDownError) throw updateDrawDownError;
+      } else if (paymentMethod === 'global_draw_down' || transactionType === 'global_draw_down_payment') {
+        // Restore global draw down account
+        const { data: currentGlobalAccount, error: globalError } = await supabase
+          .from('global_draw_down_account')
+          .select('total_balance')
+          .single();
+        
+        if (globalError) throw globalError;
+        
+        const newGlobalBalance = (currentGlobalAccount?.total_balance || 0) + amount;
+        
+        const { error: updateGlobalError } = await supabase
+          .from('global_draw_down_account')
+          .update({ total_balance: newGlobalBalance });
+        
+        if (updateGlobalError) throw updateGlobalError;
       }
       
     } catch (error) {
