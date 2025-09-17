@@ -18,6 +18,7 @@ import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText, Edit, U
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
+import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
 
 interface Loan {
   id: string;
@@ -238,6 +239,17 @@ const ClientDetailPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <PostClientFeeDialog 
+              clientId={clientId || ""} 
+              clientName={getFullName()}
+              onFeePosted={() => {
+                // Optionally refresh client data or show confirmation
+                toast({
+                  title: "Fee recorded",
+                  description: "The client fee has been recorded and will appear in transaction reports.",
+                });
+              }}
+            />
             <Button 
               variant="outline" 
               onClick={() => setEditDialogOpen(true)}

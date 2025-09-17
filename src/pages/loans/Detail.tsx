@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, CreditCard, FileText, Calendar, Edit } from "lucide-react";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
+import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
@@ -265,6 +266,16 @@ const LoanDetailPage = () => {
                 </TabsContent>
                 
                 <TabsContent value="transactions" className="p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Transaction History</h3>
+                    <PostFeeDialog 
+                      loanId={loanId || ""} 
+                      onFeePosted={() => {
+                        // Trigger refresh when fee is posted
+                        setRefreshKey(prev => prev + 1);
+                      }}
+                    />
+                  </div>
                   <LoanTransactions
                     loanId={loanId || ""} 
                     clientId={loan?.client_id || ""}

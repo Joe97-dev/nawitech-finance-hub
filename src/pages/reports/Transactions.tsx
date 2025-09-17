@@ -33,7 +33,8 @@ const transactionTypes = [
   { value: "all", label: "All Types" },
   { value: "repayment", label: "Repayments" },
   { value: "disbursement", label: "Disbursements" },
-  { value: "fee", label: "Fees" },
+  { value: "fee", label: "Loan Fees" },
+  { value: "client_fee", label: "Client Fees" },
   { value: "draw_down_payment", label: "Draw Down Payments" },
   { value: "draw_down_deposit", label: "Draw Down Deposits" },
 ];
@@ -170,7 +171,7 @@ const TransactionsReport = () => {
     .filter(t => t.transaction_type === 'disbursement')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
   const feeAmount = filteredData
-    .filter(t => t.transaction_type === 'fee')
+    .filter(t => t.transaction_type === 'fee' || t.transaction_type === 'client_fee')
     .reduce((sum, transaction) => sum + transaction.amount, 0);
 
   const getTransactionBadge = (type: string) => {
@@ -180,7 +181,9 @@ const TransactionsReport = () => {
       case "disbursement":
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Disbursement</Badge>;
       case "fee":
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Fee</Badge>;
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Loan Fee</Badge>;
+      case "client_fee":
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Client Fee</Badge>;
       case "draw_down_payment":
         return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Draw Down Payment</Badge>;
       case "draw_down_deposit":
