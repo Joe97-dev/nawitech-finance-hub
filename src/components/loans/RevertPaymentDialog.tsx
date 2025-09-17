@@ -160,7 +160,25 @@ export function RevertPaymentDialog({
       }
       
       // Restore draw down account balances based on payment method
-      if (paymentMethod === 'client_draw_down' || transactionType === 'draw_down_payment') {
+      if (transactionType === 'draw_down_payment' || paymentMethod === 'draw_down') {
+        // Restore loan's own draw down balance
+        const { data: currentLoan, error: loanError } = await supabase
+          .from('loans')
+          .select('draw_down_balance')
+          .eq('id', loanId)
+          .single();
+        
+        if (loanError) throw loanError;
+        
+        const newDrawDownBalance = (currentLoan?.draw_down_balance || 0) + amount;
+        
+        const { error: updateLoanError } = await supabase
+          .from('loans')
+          .update({ draw_down_balance: newDrawDownBalance })
+          .eq('id', loanId);
+        
+        if (updateLoanError) throw updateLoanError;
+      } else if (paymentMethod === 'client_draw_down' || transactionType === 'client_draw_down_payment') {
         // Restore client draw down account
         const { data: currentDrawDownAccount, error: drawDownError } = await supabase
           .from('client_draw_down_accounts')
