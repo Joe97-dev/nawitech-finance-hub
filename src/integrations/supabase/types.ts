@@ -80,38 +80,6 @@ export type Database = {
         }
         Relationships: []
       }
-      client_draw_down_accounts: {
-        Row: {
-          balance: number
-          client_id: string
-          created_at: string
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          balance?: number
-          client_id: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-        }
-        Update: {
-          balance?: number
-          client_id?: string
-          created_at?: string
-          id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_draw_down_accounts_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: true
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       client_referees: {
         Row: {
           client_id: string
@@ -233,27 +201,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      global_draw_down_account: {
-        Row: {
-          created_at: string
-          id: string
-          total_balance: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          total_balance?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          total_balance?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       loan_documents: {
         Row: {
@@ -480,7 +427,6 @@ export type Database = {
           client: string
           created_at: string | null
           date: string
-          draw_down_balance: number
           frequency: string | null
           id: string
           interest_rate: number | null
@@ -496,7 +442,6 @@ export type Database = {
           client: string
           created_at?: string | null
           date?: string
-          draw_down_balance?: number
           frequency?: string | null
           id?: string
           interest_rate?: number | null
@@ -512,7 +457,6 @@ export type Database = {
           client?: string
           created_at?: string | null
           date?: string
-          draw_down_balance?: number
           frequency?: string | null
           id?: string
           interest_rate?: number | null
@@ -685,10 +629,6 @@ export type Database = {
           | { target_user_id: string }
         Returns: undefined
       }
-      calculate_global_draw_down_balance: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
       calculate_outstanding_balance: {
         Args: { p_loan_id: string }
         Returns: number
@@ -715,10 +655,6 @@ export type Database = {
           p_term_months: number
         }
         Returns: undefined
-      }
-      get_or_create_client_draw_down_account: {
-        Args: { p_client_id: string }
-        Returns: string
       }
       get_user_email: {
         Args: { user_id_input: string }

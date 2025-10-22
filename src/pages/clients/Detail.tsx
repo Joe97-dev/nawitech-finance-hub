@@ -49,7 +49,6 @@ interface Client {
   id: string;
   client_number?: string;
   first_name: string;
-  draw_down_balance?: number;
   last_name: string;
   phone: string;
   email: string | null;
@@ -136,25 +135,13 @@ const ClientDetailPage = () => {
         if (refereesError) {
           console.error("Error fetching referees:", refereesError);
         }
-
-        // Fetch client draw down balance
-        const { data: drawDownData, error: drawDownError } = await supabase
-          .from('client_draw_down_accounts')
-          .select('balance')
-          .eq('client_id', clientId)
-          .single();
-
-        if (drawDownError && drawDownError.code !== 'PGRST116') {
-          console.error("Error fetching draw down balance:", drawDownError);
-        }
         
-        // Combine client data with loans, documents, referees, and draw down balance
+        // Combine client data with loans, documents, and referees
         const enrichedClient: Client = {
           ...clientData,
           id_photo_front_url: clientData.id_photo_front_url || null,
           id_photo_back_url: clientData.id_photo_back_url || null,
           business_photo_url: clientData.business_photo_url || null,
-          draw_down_balance: drawDownData?.balance || 0,
           loans: loansData || [],
           documents: documentsData || [],
           referees: refereesData || []
@@ -338,13 +325,6 @@ const ClientDetailPage = () => {
                     <span className="text-sm text-muted-foreground">Monthly Income</span>
                     <span className="font-medium">
                       {client.monthly_income ? `KES ${client.monthly_income.toLocaleString()}` : "Not specified"}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Draw Down Balance</span>
-                    <span className="font-medium text-green-600">
-                      KES {(client.draw_down_balance || 0).toLocaleString()}
                     </span>
                   </div>
                  </div>
