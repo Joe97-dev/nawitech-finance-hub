@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
+import { ClientAccount } from "@/components/clients/ClientAccount";
 
 interface Loan {
   id: string;
@@ -523,29 +524,36 @@ const ClientDetailPage = () => {
              </Card>
            </div>
           
-          <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Loan History</CardTitle>
-                <CardDescription>
-                  {client.loans.length > 0 
-                    ? `${client.loans.length} loans, total value: KES ${totalLoanAmount.toLocaleString()}`
-                    : "No loans found for this client"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="active" className="h-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="active">
-                      Active Loans ({activeLoans.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="closed">
-                      Closed Loans ({closedLoans.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="all">
-                      All Loans ({client.loans.length})
-                    </TabsTrigger>
-                  </TabsList>
+           <div className="lg:col-span-2">
+             <Card className="h-full">
+               <CardHeader>
+                 <CardTitle>Client Details</CardTitle>
+                 <CardDescription>Loans and account information</CardDescription>
+               </CardHeader>
+               <CardContent>
+                 <Tabs defaultValue="loans" className="h-full">
+                   <TabsList className="grid w-full grid-cols-2">
+                     <TabsTrigger value="loans">
+                       Loans ({client.loans.length})
+                     </TabsTrigger>
+                     <TabsTrigger value="account">
+                       Client Account
+                     </TabsTrigger>
+                   </TabsList>
+                   
+                   <TabsContent value="loans">
+                     <Tabs defaultValue="active" className="h-full">
+                       <TabsList className="grid w-full grid-cols-3">
+                         <TabsTrigger value="active">
+                           Active Loans ({activeLoans.length})
+                         </TabsTrigger>
+                         <TabsTrigger value="closed">
+                           Closed Loans ({closedLoans.length})
+                         </TabsTrigger>
+                         <TabsTrigger value="all">
+                           All Loans ({client.loans.length})
+                         </TabsTrigger>
+                       </TabsList>
                   
                   <TabsContent value="active" className="h-full">
                     {activeLoans.length > 0 ? (
@@ -651,11 +659,17 @@ const ClientDetailPage = () => {
                       </div>
                     )}
                   </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                     </Tabs>
+                   </TabsContent>
+                   
+                   <TabsContent value="account">
+                     <ClientAccount clientId={clientId || ""} />
+                   </TabsContent>
+                 </Tabs>
+               </CardContent>
+             </Card>
+           </div>
+         </div>
 
         {/* Edit Client Dialog */}
         {client && (

@@ -241,8 +241,84 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         remainingPayment -= allocationAmount;
       }
       
+      // If there's remaining payment after allocating to all schedule items, deposit to client account
+      if (remainingPayment > 0) {
+        await depositToClientAccount(clientId, remainingPayment, loanId);
+      }
+      
     } catch (error) {
       console.error('Error allocating payment to schedule:', error);
+      throw error;
+    }
+  };
+
+  const depositToClientAccount = async (clientId: string, amount: number, loanId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Get or create client account
+      let accountId: string;
+      const { data: accountData, error: accountError } = await supabase
+        .from('client_accounts')
+        .select('id, balance')
+        .eq('client_id', clientId)
+        .maybeSingle();
+
+      if (accountError) throw accountError;
+
+      if (!accountData) {
+        const { data: newAccount, error: createError } = await supabase
+          .from('client_accounts')
+          .insert({ client_id: clientId, balance: 0 })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        accountId = newAccount.id;
+        
+        // Create transaction
+        const { error: transactionError } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: accountId,
+            amount: amount,
+            transaction_type: 'deposit',
+            related_loan_id: loanId,
+            notes: 'Excess payment deposited to client account',
+            created_by: user.id,
+            previous_balance: 0,
+            new_balance: amount
+          });
+
+        if (transactionError) throw transactionError;
+      } else {
+        accountId = accountData.id;
+        const previousBalance = accountData.balance;
+        
+        // Create transaction
+        const { error: transactionError } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: accountId,
+            amount: amount,
+            transaction_type: 'deposit',
+            related_loan_id: loanId,
+            notes: 'Excess payment deposited to client account',
+            created_by: user.id,
+            previous_balance: previousBalance,
+            new_balance: previousBalance + amount
+          });
+
+        if (transactionError) throw transactionError;
+      }
+
+      toast({
+        title: "Excess Payment",
+        description: `${formatCurrency(amount)} deposited to client account`
+      });
+    } catch (error: any) {
+      console.error('Error depositing to client account:', error);
       throw error;
     }
   };

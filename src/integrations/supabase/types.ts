@@ -47,6 +47,102 @@ export type Database = {
         }
         Relationships: []
       }
+      client_account_transactions: {
+        Row: {
+          amount: number
+          client_account_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          new_balance: number
+          notes: string | null
+          previous_balance: number
+          related_loan_id: string | null
+          related_transaction_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          client_account_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_balance: number
+          notes?: string | null
+          previous_balance: number
+          related_loan_id?: string | null
+          related_transaction_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          client_account_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_balance?: number
+          notes?: string | null
+          previous_balance?: number
+          related_loan_id?: string | null
+          related_transaction_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_account_transactions_client_account_id_fkey"
+            columns: ["client_account_id"]
+            isOneToOne: false
+            referencedRelation: "client_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_account_transactions_related_loan_id_fkey"
+            columns: ["related_loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_account_transactions_related_transaction_id_fkey"
+            columns: ["related_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "loan_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_accounts: {
+        Row: {
+          balance: number
+          client_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          client_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_documents: {
         Row: {
           client_id: string
