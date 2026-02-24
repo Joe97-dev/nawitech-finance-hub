@@ -11,3 +11,9 @@ allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "imag
 
 [functions.process-migration]
 verify_jwt = true
+
+[functions.mpesa-stk-push]
+verify_jwt = false
+
+[functions.mpesa-callback]
+verify_jwt = false
