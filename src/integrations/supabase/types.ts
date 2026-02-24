@@ -716,15 +716,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      approve_user: {
-        Args:
-          | {
+      approve_user:
+        | { Args: { target_user_id: string }; Returns: undefined }
+        | {
+            Args: {
               assigned_role?: Database["public"]["Enums"]["user_role"]
               target_user_id: string
             }
-          | { target_user_id: string }
-        Returns: undefined
-      }
+            Returns: undefined
+          }
       calculate_outstanding_balance: {
         Args: { p_loan_id: string }
         Returns: number
@@ -733,14 +733,8 @@ export type Database = {
         Args: { reason?: string; target_user_id: string }
         Returns: undefined
       }
-      generate_client_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_loan_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_client_number: { Args: never; Returns: string }
+      generate_loan_number: { Args: never; Returns: string }
       generate_loan_schedule: {
         Args: {
           p_amount: number
@@ -752,10 +746,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      get_user_email: {
-        Args: { user_id_input: string }
-        Returns: string
-      }
+      get_user_email: { Args: { user_id_input: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
@@ -767,10 +758,7 @@ export type Database = {
         Args: { reason?: string; target_user_id: string }
         Returns: undefined
       }
-      update_loan_status: {
-        Args: { p_loan_id: string }
-        Returns: undefined
-      }
+      update_loan_status: { Args: { p_loan_id: string }; Returns: undefined }
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected" | "deactivated"
