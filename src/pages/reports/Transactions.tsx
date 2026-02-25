@@ -73,69 +73,120 @@ const TransactionsReport = () => {
     const fetchTransactions = async () => {
       try {
         setLoading(true);
-        
-        // First, get transactions
-        let transactionQuery = supabase
-          .from('loan_transactions')
-          .select('*')
-          .order('transaction_date', { ascending: false });
 
-        // Apply date range filter
-        if (dateRange?.from) {
-          transactionQuery = transactionQuery.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
-        }
+        const allTransactions: TransactionData[] = [];
+        
+        // Build date bounds
+        const fromDate = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
+        let toDateISO: string | undefined;
         if (dateRange?.to) {
-          // Use end of day to include all transactions on the 'to' date
           const endOfDay = new Date(dateRange.to);
           endOfDay.setHours(23, 59, 59, 999);
-          transactionQuery = transactionQuery.lte('transaction_date', endOfDay.toISOString());
+          toDateISO = endOfDay.toISOString();
         }
 
-        // Apply transaction type filter
-        if (selectedType !== "all") {
-          transactionQuery = transactionQuery.eq('transaction_type', selectedType);
-        }
+        // Fetch loan_transactions (repayments, fees, draw downs, etc.)
+        const shouldFetchLoanTransactions = selectedType === "all" || selectedType !== "disbursement";
+        
+        if (shouldFetchLoanTransactions) {
+          let transactionQuery = supabase
+            .from('loan_transactions')
+            .select('*')
+            .order('transaction_date', { ascending: false });
 
-        // Apply payment method filter
-        if (selectedPaymentMethod !== "all") {
-          transactionQuery = transactionQuery.eq('payment_method', selectedPaymentMethod);
-        }
+          if (fromDate) {
+            transactionQuery = transactionQuery.gte('transaction_date', fromDate);
+          }
+          if (toDateISO) {
+            transactionQuery = transactionQuery.lte('transaction_date', toDateISO);
+          }
 
-        const { data: transactionData, error: transactionError } = await transactionQuery;
-        
-        if (transactionError) throw transactionError;
-        
-        // Get unique loan IDs from transactions
-        const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
-        
-        // Fetch loan data for client names and loan numbers
-        const { data: loanData, error: loanError } = await supabase
-          .from('loans')
-          .select('id, client, loan_number')
-          .in('id', loanIds);
+          // Apply transaction type filter (skip for 'all' and 'disbursement')
+          if (selectedType !== "all" && selectedType !== "disbursement") {
+            transactionQuery = transactionQuery.eq('transaction_type', selectedType);
+          }
+
+          if (selectedPaymentMethod !== "all") {
+            transactionQuery = transactionQuery.eq('payment_method', selectedPaymentMethod);
+          }
+
+          const { data: transactionData, error: transactionError } = await transactionQuery;
+          if (transactionError) throw transactionError;
+
+          // Get loan info for these transactions
+          const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
           
-        if (loanError) throw loanError;
-        
-        // Create a map of loan_id to loan info
-        const loanInfoMap = new Map();
-        loanData?.forEach(loan => {
-          loanInfoMap.set(loan.id, {
-            client: loan.client,
-            loan_number: loan.loan_number || 'N/A'
-          });
-        });
-        
-        // Transform data to include client name and loan number
-        const transformedData: TransactionData[] = (transactionData || []).map(transaction => {
-          const loanInfo = loanInfoMap.get(transaction.loan_id);
-          return {
-            ...transaction,
-            client_name: loanInfo?.client || 'Unknown Client',
-            loan_number: loanInfo?.loan_number || 'N/A'
-          };
-        });
+          if (loanIds.length > 0) {
+            const { data: loanData, error: loanError } = await supabase
+              .from('loans')
+              .select('id, client, loan_number')
+              .in('id', loanIds);
+            if (loanError) throw loanError;
 
-        setTransactions(transformedData);
+            const loanInfoMap = new Map();
+            loanData?.forEach(loan => {
+              loanInfoMap.set(loan.id, {
+                client: loan.client,
+                loan_number: loan.loan_number || 'N/A'
+              });
+            });
+
+            (transactionData || []).forEach(transaction => {
+              const loanInfo = loanInfoMap.get(transaction.loan_id);
+              allTransactions.push({
+                ...transaction,
+                client_name: loanInfo?.client || 'Unknown Client',
+                loan_number: loanInfo?.loan_number || 'N/A'
+              });
+            });
+          }
+        }
+
+        // Fetch disbursements from loans table
+        const shouldFetchDisbursements = selectedType === "all" || selectedType === "disbursement";
+        
+        if (shouldFetchDisbursements) {
+          let loansQuery = supabase
+            .from('loans')
+            .select('id, client, loan_number, amount, date, created_at');
+
+          if (fromDate) {
+            loansQuery = loansQuery.gte('date', fromDate);
+          }
+          if (dateRange?.to) {
+            loansQuery = loansQuery.lte('date', dateRange.to.toISOString().split('T')[0]);
+          }
+
+          // Skip disbursements if filtering by payment method (they don't have one)
+          if (selectedPaymentMethod === "all") {
+            const { data: loansData, error: loansError } = await loansQuery;
+            if (loansError) throw loansError;
+
+            (loansData || []).forEach(loan => {
+              allTransactions.push({
+                id: `disb-${loan.id}`,
+                loan_id: loan.id,
+                loan_number: loan.loan_number || 'N/A',
+                client_name: loan.client || 'Unknown Client',
+                amount: loan.amount,
+                transaction_date: loan.created_at || loan.date,
+                transaction_type: 'disbursement',
+                payment_method: null,
+                receipt_number: null,
+                notes: 'Loan disbursement',
+                created_by: '',
+                created_at: loan.created_at || loan.date,
+              });
+            });
+          }
+        }
+
+        // Sort all by date descending
+        allTransactions.sort((a, b) => 
+          new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
+        );
+
+        setTransactions(allTransactions);
       } catch (error: any) {
         console.error("Error fetching transactions:", error);
         toast({
