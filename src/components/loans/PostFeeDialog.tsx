@@ -79,6 +79,9 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { error } = await supabase
         .from("loan_transactions")
         .insert({
@@ -88,6 +91,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
+          created_by: user?.id || null,
         });
 
       if (error) throw error;
