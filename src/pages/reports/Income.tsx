@@ -41,7 +41,7 @@ const IncomeReport = () => {
         let query = supabase
           .from('loan_transactions')
           .select('transaction_date, transaction_type, amount')
-          .in('transaction_type', ['fee', 'interest', 'penalty'])
+          .in('transaction_type', ['fee', 'interest', 'penalty', 'client_fee'])
           .order('transaction_date', { ascending: true });
 
         // Apply date range filter if provided
@@ -49,7 +49,9 @@ const IncomeReport = () => {
           query = query.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
         }
         if (dateRange?.to) {
-          query = query.lte('transaction_date', dateRange.to.toISOString().split('T')[0]);
+          const endOfDay = new Date(dateRange.to);
+          endOfDay.setHours(23, 59, 59, 999);
+          query = query.lte('transaction_date', endOfDay.toISOString());
         } else {
           // Default to last 12 months if no date range
           const oneYearAgo = new Date();
@@ -87,6 +89,7 @@ const IncomeReport = () => {
               monthData.interest_income += transaction.amount;
               break;
             case 'fee':
+            case 'client_fee':
               monthData.fee_income += transaction.amount;
               break;
             case 'penalty':

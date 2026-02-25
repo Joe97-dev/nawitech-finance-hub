@@ -85,7 +85,10 @@ const TransactionsReport = () => {
           transactionQuery = transactionQuery.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
         }
         if (dateRange?.to) {
-          transactionQuery = transactionQuery.lte('transaction_date', dateRange.to.toISOString().split('T')[0]);
+          // Use end of day to include all transactions on the 'to' date
+          const endOfDay = new Date(dateRange.to);
+          endOfDay.setHours(23, 59, 59, 999);
+          transactionQuery = transactionQuery.lte('transaction_date', endOfDay.toISOString());
         }
 
         // Apply transaction type filter
