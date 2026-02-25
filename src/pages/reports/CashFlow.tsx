@@ -55,7 +55,7 @@ const CashFlowReport = () => {
         const { data: transactions, error: transactionsError } = await supabase
           .from('loan_transactions')
           .select('amount, transaction_date')
-          .eq('transaction_type', 'payment')
+          .eq('transaction_type', 'repayment')
           .gte('transaction_date', startDate.toISOString())
           .lte('transaction_date', endDate.toISOString());
 
