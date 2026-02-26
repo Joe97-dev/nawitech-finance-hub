@@ -76,14 +76,19 @@ const TransactionsReport = () => {
 
         const allTransactions: TransactionData[] = [];
         
-        // Build date bounds
-        const fromDate = dateRange?.from ? dateRange.from.toISOString().split('T')[0] : undefined;
-        let toDateISO: string | undefined;
-        if (dateRange?.to) {
-          const endOfDay = new Date(dateRange.to);
-          endOfDay.setHours(23, 59, 59, 999);
-          toDateISO = endOfDay.toISOString();
-        }
+        // Helper to format date as YYYY-MM-DD in local time
+        const formatLocal = (date: Date) => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        };
+
+        // Build date bounds in local time
+        const fromDate = dateRange?.from ? formatLocal(dateRange.from) : undefined;
+        const toDate = dateRange?.to ? formatLocal(dateRange.to) : undefined;
+        // End-of-day timestamp for timestamp columns
+        const toDateEndOfDay = toDate ? `${toDate}T23:59:59.999` : undefined;
 
         // Fetch loan_transactions (repayments, fees, draw downs, etc.)
         const shouldFetchLoanTransactions = selectedType === "all" || selectedType !== "disbursement";
@@ -97,8 +102,8 @@ const TransactionsReport = () => {
           if (fromDate) {
             transactionQuery = transactionQuery.gte('transaction_date', fromDate);
           }
-          if (toDateISO) {
-            transactionQuery = transactionQuery.lte('transaction_date', toDateISO);
+          if (toDateEndOfDay) {
+            transactionQuery = transactionQuery.lte('transaction_date', toDateEndOfDay);
           }
 
           // Apply transaction type filter (skip for 'all' and 'disbursement')
@@ -153,8 +158,8 @@ const TransactionsReport = () => {
           if (fromDate) {
             loansQuery = loansQuery.gte('date', fromDate);
           }
-          if (dateRange?.to) {
-            loansQuery = loansQuery.lte('date', dateRange.to.toISOString().split('T')[0]);
+          if (toDate) {
+            loansQuery = loansQuery.lte('date', toDate);
           }
 
           // Skip disbursements if filtering by payment method (they don't have one)
