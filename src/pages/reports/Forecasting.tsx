@@ -59,15 +59,25 @@ const ForecastingReport = () => {
               amount
             )
           `)
-          .gte('due_date', new Date().toISOString().split('T')[0])
+          .gte('due_date', (() => {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })())
           .order('due_date', { ascending: true });
+
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
 
         // Apply date range filter if provided
         if (dateRange?.from) {
-          query = query.gte('due_date', dateRange.from.toISOString().split('T')[0]);
+          query = query.gte('due_date', formatLocal(dateRange.from));
         }
         if (dateRange?.to) {
-          query = query.lte('due_date', dateRange.to.toISOString().split('T')[0]);
+          query = query.lte('due_date', formatLocal(dateRange.to));
         }
 
         const { data, error } = await query;

@@ -92,7 +92,7 @@ const ArrearsReport = () => {
               amount
             )
           `)
-          .lt('due_date', new Date().toISOString().split('T')[0])
+          .lt('due_date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })())
           .neq('status', 'paid');
 
         if (scheduleError) throw scheduleError;
