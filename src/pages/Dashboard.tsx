@@ -2,6 +2,7 @@
 import { CreditCard, DollarSign, Users, BarChartHorizontal } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { DashboardCard } from "@/components/ui/dashboard-card";
+import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   AreaChart, 
@@ -163,9 +164,12 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your microfinance operation.</p>
+         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">Overview of your microfinance operation.</p>
+          </div>
+          <DashboardSearch />
         </div>
         
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
