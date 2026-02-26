@@ -75,20 +75,31 @@ const CollectionRateReport = () => {
         const startDate = date?.from || new Date(parseInt(selectedYear), 0, 1);
         const endDate = date?.to || new Date(parseInt(selectedYear), 11, 31);
         
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+        
+        const fromStr = formatLocal(startDate);
+        const toStr = formatLocal(endDate);
+        const toEndOfDay = `${toStr}T23:59:59.999`;
+        
         // Get expected amounts from loan schedule
         let scheduleQuery = supabase
           .from('loan_schedule')
           .select('total_due, due_date, amount_paid')
-          .gte('due_date', startDate.toISOString().split('T')[0])
-          .lte('due_date', endDate.toISOString().split('T')[0]);
+          .gte('due_date', fromStr)
+          .lte('due_date', toStr);
 
         // Get actual payments from transactions
         let transactionQuery = supabase
           .from('loan_transactions')
           .select('amount, transaction_date')
-          .eq('transaction_type', 'payment')
-          .gte('transaction_date', startDate.toISOString())
-          .lte('transaction_date', endDate.toISOString());
+          .eq('transaction_type', 'repayment')
+          .gte('transaction_date', fromStr)
+          .lte('transaction_date', toEndOfDay);
 
         const [scheduleResult, transactionResult] = await Promise.all([
           scheduleQuery,

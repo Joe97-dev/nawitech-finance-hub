@@ -63,12 +63,19 @@ const LoanPerformanceReport = () => {
             status
           `);
 
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
         // Apply date filter if provided
         if (dateRange?.from) {
-          loansQuery = loansQuery.gte('date', dateRange.from.toISOString().split('T')[0]);
+          loansQuery = loansQuery.gte('date', formatLocal(dateRange.from));
         }
         if (dateRange?.to) {
-          loansQuery = loansQuery.lte('date', dateRange.to.toISOString().split('T')[0]);
+          loansQuery = loansQuery.lte('date', formatLocal(dateRange.to));
         }
 
         const { data: loans, error: loansError } = await loansQuery;

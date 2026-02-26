@@ -44,19 +44,25 @@ const IncomeReport = () => {
           .in('transaction_type', ['fee', 'interest', 'penalty', 'client_fee'])
           .order('transaction_date', { ascending: true });
 
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
         // Apply date range filter if provided
         if (dateRange?.from) {
-          query = query.gte('transaction_date', dateRange.from.toISOString().split('T')[0]);
+          query = query.gte('transaction_date', formatLocal(dateRange.from));
         }
         if (dateRange?.to) {
-          const endOfDay = new Date(dateRange.to);
-          endOfDay.setHours(23, 59, 59, 999);
-          query = query.lte('transaction_date', endOfDay.toISOString());
+          const toEndOfDay = `${formatLocal(dateRange.to)}T23:59:59.999`;
+          query = query.lte('transaction_date', toEndOfDay);
         } else {
           // Default to last 12 months if no date range
           const oneYearAgo = new Date();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          query = query.gte('transaction_date', oneYearAgo.toISOString().split('T')[0]);
+          query = query.gte('transaction_date', formatLocal(oneYearAgo));
         }
 
         const { data, error } = await query;

@@ -43,11 +43,22 @@ const CashFlowReport = () => {
         const startDate = dateRange?.from || new Date(parseInt(selectedYear), 0, 1);
         const endDate = dateRange?.to || new Date(parseInt(selectedYear), 11, 31);
         
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+        
+        const fromStr = formatLocal(startDate);
+        const toStr = formatLocal(endDate);
+        const toEndOfDay = `${toStr}T23:59:59.999`;
+        
         const { data: disbursements, error: disbursementsError } = await supabase
           .from('loans')
           .select('amount, date')
-          .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', endDate.toISOString().split('T')[0]);
+          .gte('date', fromStr)
+          .lte('date', toStr);
 
         if (disbursementsError) throw disbursementsError;
 
@@ -56,8 +67,8 @@ const CashFlowReport = () => {
           .from('loan_transactions')
           .select('amount, transaction_date')
           .eq('transaction_type', 'repayment')
-          .gte('transaction_date', startDate.toISOString())
-          .lte('transaction_date', endDate.toISOString());
+          .gte('transaction_date', fromStr)
+          .lte('transaction_date', toEndOfDay);
 
         if (transactionsError) throw transactionsError;
 

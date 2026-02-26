@@ -61,7 +61,7 @@ const DormantClientsReport = () => {
         const { data: recentLoans, error: loansError } = await supabase
           .from('loans')
           .select('client, date')
-          .gte('date', threeMonthsAgo.toISOString().split('T')[0]);
+          .gte('date', `${threeMonthsAgo.getFullYear()}-${String(threeMonthsAgo.getMonth() + 1).padStart(2, '0')}-${String(threeMonthsAgo.getDate()).padStart(2, '0')}`);
           
         if (loansError) throw loansError;
 
