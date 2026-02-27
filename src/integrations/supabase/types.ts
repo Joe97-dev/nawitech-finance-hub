@@ -520,6 +520,7 @@ export type Database = {
         Row: {
           amount: number
           balance: number
+          business_address: string | null
           client: string
           created_at: string | null
           date: string
@@ -535,6 +536,7 @@ export type Database = {
         Insert: {
           amount: number
           balance: number
+          business_address?: string | null
           client: string
           created_at?: string | null
           date?: string
@@ -550,6 +552,7 @@ export type Database = {
         Update: {
           amount?: number
           balance?: number
+          business_address?: string | null
           client?: string
           created_at?: string | null
           date?: string

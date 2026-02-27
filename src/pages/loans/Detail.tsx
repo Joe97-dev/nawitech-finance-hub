@@ -29,6 +29,7 @@ interface LoanData {
   date: string;
   created_at: string | null;
   updated_at: string | null;
+  business_address: string | null;
 }
 
 const formatCurrency = (amount: number) => {
@@ -235,6 +236,13 @@ const LoanDetailPage = () => {
                     <span className="text-sm text-muted-foreground">Created</span>
                     <span className="font-medium">{loan.created_at ? format(new Date(loan.created_at), "PPP") : "—"}</span>
                   </div>
+                  
+                  {loan.business_address && (
+                    <div className="pt-2">
+                      <span className="text-sm text-muted-foreground">Business Address</span>
+                      <p className="font-medium mt-1">{loan.business_address}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
