@@ -98,7 +98,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
           .insert({
             client: clientName,
             type: "client_fee_account",
-            status: "active",
+            status: "fee_account",
             amount: 0,
             balance: 0,
             date: new Date().toISOString().split('T')[0],

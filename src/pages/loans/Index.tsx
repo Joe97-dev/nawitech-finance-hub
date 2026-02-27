@@ -64,6 +64,7 @@ const LoansPage = () => {
         const { data, error } = await supabase
           .from('loans')
           .select('*')
+          .neq('type', 'client_fee_account')
           .order('date', { ascending: false });
           
         if (error) throw error;

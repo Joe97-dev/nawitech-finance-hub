@@ -197,8 +197,8 @@ const ClientDetailPage = () => {
     return parts.length > 0 ? parts.join(', ') : 'Not specified';
   };
   
-  const activeLoans = client.loans.filter(loan => loan.status === "active");
-  const closedLoans = client.loans.filter(loan => loan.status === "closed");
+   const activeLoans = client.loans.filter(loan => loan.status === "active" || loan.status === "in arrears");
+   const closedLoans = client.loans.filter(loan => loan.status === "closed");
   const totalLoanAmount = client.loans.reduce((acc, loan) => acc + loan.amount, 0);
 
   const handleClientUpdated = (updatedClient: Client) => {
