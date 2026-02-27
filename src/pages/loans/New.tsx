@@ -167,13 +167,14 @@ const NewLoanPage = () => {
       const loanData = {
         client: clientName,
         amount: amount,
-        balance: totalAmountWithInterest, // Set initial balance to include interest
+        balance: totalAmountWithInterest,
         type: loanType,
         status: "pending",
         date: disbursementDate,
         frequency: repaymentFrequency,
         term_months: parseInt(loanTerm),
-        interest_rate: parseFloat(interestRate)
+        interest_rate: parseFloat(interestRate),
+        business_address: purpose || null,
       };
       
       console.log("Creating loan with data:", loanData);
