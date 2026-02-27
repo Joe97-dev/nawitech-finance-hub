@@ -399,9 +399,10 @@ const NewLoanPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>Purpose of Loan</Label>
-                    <Input 
-                      placeholder="Brief description of loan purpose" 
+                    <Label>Business Address</Label>
+                    <Textarea 
+                      placeholder="Enter the client's business address and description"
+                      className="min-h-[100px] resize-y"
                       value={purpose}
                       onChange={(e) => setPurpose(e.target.value)}
                     />
