@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ImportClientsDialog } from "@/components/clients/ImportClientsDialog";
 
 interface Client {
   id: string;
@@ -39,41 +40,33 @@ const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
   const { toast } = useToast();
   
-  // Fetch clients from Supabase
-  useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('clients')
-          .select('*');
-        
-        if (error) {
-          throw error;
-        }
-        
-        // Ensure all client data is formatted correctly
-        if (data) {
-          console.log("Fetched clients:", data);
-        }
-        
-        setClients(data || []);
-      } catch (error: any) {
-        console.error("Error fetching clients:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load clients",
-          description: error.message || "There was an error loading the client list."
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClients();
+  const fetchClients = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*');
+      
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error: any) {
+      console.error("Error fetching clients:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load clients",
+        description: error.message || "There was an error loading the client list."
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
   
   const filteredClients = clients.filter(client => 
     client.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -100,7 +93,7 @@ const ClientsPage = () => {
             <p className="text-muted-foreground">Manage your client database.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
               <FileUp className="h-4 w-4 mr-2" />
               Import
             </Button>
@@ -197,6 +190,12 @@ const ClientsPage = () => {
           </div>
         )}
       </div>
+
+      <ImportClientsDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImportComplete={fetchClients}
+      />
     </DashboardLayout>
   );
 };
