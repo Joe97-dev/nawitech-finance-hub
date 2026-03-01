@@ -272,7 +272,7 @@ const NewClientPage = () => {
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
         marital_status: formData.maritalStatus || null,
         photo_url: null, // Will update this after uploading the photo
-        status: 'active'
+        status: 'pending'
       };
       
       // Insert client to database
@@ -342,7 +342,7 @@ const NewClientPage = () => {
       
       toast({
         title: "Client created",
-        description: "The client has been successfully added to the system.",
+        description: "The client has been added with pending status. Post a client fee to activate.",
       });
       
       navigate("/clients");

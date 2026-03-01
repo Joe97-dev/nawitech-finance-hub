@@ -167,7 +167,7 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
             const parsed = parseFloat(val.replace(/[^\d.-]/g, ""));
             return isNaN(parsed) ? null : parsed;
           })(),
-          status: "active",
+          status: "pending",
         };
 
         const { error } = await supabase.from("clients").insert(clientData);

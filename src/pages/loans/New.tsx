@@ -195,7 +195,7 @@ const NewLoanPage = () => {
       
       toast({
         title: "Loan created",
-        description: "The loan has been successfully created with pending status.",
+        description: "The loan has been created with pending status. Post a loan fee to activate.",
       });
       
       navigate("/loans");

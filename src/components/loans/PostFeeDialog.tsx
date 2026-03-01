@@ -96,9 +96,27 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       if (error) throw error;
 
+      // Activate the loan if it's still pending
+      const { data: loanData } = await supabase
+        .from("loans")
+        .select("status")
+        .eq("id", loanId)
+        .single();
+
+      if (loanData?.status === "pending") {
+        const { error: updateError } = await supabase
+          .from("loans")
+          .update({ status: "active" })
+          .eq("id", loanId);
+
+        if (updateError) {
+          console.error("Error activating loan:", updateError);
+        }
+      }
+
       toast({
         title: "Fee posted successfully",
-        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded.`,
+        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded.${loanData?.status === "pending" ? " Loan is now active." : ""}`,
       });
 
       form.reset();
