@@ -119,7 +119,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         .from("loan_transactions")
         .insert({
           loan_id: loanId,
-          transaction_type: "client_fee",
+          transaction_type: "fee",
           amount: parseFloat(values.amount),
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
