@@ -128,9 +128,27 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
 
       if (error) throw error;
 
+      // Activate the client if they're still pending
+      const { data: clientData } = await supabase
+        .from("clients")
+        .select("status")
+        .eq("id", clientId)
+        .single();
+
+      if (clientData?.status === "pending") {
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({ status: "active" })
+          .eq("id", clientId);
+
+        if (updateError) {
+          console.error("Error activating client:", updateError);
+        }
+      }
+
       toast({
         title: "Client fee posted successfully",
-        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded for ${clientName}.`,
+        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded for ${clientName}.${clientData?.status === "pending" ? " Client is now active." : ""}`,
       });
 
       form.reset();
