@@ -14,7 +14,6 @@ interface Client {
   client_number?: string;
   first_name: string;
   last_name: string;
-  email: string | null;
   phone: string;
   id_number: string;
   gender: string | null;
@@ -61,7 +60,6 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
         .update({
           first_name: formData.first_name,
           last_name: formData.last_name,
-          email: formData.email || null,
           phone: formData.phone,
           id_number: formData.id_number,
           gender: formData.gender || null,
@@ -131,15 +129,6 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email || ''}
-                onChange={(e) => handleInputChange('email', e.target.value || null)}
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone *</Label>
