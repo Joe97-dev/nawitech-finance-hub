@@ -64,7 +64,8 @@ const LoansDueReport = () => {
         const { data, error } = await supabase
           .from('loans')
           .select('*')
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .neq('type', 'client_fee_account');
         
         if (error) {
           throw error;
