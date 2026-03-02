@@ -206,7 +206,6 @@ const LoanDetailPage = () => {
                         <Edit className="h-4 w-4" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                         <SelectItem value="postponed">Postponed</SelectItem>
                       </SelectContent>
