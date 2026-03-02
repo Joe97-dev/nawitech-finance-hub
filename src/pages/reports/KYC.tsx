@@ -95,7 +95,8 @@ const KYCReport = () => {
         // Fetch loans
         const { data: loansData, error: loansError } = await supabase
           .from('loans')
-          .select('*');
+          .select('*')
+          .neq('type', 'client_fee_account');
           
         if (loansError) throw loansError;
         

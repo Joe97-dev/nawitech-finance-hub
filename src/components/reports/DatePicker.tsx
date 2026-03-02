@@ -58,7 +58,7 @@ export function DatePicker({
             <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align={align} side={side}>
+        <PopoverContent className="w-auto p-0 z-50" align={align} side={side} sideOffset={4} avoidCollisions>
           <div className="border-b border-border/20 p-3">
             <h3 className="text-sm font-medium">{placeholder}</h3>
             <p className="text-xs text-muted-foreground pt-1">
