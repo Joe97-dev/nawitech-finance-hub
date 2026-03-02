@@ -50,7 +50,6 @@ const NewClientPage = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    email: "",
     phone: "",
     idNumber: "",
     gender: "",
@@ -258,7 +257,6 @@ const NewClientPage = () => {
       const clientData = {
         first_name: formData.firstName,
         last_name: formData.lastName,
-        email: formData.email || null,
         phone: formData.phone,
         id_number: formData.idNumber,
         gender: formData.gender || null,
@@ -442,15 +440,6 @@ const NewClientPage = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={formData.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>

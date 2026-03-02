@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, CreditCard, FileText, Edit, Users, Image, Download } from "lucide-react";
+import { ArrowLeft, Phone, MapPin, Calendar, CreditCard, FileText, Edit, Users, Image, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
@@ -276,11 +276,6 @@ const ClientDetailPage = () => {
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <span>{client.phone}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{client.email || "Not provided"}</span>
                   </div>
                   
                   <div className="flex items-center gap-2">
