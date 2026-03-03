@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Download, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -56,6 +57,7 @@ const LoansPage = () => {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { isAdmin } = useRole();
   
   useEffect(() => {
     const fetchLoans = async () => {
@@ -147,12 +149,14 @@ const LoansPage = () => {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button asChild>
-              <Link to="/loans/new">
-                <Plus className="h-4 w-4 mr-2" />
-                New Loan
-              </Link>
-            </Button>
+            {isAdmin && (
+              <Button asChild>
+                <Link to="/loans/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Loan
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
         

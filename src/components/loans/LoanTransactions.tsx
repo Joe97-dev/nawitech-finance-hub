@@ -399,7 +399,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
   };
 
   const canRevertTransaction = (transaction: Transaction) => {
-    return (isAdmin || isLoanOfficer) && 
+    return isAdmin && 
            !transaction.is_reverted && 
            transaction.transaction_type === 'repayment';
   };
@@ -418,7 +418,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         <h3 className="text-lg font-semibold">Transactions</h3>
       </div>
 
-      {/* Payment Form */}
+      {/* Payment Form - Admin only */}
+      {isAdmin && (
       <Card>
         <CardHeader>
           <CardTitle>Make Payment</CardTitle>
@@ -501,6 +502,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           </form>
         </CardContent>
       </Card>
+      )}
       
       <div className="border rounded-lg overflow-hidden">
         <Table>
