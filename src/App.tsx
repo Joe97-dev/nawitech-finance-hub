@@ -10,6 +10,7 @@ import Rejected from "./pages/Rejected";
 import UserApprovals from "./pages/admin/UserApprovals";
 import DataMigration from "./pages/admin/DataMigration";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { RoleGuard } from "./components/auth/RoleGuard";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
 import { Toaster } from "./components/ui/toaster";
@@ -58,7 +59,7 @@ function App() {
             
             {/* Loans */}
             <Route path="/loans" element={<ProtectedRoute><LoansIndex /></ProtectedRoute>} />
-            <Route path="/loans/new" element={<ProtectedRoute><LoanNew /></ProtectedRoute>} />
+            <Route path="/loans/new" element={<ProtectedRoute><RoleGuard allowedRoles={["admin"]}><LoanNew /></RoleGuard></ProtectedRoute>} />
             <Route path="/loans/:loanId" element={<ProtectedRoute><LoanDetail /></ProtectedRoute>} />
             
             {/* Branches */}
