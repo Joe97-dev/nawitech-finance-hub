@@ -32,6 +32,7 @@ interface Transaction {
   is_reverted?: boolean;
   reverted_at?: string | null;
   reversal_reason?: string | null;
+  created_by?: string | null;
 }
 
 interface LoanTransactionsProps {
@@ -44,6 +45,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
   const { toast } = useToast();
   const { isAdmin, isLoanOfficer } = useRole();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [usernames, setUsernames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
@@ -71,8 +73,19 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         
         // Cast the data to the correct type
         const typedData = (data || []) as Transaction[];
-        
         setTransactions(typedData);
+        
+        // Fetch usernames for created_by
+        const userIds = [...new Set(typedData.map(t => t.created_by).filter(Boolean) as string[])];
+        if (userIds.length > 0) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
+          const map = new Map<string, string>();
+          profileData?.forEach(p => map.set(p.id, p.username || 'Unknown'));
+          setUsernames(map);
+        }
       } catch (error: any) {
         toast({
           variant: "destructive",
@@ -513,6 +526,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
               <TableHead>Amount</TableHead>
               <TableHead>Payment Method</TableHead>
               <TableHead>Receipt #</TableHead>
+              <TableHead>Processed By</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -520,7 +534,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           <TableBody>
             {transactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-4 text-muted-foreground">
                   No transactions available
                 </TableCell>
               </TableRow>
@@ -550,6 +564,9 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                   </TableCell>
                   <TableCell>
                     {transaction.receipt_number || "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {transaction.created_by ? (usernames.get(transaction.created_by) || '—') : '—'}
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
