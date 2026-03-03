@@ -27,6 +27,7 @@ interface TransactionData {
   notes: string | null;
   created_by: string;
   created_at: string;
+  processed_by: string;
 }
 
 const transactionTypes = [
@@ -56,6 +57,7 @@ const columns = [
   { key: "amount", header: "Amount" },
   { key: "payment_method", header: "Payment Method" },
   { key: "receipt_number", header: "Receipt #" },
+  { key: "processed_by", header: "Processed By" },
   { key: "notes", header: "Notes" }
 ];
 
@@ -121,6 +123,20 @@ const TransactionsReport = () => {
           // Get loan info for these transactions
           const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
           
+          // Get user profiles for created_by
+          const userIds = [...new Set(transactionData?.map(t => t.created_by).filter(Boolean) || [])];
+          
+          let profileMap = new Map<string, string>();
+          if (userIds.length > 0) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('id, username')
+              .in('id', userIds);
+            profileData?.forEach(p => {
+              profileMap.set(p.id, p.username || 'Unknown');
+            });
+          }
+          
           if (loanIds.length > 0) {
             const { data: loanData, error: loanError } = await supabase
               .from('loans')
@@ -141,7 +157,8 @@ const TransactionsReport = () => {
               allTransactions.push({
                 ...transaction,
                 client_name: loanInfo?.client || 'Unknown Client',
-                loan_number: loanInfo?.loan_number || 'N/A'
+                loan_number: loanInfo?.loan_number || 'N/A',
+                processed_by: profileMap.get(transaction.created_by) || '—'
               });
             });
           }
@@ -181,6 +198,7 @@ const TransactionsReport = () => {
                 notes: 'Loan disbursement',
                 created_by: '',
                 created_at: loan.created_at || loan.date,
+                processed_by: '—',
               });
             });
           }
@@ -284,6 +302,7 @@ const TransactionsReport = () => {
             amount: transaction.amount,
             payment_method: transaction.payment_method || '',
             receipt_number: transaction.receipt_number || '',
+            processed_by: transaction.processed_by || '',
             notes: transaction.notes || ''
           }))} 
           filename={`transactions-report-${new Date().toISOString().slice(0, 10)}`} 
@@ -404,9 +423,10 @@ const TransactionsReport = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Payment Method</TableHead>
-                    <TableHead>Receipt #</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Actions</TableHead>
+                     <TableHead>Receipt #</TableHead>
+                     <TableHead>Processed By</TableHead>
+                     <TableHead>Notes</TableHead>
+                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -436,6 +456,9 @@ const TransactionsReport = () => {
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {transaction.receipt_number || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {transaction.processed_by || "—"}
                       </TableCell>
                       <TableCell className="max-w-32 truncate">
                         {transaction.notes || "—"}
