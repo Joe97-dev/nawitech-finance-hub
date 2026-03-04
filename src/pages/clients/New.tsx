@@ -31,6 +31,11 @@ interface Branch {
   name: string;
 }
 
+interface LoanOfficer {
+  id: string;
+  username: string;
+}
+
 const NewClientPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -41,6 +46,8 @@ const NewClientPage = () => {
   const [businessPhotos, setBusinessPhotos] = useState<File[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
   const [referees, setReferees] = useState([
     { name: "", phone: "", relationship: "" },
     { name: "", phone: "", relationship: "" },
@@ -88,6 +95,27 @@ const NewClientPage = () => {
     };
 
     fetchBranches();
+
+    // Fetch loan officers
+    const fetchOfficers = async () => {
+      try {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'loan_officer');
+        if (roles && roles.length > 0) {
+          const userIds = roles.map(r => r.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
+          setLoanOfficers(profiles || []);
+        }
+      } catch (error) {
+        console.error("Error fetching officers:", error);
+      }
+    };
+    fetchOfficers();
   }, [toast]);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -254,7 +282,7 @@ const NewClientPage = () => {
       }
       
       // Create client record
-      const clientData = {
+      const clientData: any = {
         first_name: formData.firstName,
         last_name: formData.lastName,
         phone: formData.phone,
@@ -269,9 +297,13 @@ const NewClientPage = () => {
         employment_status: formData.employmentStatus || null,
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
         marital_status: formData.maritalStatus || null,
-        photo_url: null, // Will update this after uploading the photo
+        photo_url: null,
         status: 'pending'
       };
+      
+      if (selectedOfficerId) {
+        clientData.loan_officer_id = selectedOfficerId;
+      }
       
       // Insert client to database
       const { data: newClient, error } = await supabase
@@ -559,6 +591,29 @@ const NewClientPage = () => {
                           {branch.name}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="loanOfficer">Loan Officer</Label>
+                  <Select
+                    value={selectedOfficerId}
+                    onValueChange={setSelectedOfficerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select loan officer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loanOfficers.length === 0 ? (
+                        <SelectItem value="none" disabled>No officers found</SelectItem>
+                      ) : (
+                        loanOfficers.map((officer) => (
+                          <SelectItem key={officer.id} value={officer.id}>
+                            {officer.username}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

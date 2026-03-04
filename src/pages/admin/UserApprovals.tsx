@@ -9,6 +9,11 @@ import { CheckCircle, XCircle, Clock, User, UserX } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface Branch {
+  id: string;
+  name: string;
+}
 import { Label } from "@/components/ui/label";
 
 interface UserApproval {
@@ -31,6 +36,8 @@ const UserApprovals = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [deactivationReason, setDeactivationReason] = useState("");
   const [selectedRole, setSelectedRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -97,12 +104,16 @@ const UserApprovals = () => {
     }
   };
 
-  const handleApprove = async (userId: string, role: "admin" | "loan_officer" | "data_entry" = "data_entry") => {
+  const handleApprove = async (userId: string, role: "admin" | "loan_officer" | "data_entry" = "data_entry", branchId?: string) => {
     try {
-      const { error } = await supabase.rpc('approve_user', {
+      const rpcParams: any = {
         target_user_id: userId,
         assigned_role: role
-      });
+      };
+      if (branchId) {
+        rpcParams.assigned_branch_id = branchId;
+      }
+      const { error } = await supabase.rpc('approve_user', rpcParams);
 
       if (error) throw error;
 
@@ -113,6 +124,7 @@ const UserApprovals = () => {
 
       setApprovingUserId(null);
       setSelectedRole("data_entry");
+      setSelectedBranchId("");
       await fetchApprovals();
     } catch (error) {
       console.error('Error approving user:', error);
@@ -202,6 +214,11 @@ const UserApprovals = () => {
 
   useEffect(() => {
     fetchApprovals();
+    const fetchBranches = async () => {
+      const { data } = await supabase.from('branches').select('id, name');
+      setBranches(data || []);
+    };
+    fetchBranches();
   }, []);
 
   if (loading) {
@@ -276,26 +293,44 @@ const UserApprovals = () => {
                               Select the role for this user and approve their registration.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <div className="py-4">
-                            <Label htmlFor="role-select">Assign Role</Label>
-                            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as "admin" | "loan_officer" | "data_entry")}>
-                              <SelectTrigger className="mt-2">
-                                <SelectValue placeholder="Select a role" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="data_entry">Data Entry</SelectItem>
-                                <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                           <div className="py-4 space-y-4">
+                            <div>
+                             <Label htmlFor="role-select">Assign Role</Label>
+                             <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as "admin" | "loan_officer" | "data_entry")}>
+                               <SelectTrigger className="mt-2">
+                                 <SelectValue placeholder="Select a role" />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="data_entry">Data Entry</SelectItem>
+                                 <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                                 <SelectItem value="admin">Admin</SelectItem>
+                               </SelectContent>
+                             </Select>
+                            </div>
+                            {(selectedRole === 'loan_officer' || selectedRole === 'data_entry') && (
+                              <div>
+                                <Label htmlFor="branch-select">Assign Branch</Label>
+                                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                                  <SelectTrigger className="mt-2">
+                                    <SelectValue placeholder="Select a branch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {branches.map((branch) => (
+                                      <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                           </div>
                           <AlertDialogFooter>
                             <AlertDialogCancel onClick={() => {
                               setApprovingUserId(null);
                               setSelectedRole("data_entry");
+                              setSelectedBranchId("");
                             }}>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleApprove(approval.user_id, selectedRole)}
+                              onClick={() => handleApprove(approval.user_id, selectedRole, selectedBranchId || undefined)}
                               className="bg-green-600 hover:bg-green-700"
                             >
                               Approve with {getRoleDisplayName(selectedRole)} Role

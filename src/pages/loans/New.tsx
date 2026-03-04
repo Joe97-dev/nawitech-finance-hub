@@ -35,6 +35,11 @@ interface Client {
   last_name: string;
 }
 
+interface LoanOfficer {
+  id: string;
+  username: string;
+}
+
 const NewLoanPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -53,6 +58,8 @@ const NewLoanPage = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
+  const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
+  const [selectedOfficerId, setSelectedOfficerId] = useState("");
   
   
   // Fetch clients from Supabase
@@ -86,6 +93,27 @@ const NewLoanPage = () => {
     };
 
     fetchClients();
+    
+    // Fetch loan officers
+    const fetchOfficers = async () => {
+      try {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'loan_officer');
+        if (roles && roles.length > 0) {
+          const userIds = roles.map(r => r.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', userIds);
+          setLoanOfficers(profiles || []);
+        }
+      } catch (error) {
+        console.error("Error fetching officers:", error);
+      }
+    };
+    fetchOfficers();
   }, [toast]);
   
   const calculateTotal = () => {
@@ -164,7 +192,7 @@ const NewLoanPage = () => {
       }
       const totalAmountWithInterest = amount + totalInterest;
       
-      const loanData = {
+      const loanData: any = {
         client: clientName,
         amount: amount,
         balance: totalAmountWithInterest,
@@ -176,6 +204,10 @@ const NewLoanPage = () => {
         interest_rate: parseFloat(interestRate),
         business_address: purpose || null,
       };
+      
+      if (selectedOfficerId) {
+        loanData.loan_officer_id = selectedOfficerId;
+      }
       
       console.log("Creating loan with data:", loanData);
       
@@ -290,6 +322,29 @@ const NewLoanPage = () => {
                         clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {getFullClientName(client)}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="loanOfficer">Loan Officer</Label>
+                  <Select
+                    value={selectedOfficerId}
+                    onValueChange={setSelectedOfficerId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select loan officer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loanOfficers.length === 0 ? (
+                        <SelectItem value="none" disabled>No officers found</SelectItem>
+                      ) : (
+                        loanOfficers.map((officer) => (
+                          <SelectItem key={officer.id} value={officer.id}>
+                            {officer.username}
                           </SelectItem>
                         ))
                       )}
