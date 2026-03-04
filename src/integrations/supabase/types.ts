@@ -224,6 +224,7 @@ export type Database = {
           id_photo_back_url: string | null
           id_photo_front_url: string | null
           last_name: string
+          loan_officer_id: string | null
           marital_status: string | null
           monthly_income: number | null
           occupation: string | null
@@ -251,6 +252,7 @@ export type Database = {
           id_photo_back_url?: string | null
           id_photo_front_url?: string | null
           last_name: string
+          loan_officer_id?: string | null
           marital_status?: string | null
           monthly_income?: number | null
           occupation?: string | null
@@ -278,6 +280,7 @@ export type Database = {
           id_photo_back_url?: string | null
           id_photo_front_url?: string | null
           last_name?: string
+          loan_officer_id?: string | null
           marital_status?: string | null
           monthly_income?: number | null
           occupation?: string | null
@@ -528,6 +531,7 @@ export type Database = {
           id: string
           interest_rate: number | null
           loan_number: string | null
+          loan_officer_id: string | null
           status: string
           term_months: number | null
           type: string
@@ -544,6 +548,7 @@ export type Database = {
           id?: string
           interest_rate?: number | null
           loan_number?: string | null
+          loan_officer_id?: string | null
           status: string
           term_months?: number | null
           type: string
@@ -560,6 +565,7 @@ export type Database = {
           id?: string
           interest_rate?: number | null
           loan_number?: string | null
+          loan_officer_id?: string | null
           status?: string
           term_months?: number | null
           type?: string
@@ -638,24 +644,35 @@ export type Database = {
       }
       profiles: {
         Row: {
+          branch_id: string | null
           created_at: string | null
           id: string
           updated_at: string | null
           username: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string | null
           id: string
           updated_at?: string | null
           username?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string | null
           id?: string
           updated_at?: string | null
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_approvals: {
         Row: {
@@ -728,6 +745,14 @@ export type Database = {
             }
             Returns: undefined
           }
+        | {
+            Args: {
+              assigned_branch_id?: string
+              assigned_role?: Database["public"]["Enums"]["user_role"]
+              target_user_id: string
+            }
+            Returns: undefined
+          }
       calculate_outstanding_balance: {
         Args: { p_loan_id: string }
         Returns: number
@@ -749,6 +774,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_user_branch_id: { Args: { _user_id: string }; Returns: string }
       get_user_email: { Args: { user_id_input: string }; Returns: string }
       has_role: {
         Args: {
