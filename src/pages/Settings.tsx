@@ -334,6 +334,8 @@ const Settings = () => {
                   <Button className="mt-4">Save Security Settings</Button>
                 </CardContent>
               </Card>
+
+              <AdminPasswordReset users={users} isAdmin={isAdmin} />
             </TabsContent>
           </Tabs>
         </div>
