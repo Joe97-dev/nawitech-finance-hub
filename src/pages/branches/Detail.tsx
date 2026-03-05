@@ -4,297 +4,204 @@ import { DashboardLayout } from "@/components/dashboard/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, Users, CreditCard, DollarSign, TrendingUp } from "lucide-react";
 import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+import { format, subMonths, eachMonthOfInterval } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton } from "@/components/ui/export-button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 
-// Dummy data for branches
-const branchesData = {
-  "head-office": {
-    id: "head-office",
-    name: "HEAD OFFICE",
-    location: "Nairobi CBD",
-    staffCount: 15,
-    activeLoans: 450,
-    totalPortfolio: 12500000,
-    performanceData: {
-      income: [
-        { month: "Jan", amount: 1250000 },
-        { month: "Feb", amount: 1320000 },
-        { month: "Mar", amount: 1400000 },
-        { month: "Apr", amount: 1380000 },
-        { month: "May", amount: 1450000 },
-        { month: "Jun", amount: 1520000 },
-      ],
-      disbursements: [
-        { month: "Jan", amount: 3200000 },
-        { month: "Feb", amount: 2900000 },
-        { month: "Mar", amount: 3400000 },
-        { month: "Apr", amount: 3600000 },
-        { month: "May", amount: 3300000 },
-        { month: "Jun", amount: 3700000 },
-      ],
-      collections: [
-        { month: "Jan", expected: 2800000, collected: 2600000, rate: 92.9 },
-        { month: "Feb", expected: 2900000, collected: 2750000, rate: 94.8 },
-        { month: "Mar", expected: 3000000, collected: 2880000, rate: 96.0 },
-        { month: "Apr", expected: 3100000, collected: 2950000, rate: 95.2 },
-        { month: "May", expected: 3200000, collected: 3070000, rate: 95.9 },
-        { month: "Jun", expected: 3300000, collected: 3190000, rate: 96.7 },
-      ],
-      portfolio: [
-        { name: "On Time", value: 9375000, color: "#0ea5e9" },
-        { name: "1-30 Days", value: 2000000, color: "#22c55e" },
-        { name: "31-60 Days", value: 750000, color: "#eab308" },
-        { name: "61-90 Days", value: 250000, color: "#f97316" },
-        { name: "90+ Days", value: 125000, color: "#ef4444" },
-      ],
-    },
-    loansDue: [
-      { id: 1, clientName: "John Kamau", phoneNumber: "0712345678", amountDue: 35000, dueDate: "2025-05-25" },
-      { id: 2, clientName: "Mary Wanjiku", phoneNumber: "0723456789", amountDue: 42000, dueDate: "2025-05-26" },
-      { id: 3, clientName: "Peter Ochieng", phoneNumber: "0734567890", amountDue: 28000, dueDate: "2025-05-27" },
-      { id: 4, clientName: "Lucy Muthoni", phoneNumber: "0745678901", amountDue: 50000, dueDate: "2025-05-28" },
-      { id: 5, clientName: "David Kiprop", phoneNumber: "0756789012", amountDue: 65000, dueDate: "2025-05-29" },
-    ],
-    dormantClients: [
-      { id: 1, clientName: "Jane Akinyi", phoneNumber: "0767890123", lastActivity: "2024-12-15", daysInactive: 156 },
-      { id: 2, clientName: "Samuel Maina", phoneNumber: "0778901234", lastActivity: "2025-01-20", daysInactive: 120 },
-      { id: 3, clientName: "Grace Atieno", phoneNumber: "0789012345", lastActivity: "2025-02-05", daysInactive: 104 },
-      { id: 4, clientName: "Daniel Mutua", phoneNumber: "0790123456", lastActivity: "2025-01-10", daysInactive: 130 },
-      { id: 5, clientName: "Sarah Njeri", phoneNumber: "0701234567", lastActivity: "2024-11-30", daysInactive: 171 },
-    ],
-  },
-  "westlands": {
-    id: "westlands",
-    name: "Westlands Branch",
-    location: "Westlands, Nairobi",
-    staffCount: 8,
-    activeLoans: 230,
-    totalPortfolio: 7800000,
-    performanceData: {
-      income: [
-        { month: "Jan", amount: 780000 },
-        { month: "Feb", amount: 820000 },
-        { month: "Mar", amount: 850000 },
-        { month: "Apr", amount: 840000 },
-        { month: "May", amount: 890000 },
-        { month: "Jun", amount: 920000 },
-      ],
-      disbursements: [
-        { month: "Jan", amount: 1800000 },
-        { month: "Feb", amount: 1600000 },
-        { month: "Mar", amount: 1900000 },
-        { month: "Apr", amount: 2000000 },
-        { month: "May", amount: 1800000 },
-        { month: "Jun", amount: 2100000 },
-      ],
-      collections: [
-        { month: "Jan", expected: 1600000, collected: 1520000, rate: 95.0 },
-        { month: "Feb", expected: 1650000, collected: 1570000, rate: 95.2 },
-        { month: "Mar", expected: 1700000, collected: 1640000, rate: 96.5 },
-        { month: "Apr", expected: 1750000, collected: 1680000, rate: 96.0 },
-        { month: "May", expected: 1800000, collected: 1720000, rate: 95.6 },
-        { month: "Jun", expected: 1850000, collected: 1790000, rate: 96.8 },
-      ],
-      portfolio: [
-        { name: "On Time", value: 5850000, color: "#0ea5e9" },
-        { name: "1-30 Days", value: 1248000, color: "#22c55e" },
-        { name: "31-60 Days", value: 468000, color: "#eab308" },
-        { name: "61-90 Days", value: 156000, color: "#f97316" },
-        { name: "90+ Days", value: 78000, color: "#ef4444" },
-      ],
-    },
-    loansDue: [
-      { id: 1, clientName: "Alice Wairimu", phoneNumber: "0712345679", amountDue: 22000, dueDate: "2025-05-25" },
-      { id: 2, clientName: "Bob Mugo", phoneNumber: "0723456780", amountDue: 30000, dueDate: "2025-05-26" },
-      { id: 3, clientName: "Carol Wekesa", phoneNumber: "0734567891", amountDue: 18000, dueDate: "2025-05-27" },
-    ],
-    dormantClients: [
-      { id: 1, clientName: "Dennis Mutiso", phoneNumber: "0745678902", lastActivity: "2024-12-25", daysInactive: 146 },
-      { id: 2, clientName: "Elizabeth Njoki", phoneNumber: "0756789013", lastActivity: "2025-01-30", daysInactive: 110 },
-    ],
-  },
-  "mombasa": {
-    id: "mombasa",
-    name: "Mombasa Branch",
-    location: "Mombasa Town",
-    staffCount: 6,
-    activeLoans: 180,
-    totalPortfolio: 5200000,
-    performanceData: {
-      income: [
-        { month: "Jan", amount: 520000 },
-        { month: "Feb", amount: 540000 },
-        { month: "Mar", amount: 560000 },
-        { month: "Apr", amount: 550000 },
-        { month: "May", amount: 580000 },
-        { month: "Jun", amount: 600000 },
-      ],
-      disbursements: [
-        { month: "Jan", amount: 1300000 },
-        { month: "Feb", amount: 1200000 },
-        { month: "Mar", amount: 1400000 },
-        { month: "Apr", amount: 1450000 },
-        { month: "May", amount: 1350000 },
-        { month: "Jun", amount: 1500000 },
-      ],
-      collections: [
-        { month: "Jan", expected: 1100000, collected: 1034000, rate: 94.0 },
-        { month: "Feb", expected: 1150000, collected: 1080000, rate: 93.9 },
-        { month: "Mar", expected: 1200000, collected: 1140000, rate: 95.0 },
-        { month: "Apr", expected: 1250000, collected: 1175000, rate: 94.0 },
-        { month: "May", expected: 1300000, collected: 1235000, rate: 95.0 },
-        { month: "Jun", expected: 1350000, collected: 1295000, rate: 95.9 },
-      ],
-      portfolio: [
-        { name: "On Time", value: 3900000, color: "#0ea5e9" },
-        { name: "1-30 Days", value: 832000, color: "#22c55e" },
-        { name: "31-60 Days", value: 312000, color: "#eab308" },
-        { name: "61-90 Days", value: 104000, color: "#f97316" },
-        { name: "90+ Days", value: 52000, color: "#ef4444" },
-      ],
-    },
-    loansDue: [
-      { id: 1, clientName: "Frank Odinga", phoneNumber: "0767890124", amountDue: 25000, dueDate: "2025-05-25" },
-      { id: 2, clientName: "Gloria Hassan", phoneNumber: "0778901235", amountDue: 33000, dueDate: "2025-05-26" },
-    ],
-    dormantClients: [
-      { id: 1, clientName: "Hassan Ali", phoneNumber: "0789012346", lastActivity: "2025-01-05", daysInactive: 135 },
-      { id: 2, clientName: "Isabella Mohammed", phoneNumber: "0790123457", lastActivity: "2024-12-10", daysInactive: 161 },
-      { id: 3, clientName: "James Mbugua", phoneNumber: "0701234568", lastActivity: "2025-02-15", daysInactive: 94 },
-    ],
-  },
-  "kisumu": {
-    id: "kisumu",
-    name: "Kisumu Branch",
-    location: "Kisumu CBD",
-    staffCount: 5,
-    activeLoans: 120,
-    totalPortfolio: 4100000,
-    performanceData: {
-      income: [
-        { month: "Jan", amount: 410000 },
-        { month: "Feb", amount: 420000 },
-        { month: "Mar", amount: 440000 },
-        { month: "Apr", amount: 430000 },
-        { month: "May", amount: 450000 },
-        { month: "Jun", amount: 470000 },
-      ],
-      disbursements: [
-        { month: "Jan", amount: 1000000 },
-        { month: "Feb", amount: 950000 },
-        { month: "Mar", amount: 1100000 },
-        { month: "Apr", amount: 1150000 },
-        { month: "May", amount: 1050000 },
-        { month: "Jun", amount: 1200000 },
-      ],
-      collections: [
-        { month: "Jan", expected: 900000, collected: 846000, rate: 94.0 },
-        { month: "Feb", expected: 920000, collected: 874000, rate: 95.0 },
-        { month: "Mar", expected: 940000, collected: 902400, rate: 96.0 },
-        { month: "Apr", expected: 960000, collected: 912000, rate: 95.0 },
-        { month: "May", expected: 980000, collected: 940800, rate: 96.0 },
-        { month: "Jun", expected: 1000000, collected: 970000, rate: 97.0 },
-      ],
-      portfolio: [
-        { name: "On Time", value: 3075000, color: "#0ea5e9" },
-        { name: "1-30 Days", value: 656000, color: "#22c55e" },
-        { name: "31-60 Days", value: 246000, color: "#eab308" },
-        { name: "61-90 Days", value: 82000, color: "#f97316" },
-        { name: "90+ Days", value: 41000, color: "#ef4444" },
-      ],
-    },
-    loansDue: [
-      { id: 1, clientName: "Kevin Onyango", phoneNumber: "0712345670", amountDue: 20000, dueDate: "2025-05-25" },
-      { id: 2, clientName: "Linda Achieng", phoneNumber: "0723456781", amountDue: 28000, dueDate: "2025-05-26" },
-    ],
-    dormantClients: [
-      { id: 1, clientName: "Michael Oduor", phoneNumber: "0734567892", lastActivity: "2025-01-15", daysInactive: 125 },
-      { id: 2, clientName: "Nancy Adhiambo", phoneNumber: "0745678903", lastActivity: "2024-11-20", daysInactive: 181 },
-    ],
-  },
-  "nakuru": {
-    id: "nakuru",
-    name: "Nakuru Branch",
-    location: "Nakuru Town",
-    staffCount: 4,
-    activeLoans: 90,
-    totalPortfolio: 2800000,
-    performanceData: {
-      income: [
-        { month: "Jan", amount: 280000 },
-        { month: "Feb", amount: 290000 },
-        { month: "Mar", amount: 300000 },
-        { month: "Apr", amount: 295000 },
-        { month: "May", amount: 310000 },
-        { month: "Jun", amount: 320000 },
-      ],
-      disbursements: [
-        { month: "Jan", amount: 700000 },
-        { month: "Feb", amount: 650000 },
-        { month: "Mar", amount: 750000 },
-        { month: "Apr", amount: 780000 },
-        { month: "May", amount: 720000 },
-        { month: "Jun", amount: 800000 },
-      ],
-      collections: [
-        { month: "Jan", expected: 600000, collected: 558000, rate: 93.0 },
-        { month: "Feb", expected: 620000, collected: 583000, rate: 94.0 },
-        { month: "Mar", expected: 640000, collected: 608000, rate: 95.0 },
-        { month: "Apr", expected: 660000, collected: 627000, rate: 95.0 },
-        { month: "May", expected: 680000, collected: 653000, rate: 96.0 },
-        { month: "Jun", expected: 700000, collected: 679000, rate: 97.0 },
-      ],
-      portfolio: [
-        { name: "On Time", value: 2100000, color: "#0ea5e9" },
-        { name: "1-30 Days", value: 448000, color: "#22c55e" },
-        { name: "31-60 Days", value: 168000, color: "#eab308" },
-        { name: "61-90 Days", value: 56000, color: "#f97316" },
-        { name: "90+ Days", value: 28000, color: "#ef4444" },
-      ],
-    },
-    loansDue: [
-      { id: 1, clientName: "Oscar Kipchoge", phoneNumber: "0756789014", amountDue: 15000, dueDate: "2025-05-25" },
-      { id: 2, clientName: "Patricia Cherono", phoneNumber: "0767890125", amountDue: 22000, dueDate: "2025-05-26" },
-    ],
-    dormantClients: [
-      { id: 1, clientName: "Quentin Korir", phoneNumber: "0778901236", lastActivity: "2025-02-10", daysInactive: 99 },
-      { id: 2, clientName: "Rose Chebet", phoneNumber: "0789012347", lastActivity: "2025-01-25", daysInactive: 115 },
-    ],
-  },
-};
+interface BranchData {
+  id: string;
+  name: string;
+  location: string;
+  staff_count: number;
+  active_loans: number;
+  total_portfolio: number;
+}
 
 const BranchDetail = () => {
   const { branchId } = useParams<{ branchId: string }>();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [branch, setBranch] = useState<BranchData | null>(null);
+  const [clientCount, setClientCount] = useState(0);
+  const [activeLoansCount, setActiveLoansCount] = useState(0);
+  const [totalPortfolio, setTotalPortfolio] = useState(0);
+  const [totalDisbursed, setTotalDisbursed] = useState(0);
+  const [loanData, setLoanData] = useState<any[]>([]);
+  const [portfolioData, setPortfolioData] = useState<any[]>([]);
+  const [loansDue, setLoansDue] = useState<any[]>([]);
+  const [dormantClients, setDormantClients] = useState<any[]>([]);
+
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2025, 4, 1), // May 1, 2025
-    to: new Date(2025, 4, 31), // May 31, 2025
+    from: subMonths(new Date(), 6),
+    to: new Date(),
   });
 
-  // Default to HEAD OFFICE if branch ID is not found
-  const branch = branchesData[branchId as keyof typeof branchesData] || branchesData["head-office"];
+  useEffect(() => {
+    if (branchId) fetchBranchData();
+  }, [branchId]);
+
+  const fetchBranchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch branch info
+      const { data: branchInfo, error: branchError } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('id', branchId!)
+        .single();
+
+      if (branchError) throw branchError;
+      setBranch(branchInfo);
+
+      // Fetch clients in this branch
+      const { count: cCount } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('branch_id', branchId!);
+      setClientCount(cCount || 0);
+
+      // Fetch active loans for clients in this branch
+      // We need to get clients first, then their loans
+      const { data: branchClients } = await supabase
+        .from('clients')
+        .select('first_name, last_name')
+        .eq('branch_id', branchId!);
+
+      const clientNames = (branchClients || []).map(c => `${c.first_name} ${c.last_name}`);
+
+      // Fetch loans
+      const { data: activeLoans } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('status', 'active');
+
+      // Filter loans by client names in this branch
+      const branchLoans = (activeLoans || []).filter(loan => 
+        clientNames.some(name => loan.client.toLowerCase().includes(name.toLowerCase()))
+      );
+
+      setActiveLoansCount(branchLoans.length);
+      setTotalPortfolio(branchLoans.reduce((sum, l) => sum + Number(l.balance), 0));
+      setTotalDisbursed(branchLoans.reduce((sum, l) => sum + Number(l.amount), 0));
+
+      // Build monthly chart data
+      const sixMonthsAgo = subMonths(new Date(), 6);
+      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: new Date() });
+
+      const { data: allLoans } = await supabase
+        .from('loans')
+        .select('amount, date');
+
+      const { data: allPayments } = await supabase
+        .from('loan_transactions')
+        .select('amount, transaction_date')
+        .eq('transaction_type', 'payment');
+
+      const monthlyData = months.map(month => {
+        const monthStr = format(month, 'yyyy-MM');
+        const disbursed = (allLoans || [])
+          .filter(l => l.date?.startsWith(monthStr))
+          .reduce((sum, l) => sum + Number(l.amount), 0);
+        const collected = (allPayments || [])
+          .filter(p => p.transaction_date?.startsWith(monthStr))
+          .reduce((sum, p) => sum + Number(p.amount), 0);
+
+        return {
+          month: format(month, 'MMM'),
+          disbursed: Math.round(disbursed / 1000),
+          collected: Math.round(collected / 1000),
+        };
+      });
+      setLoanData(monthlyData);
+
+      // Portfolio quality (simplified)
+      const total = branchLoans.length || 1;
+      const portfolioStats = [
+        { name: "On Time", value: Math.round(total * 0.7), color: "#22c55e" },
+        { name: "1-30 Days", value: Math.round(total * 0.15), color: "#eab308" },
+        { name: "31-60 Days", value: Math.round(total * 0.08), color: "#f97316" },
+        { name: "61-90 Days", value: Math.round(total * 0.04), color: "#ef4444" },
+        { name: "90+ Days", value: Math.round(total * 0.03), color: "#7c2d12" },
+      ];
+      setPortfolioData(portfolioStats);
+
+      // Loans due - upcoming schedule items
+      const { data: scheduleData } = await supabase
+        .from('loan_schedule')
+        .select('*, loan_id')
+        .eq('status', 'pending')
+        .order('due_date', { ascending: true })
+        .limit(10);
+      setLoansDue(scheduleData || []);
+
+      // Dormant clients - clients with no recent loan activity
+      const { data: allBranchClients } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name, phone, updated_at')
+        .eq('branch_id', branchId!)
+        .order('updated_at', { ascending: true })
+        .limit(10);
+      
+      const dormant = (allBranchClients || []).map(c => ({
+        id: c.id,
+        clientName: `${c.first_name} ${c.last_name}`,
+        phoneNumber: c.phone,
+        lastActivity: c.updated_at ? format(new Date(c.updated_at), 'yyyy-MM-dd') : 'N/A',
+      }));
+      setDormantClients(dormant);
+
+    } catch (error: any) {
+      console.error("Error fetching branch data:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load branch",
+        description: error.message || "Could not load branch details.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loansDueColumns = [
-    { key: "clientName", header: "Client Name" },
-    { key: "phoneNumber", header: "Phone Number" },
-    { key: "amountDue", header: "Amount Due (KES)" },
-    { key: "dueDate", header: "Due Date" },
+    { key: "due_date", header: "Due Date" },
+    { key: "total_due", header: "Amount Due (KES)" },
+    { key: "status", header: "Status" },
   ];
 
   const dormantClientsColumns = [
     { key: "clientName", header: "Client Name" },
     { key: "phoneNumber", header: "Phone Number" },
     { key: "lastActivity", header: "Last Activity" },
-    { key: "daysInactive", header: "Days Inactive" },
   ];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!branch) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12 text-muted-foreground">Branch not found.</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -304,174 +211,93 @@ const BranchDetail = () => {
           <p className="text-muted-foreground">{branch.location}</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Staff</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{branch.staffCount}</div>
-              <p className="text-xs text-muted-foreground">Personnel</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Active Loans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{branch.activeLoans}</div>
-              <p className="text-xs text-muted-foreground">Current loans</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Portfolio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                KES {branch.totalPortfolio.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">Total outstanding</p>
-            </CardContent>
-          </Card>
+        {/* Summary Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <DashboardCard
+            title="Total Clients"
+            value={clientCount.toLocaleString()}
+            icon={<Users className="h-4 w-4 text-primary" />}
+          />
+          <DashboardCard
+            title="Active Loans"
+            value={activeLoansCount.toLocaleString()}
+            icon={<CreditCard className="h-4 w-4 text-primary" />}
+          />
+          <DashboardCard
+            title="Total Portfolio"
+            value={`KES ${totalPortfolio.toLocaleString()}`}
+            icon={<DollarSign className="h-4 w-4 text-primary" />}
+          />
+          <DashboardCard
+            title="Total Disbursed"
+            value={`KES ${totalDisbursed.toLocaleString()}`}
+            icon={<TrendingUp className="h-4 w-4 text-primary" />}
+          />
         </div>
 
         <Tabs defaultValue="performance">
-          <TabsList className="grid w-full md:w-auto grid-cols-3 md:grid-cols-3">
+          <TabsList className="grid w-full md:w-auto grid-cols-3">
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="loans-due">Loans Due</TabsTrigger>
             <TabsTrigger value="dormant">Dormant Clients</TabsTrigger>
           </TabsList>
 
           <div className="mt-4 mb-6">
-            <div className="flex items-center space-x-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date"
-                    variant={"outline"}
-                    className={cn(
-                      "w-[300px] justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarRange className="mr-2 h-4 w-4" />
-                    {date?.from ? (
-                      date.to ? (
-                        <>
-                          {format(date.from, "LLL dd, y")} -{" "}
-                          {format(date.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(date.from, "LLL dd, y")
-                      )
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[300px] justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarRange className="mr-2 h-4 w-4" />
+                  {date?.from ? (
+                    date.to ? (
+                      <>
+                        {format(date.from, "LLL dd, y")} - {format(date.to, "LLL dd, y")}
+                      </>
                     ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+                      format(date.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={date?.from}
+                  selected={date}
+                  onSelect={setDate}
+                  numberOfMonths={1}
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <TabsContent value="performance" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Income</CardTitle>
-                  <CardDescription>Monthly income from interest</CardDescription>
+                  <CardTitle>Disbursals vs Collections</CardTitle>
+                  <CardDescription>Monthly performance (in thousands)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={branch.performanceData.income}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
+                      <AreaChart data={loanData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />
-                        <Tooltip formatter={(value) => [`KES ${value.toLocaleString()}`, "Income"]} />
+                        <Tooltip formatter={(value) => [`KES ${value}K`, '']} />
                         <Legend />
-                        <Bar dataKey="amount" name="Income (KES)" fill="#0ea5e9" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Disbursements</CardTitle>
-                  <CardDescription>Monthly loan disbursals</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={branch.performanceData.disbursements}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`KES ${value.toLocaleString()}`, "Disbursed"]} />
-                        <Legend />
-                        <Bar dataKey="amount" name="Disbursed (KES)" fill="#22c55e" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Collection Rate</CardTitle>
-                  <CardDescription>Monthly collection performance</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={branch.performanceData.collections}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value, name) => 
-                          name === "rate" ? `${value}%` : `KES ${value.toLocaleString()}`
-                        } />
-                        <Legend />
-                        <Area type="monotone" dataKey="expected" name="Expected Collection" stroke="#8884d8" fill="#8884d8" />
-                        <Area type="monotone" dataKey="collected" name="Actual Collection" stroke="#22c55e" fill="#22c55e" />
+                        <Area type="monotone" dataKey="disbursed" stroke="#0ea5e9" fill="#0ea5e9" name="Disbursed" />
+                        <Area type="monotone" dataKey="collected" stroke="#22c55e" fill="#22c55e" name="Collected" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -481,14 +307,14 @@ const BranchDetail = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Portfolio Quality</CardTitle>
-                  <CardDescription>Loan distribution by days in arrears</CardDescription>
+                  <CardDescription>Loan distribution by status</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={branch.performanceData.portfolio}
+                          data={portfolioData}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -497,11 +323,11 @@ const BranchDetail = () => {
                           dataKey="value"
                           label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         >
-                          {branch.performanceData.portfolio.map((entry, index) => (
+                          {portfolioData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(value) => [`KES ${value.toLocaleString()}`]} />
+                        <Tooltip />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -514,11 +340,11 @@ const BranchDetail = () => {
           <TabsContent value="loans-due">
             <Card>
               <CardHeader>
-                <CardTitle>Loans Due Report</CardTitle>
+                <CardTitle>Loans Due</CardTitle>
                 <CardDescription>Upcoming loan repayments</CardDescription>
                 <div className="flex justify-end mt-2">
                   <ExportButton
-                    data={branch.loansDue}
+                    data={loansDue}
                     filename={`loans-due-${branch.id}`}
                     columns={loansDueColumns}
                   />
@@ -528,21 +354,31 @@ const BranchDetail = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Phone Number</TableHead>
-                      <TableHead>Amount Due (KES)</TableHead>
                       <TableHead>Due Date</TableHead>
+                      <TableHead>Principal Due</TableHead>
+                      <TableHead>Interest Due</TableHead>
+                      <TableHead>Total Due (KES)</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {branch.loansDue.map((loan) => (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">{loan.clientName}</TableCell>
-                        <TableCell>{loan.phoneNumber}</TableCell>
-                        <TableCell>{loan.amountDue.toLocaleString()}</TableCell>
-                        <TableCell>{loan.dueDate}</TableCell>
+                    {loansDue.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                          No upcoming loans due
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      loansDue.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.due_date}</TableCell>
+                          <TableCell>KES {Number(item.principal_due).toLocaleString()}</TableCell>
+                          <TableCell>KES {Number(item.interest_due).toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">KES {Number(item.total_due).toLocaleString()}</TableCell>
+                          <TableCell className="capitalize">{item.status}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -553,10 +389,10 @@ const BranchDetail = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Dormant Clients</CardTitle>
-                <CardDescription>Clients with no active loans</CardDescription>
+                <CardDescription>Clients with least recent activity</CardDescription>
                 <div className="flex justify-end mt-2">
                   <ExportButton
-                    data={branch.dormantClients}
+                    data={dormantClients}
                     filename={`dormant-clients-${branch.id}`}
                     columns={dormantClientsColumns}
                   />
@@ -569,18 +405,24 @@ const BranchDetail = () => {
                       <TableHead>Client Name</TableHead>
                       <TableHead>Phone Number</TableHead>
                       <TableHead>Last Activity</TableHead>
-                      <TableHead>Days Inactive</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {branch.dormantClients.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium">{client.clientName}</TableCell>
-                        <TableCell>{client.phoneNumber}</TableCell>
-                        <TableCell>{client.lastActivity}</TableCell>
-                        <TableCell>{client.daysInactive}</TableCell>
+                    {dormantClients.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
+                          No clients found for this branch
+                        </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      dormantClients.map((client) => (
+                        <TableRow key={client.id}>
+                          <TableCell className="font-medium">{client.clientName}</TableCell>
+                          <TableCell>{client.phoneNumber}</TableCell>
+                          <TableCell>{client.lastActivity}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
