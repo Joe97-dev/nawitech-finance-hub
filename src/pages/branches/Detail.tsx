@@ -370,14 +370,15 @@ const BranchDetail = () => {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     initialFocus
                     mode="range"
                     defaultMonth={date?.from}
                     selected={date}
                     onSelect={setDate}
-                    numberOfMonths={2}
+                    numberOfMonths={1}
+                    className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
