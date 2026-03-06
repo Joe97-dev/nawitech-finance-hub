@@ -41,19 +41,24 @@ export function LoanOfficerPerformance() {
         .select('user_id')
         .eq('role', 'loan_officer');
 
-      if (!roles?.length) return;
-
-      const officerList: LoanOfficer[] = [];
-      for (const role of roles) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('id', role.user_id)
-          .single();
-        if (profile) {
-          officerList.push({ id: profile.id, username: profile.username || profile.id });
-        }
+      const officerIds = (roles ?? []).map((r) => r.user_id);
+      if (!officerIds.length) {
+        setOfficers([]);
+        return;
       }
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', officerIds);
+
+      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p.username]));
+
+      const officerList: LoanOfficer[] = officerIds.map((id) => ({
+        id,
+        username: profileMap.get(id) || `Officer ${id.slice(0, 8)}`,
+      }));
+
       setOfficers(officerList);
     };
     fetchOfficers();
