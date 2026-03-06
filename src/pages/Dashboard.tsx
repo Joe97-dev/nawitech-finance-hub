@@ -3,6 +3,7 @@ import { CreditCard, DollarSign, Users, BarChartHorizontal } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
+import { LoanOfficerPerformance } from "@/components/dashboard/LoanOfficerPerformance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   AreaChart, 
@@ -287,6 +288,8 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        <LoanOfficerPerformance />
       </div>
     </DashboardLayout>
   );
