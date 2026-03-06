@@ -288,6 +288,8 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        <LoanOfficerPerformance />
       </div>
     </DashboardLayout>
   );
