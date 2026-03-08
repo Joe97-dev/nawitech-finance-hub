@@ -183,7 +183,13 @@ const LoanDetailPage = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Loan {loan.loan_number || `#${loan.id.substring(0, 8)}`}</h1>
-              <p className="text-muted-foreground">Client: {loan.client}</p>
+              <p className="text-muted-foreground">
+                Client: {loan.client_id ? (
+                  <Link to={`/clients/${loan.client_id}`} className="text-primary hover:underline">
+                    {loan.client}
+                  </Link>
+                ) : loan.client}
+              </p>
             </div>
           </div>
         </div>

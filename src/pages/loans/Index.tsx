@@ -233,7 +233,19 @@ const LoansPage = () => {
                         {loan.loan_number || `${loan.id.substring(0, 8)}...`}
                       </Link>
                     </TableCell>
-                    <TableCell>{loan.client}</TableCell>
+                    <TableCell>
+                      {clientMap[loan.client] ? (
+                        <Link
+                          to={`/clients/${clientMap[loan.client]}`}
+                          className="text-primary hover:underline font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {loan.client}
+                        </Link>
+                      ) : (
+                        loan.client
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(loan.amount)}</TableCell>
                     <TableCell>{formatCurrency(loan.balance)}</TableCell>
                     <TableCell>
