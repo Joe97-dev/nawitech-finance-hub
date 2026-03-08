@@ -18,6 +18,10 @@ import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface ClientMap {
+  [name: string]: string;
+}
+
 interface Loan {
   id: string;
   loan_number: string;
