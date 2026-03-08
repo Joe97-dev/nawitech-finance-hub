@@ -79,6 +79,7 @@ interface SignedUrls {
   id_photo_front?: string;
   id_photo_back?: string;
   business_photo?: string;
+  passport_photo?: string;
 }
 
 const ClientDetailPage = () => {
@@ -177,6 +178,19 @@ const ClientDetailPage = () => {
             .from('client-business-photos')
             .createSignedUrl(clientData.business_photo_url, 3600);
           if (bizUrl?.signedUrl) urls.business_photo = bizUrl.signedUrl;
+        }
+        if (clientData.photo_url) {
+          // Extract relative path from photo_url (may be full URL or relative path)
+          let photoPath = clientData.photo_url;
+          if (photoPath.includes('/object/public/client_photos/')) {
+            photoPath = photoPath.split('/object/public/client_photos/')[1];
+          } else if (photoPath.includes('/storage/v1/object/public/client_photos/')) {
+            photoPath = photoPath.split('/storage/v1/object/public/client_photos/')[1];
+          }
+          const { data: passportUrl } = await supabase.storage
+            .from('client_photos')
+            .createSignedUrl(photoPath, 3600);
+          if (passportUrl?.signedUrl) urls.passport_photo = passportUrl.signedUrl;
         }
         setSignedUrls(urls);
         
@@ -291,7 +305,9 @@ const ClientDetailPage = () => {
                 <div className="flex flex-col items-center">
                   <Avatar className="h-24 w-24">
                     <AvatarFallback className="text-2xl">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
-                    {client.photo_url && <AvatarImage src={client.photo_url} alt={getFullName()} />}
+                    {(signedUrls.passport_photo || client.photo_url) && (
+                      <AvatarImage src={signedUrls.passport_photo || client.photo_url || undefined} alt={getFullName()} />
+                    )}
                   </Avatar>
                   
                   <div className="mt-3 text-center">
