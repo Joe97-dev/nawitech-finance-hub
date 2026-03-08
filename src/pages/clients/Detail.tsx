@@ -305,7 +305,9 @@ const ClientDetailPage = () => {
                 <div className="flex flex-col items-center">
                   <Avatar className="h-24 w-24">
                     <AvatarFallback className="text-2xl">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
-                    {client.photo_url && <AvatarImage src={client.photo_url} alt={getFullName()} />}
+                    {(signedUrls.passport_photo || client.photo_url) && (
+                      <AvatarImage src={signedUrls.passport_photo || client.photo_url || undefined} alt={getFullName()} />
+                    )}
                   </Avatar>
                   
                   <div className="mt-3 text-center">
