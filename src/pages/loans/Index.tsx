@@ -60,6 +60,7 @@ const LoansPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientMap, setClientMap] = useState<ClientMap>({});
   const { toast } = useToast();
   const { isAdmin } = useRole();
   
