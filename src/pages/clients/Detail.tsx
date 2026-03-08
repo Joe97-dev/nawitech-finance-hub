@@ -79,6 +79,7 @@ interface SignedUrls {
   id_photo_front?: string;
   id_photo_back?: string;
   business_photo?: string;
+  passport_photo?: string;
 }
 
 const ClientDetailPage = () => {
