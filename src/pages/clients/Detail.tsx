@@ -505,14 +505,25 @@ const ClientDetailPage = () => {
                            size="sm" 
                            variant="outline"
                            onClick={async () => {
-                             const { data } = await supabase.storage
-                               .from('client-documents')
-                               .createSignedUrl(doc.file_path, 3600);
-                             if (data?.signedUrl) {
-                               const link = document.createElement('a');
-                               link.href = data.signedUrl;
-                               link.download = doc.document_name;
-                               link.click();
+                             try {
+                               const { data, error } = await supabase.storage
+                                 .from('client-documents')
+                                 .download(doc.file_path);
+                               if (error) throw error;
+                               if (data) {
+                                 const url = URL.createObjectURL(data);
+                                 const link = document.createElement('a');
+                                 link.href = url;
+                                 link.download = doc.document_name;
+                                 link.click();
+                                 URL.revokeObjectURL(url);
+                               }
+                             } catch (err: any) {
+                               toast({
+                                 variant: "destructive",
+                                 title: "Download failed",
+                                 description: err.message || "Could not download the file.",
+                               });
                              }
                            }}
                          >
