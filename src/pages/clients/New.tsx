@@ -205,12 +205,8 @@ const NewClientPage = () => {
         
       if (uploadError) throw uploadError;
       
-      // Get public URL for the uploaded file
-      const { data: urlData } = supabase.storage
-        .from('client_photos')
-        .getPublicUrl(filePath);
-      
-      return urlData.publicUrl;
+      // Return the relative file path (signed URLs will be generated on display)
+      return filePath;
     } catch (error: any) {
       console.error("Error uploading photo:", error);
       return null;
