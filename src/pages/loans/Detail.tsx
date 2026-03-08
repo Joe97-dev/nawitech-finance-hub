@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, CreditCard, FileText, Calendar, Edit } from "lucide-react";
+import { Link } from "react-router-dom";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
@@ -182,7 +183,13 @@ const LoanDetailPage = () => {
             </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Loan {loan.loan_number || `#${loan.id.substring(0, 8)}`}</h1>
-              <p className="text-muted-foreground">Client: {loan.client}</p>
+              <p className="text-muted-foreground">
+                Client: {loan.client_id ? (
+                  <Link to={`/clients/${loan.client_id}`} className="text-primary hover:underline">
+                    {loan.client}
+                  </Link>
+                ) : loan.client}
+              </p>
             </div>
           </div>
         </div>

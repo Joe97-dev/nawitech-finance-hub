@@ -18,6 +18,10 @@ import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+interface ClientMap {
+  [name: string]: string;
+}
+
 interface Loan {
   id: string;
   loan_number: string;
@@ -56,6 +60,7 @@ const LoansPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clientMap, setClientMap] = useState<ClientMap>({});
   const { toast } = useToast();
   const { isAdmin } = useRole();
   
@@ -85,6 +90,18 @@ const LoansPage = () => {
         }));
         
         setLoans(formattedLoans);
+
+        // Build client name -> id map
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name');
+        if (clients) {
+          const map: ClientMap = {};
+          clients.forEach(c => {
+            map[`${c.first_name} ${c.last_name}`] = c.id;
+          });
+          setClientMap(map);
+        }
       } catch (error: any) {
         console.error("Error fetching loans:", error);
         toast({
@@ -216,7 +233,19 @@ const LoansPage = () => {
                         {loan.loan_number || `${loan.id.substring(0, 8)}...`}
                       </Link>
                     </TableCell>
-                    <TableCell>{loan.client}</TableCell>
+                    <TableCell>
+                      {clientMap[loan.client] ? (
+                        <Link
+                          to={`/clients/${clientMap[loan.client]}`}
+                          className="text-primary hover:underline font-medium"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {loan.client}
+                        </Link>
+                      ) : (
+                        loan.client
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(loan.amount)}</TableCell>
                     <TableCell>{formatCurrency(loan.balance)}</TableCell>
                     <TableCell>

@@ -110,7 +110,8 @@ const ClientDetailPage = () => {
         const { data: loansData, error: loansError } = await supabase
           .from('loans')
           .select('*')
-          .eq('client', clientName);
+          .eq('client', clientName)
+          .neq('type', 'client_fee_account');
         
         if (loansError) {
           console.error("Error fetching loans:", loansError);
