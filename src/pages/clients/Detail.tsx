@@ -75,6 +75,12 @@ interface Client {
   referees: ClientReferee[];
 }
 
+interface SignedUrls {
+  id_photo_front?: string;
+  id_photo_back?: string;
+  business_photo?: string;
+}
+
 const ClientDetailPage = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -82,6 +88,7 @@ const ClientDetailPage = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<SignedUrls>({});
   
   useEffect(() => {
     const fetchClientData = async () => {
