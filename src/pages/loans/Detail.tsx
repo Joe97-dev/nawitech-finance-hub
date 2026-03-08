@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, CreditCard, FileText, Calendar, Edit } from "lucide-react";
+import { Link } from "react-router-dom";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
