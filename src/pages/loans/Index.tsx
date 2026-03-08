@@ -90,6 +90,18 @@ const LoansPage = () => {
         }));
         
         setLoans(formattedLoans);
+
+        // Build client name -> id map
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name');
+        if (clients) {
+          const map: ClientMap = {};
+          clients.forEach(c => {
+            map[`${c.first_name} ${c.last_name}`] = c.id;
+          });
+          setClientMap(map);
+        }
       } catch (error: any) {
         console.error("Error fetching loans:", error);
         toast({
