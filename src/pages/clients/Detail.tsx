@@ -157,6 +157,28 @@ const ClientDetailPage = () => {
         };
         
         setClient(enrichedClient);
+
+        // Generate signed URLs for photos
+        const urls: SignedUrls = {};
+        if (clientData.id_photo_front_url) {
+          const { data: frontUrl } = await supabase.storage
+            .from('client-id-photos')
+            .createSignedUrl(clientData.id_photo_front_url, 3600);
+          if (frontUrl?.signedUrl) urls.id_photo_front = frontUrl.signedUrl;
+        }
+        if (clientData.id_photo_back_url) {
+          const { data: backUrl } = await supabase.storage
+            .from('client-id-photos')
+            .createSignedUrl(clientData.id_photo_back_url, 3600);
+          if (backUrl?.signedUrl) urls.id_photo_back = backUrl.signedUrl;
+        }
+        if (clientData.business_photo_url) {
+          const { data: bizUrl } = await supabase.storage
+            .from('client-business-photos')
+            .createSignedUrl(clientData.business_photo_url, 3600);
+          if (bizUrl?.signedUrl) urls.business_photo = bizUrl.signedUrl;
+        }
+        setSignedUrls(urls);
         
       } catch (error: any) {
         console.error("Error fetching client details:", error);
