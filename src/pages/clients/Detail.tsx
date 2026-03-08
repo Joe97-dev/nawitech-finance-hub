@@ -366,31 +366,35 @@ const ClientDetailPage = () => {
                  </CardTitle>
                  <CardDescription>ID and business photos</CardDescription>
                </CardHeader>
-               <CardContent className="space-y-4">
+                <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 gap-4">
-                   {client.id_photo_front_url && (
+                   {client.id_photo_front_url && signedUrls.id_photo_front && (
                      <div className="relative">
                        <label className="text-sm font-medium">ID Photo (Front)</label>
                        <div className="relative group">
                          <img 
-                           src={client.id_photo_front_url} 
+                           src={signedUrls.id_photo_front} 
                            alt="ID Front" 
-                           className="w-full h-32 object-cover rounded-md border mt-1"
+                           className="w-full h-32 object-cover rounded-md border mt-1 cursor-pointer"
+                           onClick={() => window.open(signedUrls.id_photo_front, '_blank')}
                          />
                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                            <Button 
                              size="sm" 
                              variant="outline"
                              className="bg-white/90 hover:bg-white"
-                             onClick={async () => {
+                             onClick={async (e) => {
+                               e.stopPropagation();
                                const { data } = await supabase.storage
                                  .from('client-id-photos')
-                                 .createSignedUrl(client.id_photo_front_url!, 3600);
-                               if (data?.signedUrl) {
+                                 .download(client.id_photo_front_url!);
+                               if (data) {
+                                 const url = URL.createObjectURL(data);
                                  const link = document.createElement('a');
-                                 link.href = data.signedUrl;
+                                 link.href = url;
                                  link.download = `${client.first_name}_${client.last_name}_ID_Front.jpg`;
                                  link.click();
+                                 URL.revokeObjectURL(url);
                                }
                              }}
                            >
@@ -400,29 +404,33 @@ const ClientDetailPage = () => {
                        </div>
                      </div>
                    )}
-                   {client.id_photo_back_url && (
+                   {client.id_photo_back_url && signedUrls.id_photo_back && (
                      <div className="relative">
                        <label className="text-sm font-medium">ID Photo (Back)</label>
                        <div className="relative group">
                          <img 
-                           src={client.id_photo_back_url} 
+                           src={signedUrls.id_photo_back} 
                            alt="ID Back" 
-                           className="w-full h-32 object-cover rounded-md border mt-1"
+                           className="w-full h-32 object-cover rounded-md border mt-1 cursor-pointer"
+                           onClick={() => window.open(signedUrls.id_photo_back, '_blank')}
                          />
                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                            <Button 
                              size="sm" 
                              variant="outline"
                              className="bg-white/90 hover:bg-white"
-                             onClick={async () => {
+                             onClick={async (e) => {
+                               e.stopPropagation();
                                const { data } = await supabase.storage
                                  .from('client-id-photos')
-                                 .createSignedUrl(client.id_photo_back_url!, 3600);
-                               if (data?.signedUrl) {
+                                 .download(client.id_photo_back_url!);
+                               if (data) {
+                                 const url = URL.createObjectURL(data);
                                  const link = document.createElement('a');
-                                 link.href = data.signedUrl;
+                                 link.href = url;
                                  link.download = `${client.first_name}_${client.last_name}_ID_Back.jpg`;
                                  link.click();
+                                 URL.revokeObjectURL(url);
                                }
                              }}
                            >
@@ -432,29 +440,33 @@ const ClientDetailPage = () => {
                        </div>
                      </div>
                    )}
-                   {client.business_photo_url && (
+                   {client.business_photo_url && signedUrls.business_photo && (
                      <div className="relative">
                        <label className="text-sm font-medium">Business Photo</label>
                        <div className="relative group">
                          <img 
-                           src={client.business_photo_url} 
+                           src={signedUrls.business_photo} 
                            alt="Business" 
-                           className="w-full h-32 object-cover rounded-md border mt-1"
+                           className="w-full h-32 object-cover rounded-md border mt-1 cursor-pointer"
+                           onClick={() => window.open(signedUrls.business_photo, '_blank')}
                          />
                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                            <Button 
                              size="sm" 
                              variant="outline"
                              className="bg-white/90 hover:bg-white"
-                             onClick={async () => {
+                             onClick={async (e) => {
+                               e.stopPropagation();
                                const { data } = await supabase.storage
                                  .from('client-business-photos')
-                                 .createSignedUrl(client.business_photo_url!, 3600);
-                               if (data?.signedUrl) {
+                                 .download(client.business_photo_url!);
+                               if (data) {
+                                 const url = URL.createObjectURL(data);
                                  const link = document.createElement('a');
-                                 link.href = data.signedUrl;
+                                 link.href = url;
                                  link.download = `${client.first_name}_${client.last_name}_Business.jpg`;
                                  link.click();
+                                 URL.revokeObjectURL(url);
                                }
                              }}
                            >
