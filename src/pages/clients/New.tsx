@@ -230,13 +230,17 @@ const NewClientPage = () => {
   const saveClientDocuments = async (clientId: string, filePaths: string[], documentType: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
+    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+    const orgId = profile?.organization_id;
+    if (!orgId) throw new Error('No organization found');
 
     const documentRecords = filePaths.map(filePath => ({
       client_id: clientId,
       document_name: filePath.split('/').pop() || 'Unknown',
       file_path: filePath,
       document_type: documentType,
-      uploaded_by: user.id
+      uploaded_by: user.id,
+      organization_id: orgId
     }));
 
     const { error } = await supabase
