@@ -173,7 +173,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: `Loan repayment from Draw Down Account`,
             created_by: user.id,
             previous_balance: drawDownBalance,
-            new_balance: drawDownBalance - amount
+            new_balance: drawDownBalance - amount,
+            organization_id: organizationId
           });
         if (ddError) throw ddError;
       }
