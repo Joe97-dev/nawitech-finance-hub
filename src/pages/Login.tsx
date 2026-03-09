@@ -48,7 +48,7 @@ const Login = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signUp(email, password);
+    await signUp(email, password, firstName, lastName);
     
     // Show pending approval notification
     toast({
