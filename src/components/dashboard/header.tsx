@@ -15,6 +15,7 @@ export function AppHeader() {
   // Use try/catch to safely access the auth context
   try {
     const { user, logout } = useAuth();
+    const { organization } = useOrganization();
     
     // Fetch user profile and role data
     useEffect(() => {
