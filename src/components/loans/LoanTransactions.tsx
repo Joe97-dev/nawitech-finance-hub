@@ -75,11 +75,9 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         
         if (error) throw error;
         
-        // Cast the data to the correct type
         const typedData = (data || []) as Transaction[];
         setTransactions(typedData);
         
-        // Fetch usernames for created_by
         const userIds = [...new Set(typedData.map(t => t.created_by).filter(Boolean) as string[])];
         if (userIds.length > 0) {
           const { data: profileData } = await supabase
@@ -104,8 +102,99 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
 
     if (loanId && clientId) {
       fetchTransactions();
+      fetchDrawDownBalance();
     }
   }, [loanId, toast]);
+
+  const fetchDrawDownBalance = async () => {
+    if (!clientId) return;
+    try {
+      const { data, error } = await supabase
+        .from('client_accounts')
+        .select('id, balance')
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      if (data) {
+        setDrawDownBalance(data.balance);
+        setDrawDownAccountId(data.id);
+      }
+    } catch (error) {
+      console.error('Error fetching draw down balance:', error);
+    }
+  };
+
+  const handlePayFromDrawDown = async () => {
+    const amount = parseFloat(drawDownPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Error", description: "Enter a valid amount" });
+      return;
+    }
+    if (amount > drawDownBalance) {
+      toast({ variant: "destructive", title: "Error", description: "Insufficient draw down balance" });
+      return;
+    }
+
+    setIsPayingFromDrawDown(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Record loan transaction
+      const { error: txError } = await supabase
+        .from('loan_transactions')
+        .insert({
+          loan_id: loanId,
+          amount: amount,
+          transaction_type: 'repayment',
+          payment_method: 'draw_down_account',
+          receipt_number: `DDA-${Date.now()}`,
+          notes: 'Payment from Draw Down Account',
+          created_by: user.id
+        });
+      if (txError) throw txError;
+
+      // Allocate to schedule
+      await allocatePaymentToSchedule(loanId, amount);
+
+      // Deduct from draw down account
+      if (drawDownAccountId) {
+        const { error: ddError } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: drawDownAccountId,
+            amount: -amount,
+            transaction_type: 'loan_payment',
+            related_loan_id: loanId,
+            notes: `Loan repayment from Draw Down Account`,
+            created_by: user.id,
+            previous_balance: drawDownBalance,
+            new_balance: drawDownBalance - amount
+          });
+        if (ddError) throw ddError;
+      }
+
+      setDrawDownPaymentAmount("");
+      
+      // Refresh
+      const { data, error } = await supabase
+        .from('loan_transactions')
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('transaction_date', { ascending: false });
+      if (!error) setTransactions((data || []) as Transaction[]);
+      
+      await fetchDrawDownBalance();
+      onBalanceUpdate?.();
+
+      toast({ title: "Success", description: `${formatCurrency(amount)} paid from Draw Down Account` });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsPayingFromDrawDown(false);
+    }
+  };
 
   const getTransactionBadge = (type: string) => {
     switch (type) {
