@@ -10,7 +10,7 @@ type AuthContextType = {
   session: Session | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
   approvalStatus: 'pending' | 'approved' | 'rejected' | 'deactivated' | null;
