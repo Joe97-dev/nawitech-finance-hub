@@ -73,9 +73,12 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
 
       if (!accountData) {
         // Create account if it doesn't exist
+        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+        const orgId = profile?.organization_id;
+        if (!orgId) throw new Error('No organization found');
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0 })
+          .insert({ client_id: clientId, balance: 0, organization_id: orgId })
           .select()
           .single();
 
