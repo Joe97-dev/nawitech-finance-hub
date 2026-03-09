@@ -524,7 +524,39 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         <h3 className="text-lg font-semibold">Transactions</h3>
       </div>
 
-      {/* Payment Form - Admin only */}
+      {/* Draw Down Account Card */}
+      {isAdmin && drawDownBalance > 0 && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              Draw Down Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
+            <p className="text-2xl font-bold mb-3">{formatCurrency(drawDownBalance)}</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                max={drawDownBalance}
+                placeholder="Amount to pay"
+                value={drawDownPaymentAmount}
+                onChange={(e) => setDrawDownPaymentAmount(e.target.value)}
+                className="max-w-[200px]"
+              />
+              <Button
+                onClick={handlePayFromDrawDown}
+                disabled={isPayingFromDrawDown || !drawDownPaymentAmount}
+                size="sm"
+              >
+                {isPayingFromDrawDown ? "Processing..." : "Pay from Account"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {isAdmin && (
       <Card>
         <CardHeader>
