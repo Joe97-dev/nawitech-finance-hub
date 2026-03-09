@@ -11,6 +11,7 @@ import { format, subMonths, eachMonthOfInterval } from "date-fns";
 interface LoanOfficer {
   id: string;
   username: string;
+  displayName: string;
 }
 
 interface OfficerStats {
@@ -49,15 +50,16 @@ export function LoanOfficerPerformance() {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username')
+        .select('id, username, first_name, last_name')
         .in('id', officerIds);
 
-      const profileMap = new Map((profiles ?? []).map((p) => [p.id, p.username]));
-
-      const officerList: LoanOfficer[] = officerIds.map((id) => ({
-        id,
-        username: profileMap.get(id) || `Officer ${id.slice(0, 8)}`,
-      }));
+      const officerList: LoanOfficer[] = officerIds.map((id) => {
+        const profile = (profiles ?? []).find((p) => p.id === id);
+        const displayName = profile?.first_name
+          ? `${profile.first_name} ${profile.last_name || ''}`.trim()
+          : profile?.username || `Officer ${id.slice(0, 8)}`;
+        return { id, username: profile?.username || '', displayName };
+      });
 
       setOfficers(officerList);
     };
@@ -175,7 +177,7 @@ export function LoanOfficerPerformance() {
             </SelectTrigger>
             <SelectContent>
               {officers.map(o => (
-                <SelectItem key={o.id} value={o.id}>{o.username}</SelectItem>
+                <SelectItem key={o.id} value={o.id}>{o.displayName}</SelectItem>
               ))}
             </SelectContent>
           </Select>

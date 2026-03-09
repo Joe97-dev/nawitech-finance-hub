@@ -24,17 +24,17 @@ export function AppHeader() {
           // Get user profile from profiles table  
           const { data: profileData } = await supabase
             .from('profiles')
-            .select('username')
+            .select('username, first_name, last_name')
             .eq('id', user.id)
             .single();
           
-          // Extract first name from username (email)
-          if (profileData?.username) {
+          if (profileData?.first_name) {
+            const name = profileData.first_name + (profileData.last_name ? ` ${profileData.last_name}` : '');
+            setFirstName(name);
+          } else if (profileData?.username) {
             const emailPart = profileData.username.split('@')[0];
-            // Capitalize first letter and extract first part if there are dots/numbers
-            const firstName = emailPart.split(/[._0-9]/)[0];
-            const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-            setFirstName(capitalizedFirstName);
+            const first = emailPart.split(/[._0-9]/)[0];
+            setFirstName(first.charAt(0).toUpperCase() + first.slice(1));
           }
           
           // Get user role
