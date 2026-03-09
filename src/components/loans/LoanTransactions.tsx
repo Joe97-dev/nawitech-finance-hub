@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Smartphone } from "lucide-react";
+import { Smartphone, Wallet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -50,6 +50,10 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [drawDownBalance, setDrawDownBalance] = useState<number>(0);
+  const [drawDownAccountId, setDrawDownAccountId] = useState<string | null>(null);
+  const [isPayingFromDrawDown, setIsPayingFromDrawDown] = useState(false);
+  const [drawDownPaymentAmount, setDrawDownPaymentAmount] = useState("");
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     receipt_number: "",
@@ -71,11 +75,9 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         
         if (error) throw error;
         
-        // Cast the data to the correct type
         const typedData = (data || []) as Transaction[];
         setTransactions(typedData);
         
-        // Fetch usernames for created_by
         const userIds = [...new Set(typedData.map(t => t.created_by).filter(Boolean) as string[])];
         if (userIds.length > 0) {
           const { data: profileData } = await supabase
@@ -100,8 +102,99 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
 
     if (loanId && clientId) {
       fetchTransactions();
+      fetchDrawDownBalance();
     }
   }, [loanId, toast]);
+
+  const fetchDrawDownBalance = async () => {
+    if (!clientId) return;
+    try {
+      const { data, error } = await supabase
+        .from('client_accounts')
+        .select('id, balance')
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      if (data) {
+        setDrawDownBalance(data.balance);
+        setDrawDownAccountId(data.id);
+      }
+    } catch (error) {
+      console.error('Error fetching draw down balance:', error);
+    }
+  };
+
+  const handlePayFromDrawDown = async () => {
+    const amount = parseFloat(drawDownPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ variant: "destructive", title: "Error", description: "Enter a valid amount" });
+      return;
+    }
+    if (amount > drawDownBalance) {
+      toast({ variant: "destructive", title: "Error", description: "Insufficient draw down balance" });
+      return;
+    }
+
+    setIsPayingFromDrawDown(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      // Record loan transaction
+      const { error: txError } = await supabase
+        .from('loan_transactions')
+        .insert({
+          loan_id: loanId,
+          amount: amount,
+          transaction_type: 'repayment',
+          payment_method: 'draw_down_account',
+          receipt_number: `DDA-${Date.now()}`,
+          notes: 'Payment from Draw Down Account',
+          created_by: user.id
+        });
+      if (txError) throw txError;
+
+      // Allocate to schedule
+      await allocatePaymentToSchedule(loanId, amount);
+
+      // Deduct from draw down account
+      if (drawDownAccountId) {
+        const { error: ddError } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: drawDownAccountId,
+            amount: -amount,
+            transaction_type: 'loan_payment',
+            related_loan_id: loanId,
+            notes: `Loan repayment from Draw Down Account`,
+            created_by: user.id,
+            previous_balance: drawDownBalance,
+            new_balance: drawDownBalance - amount
+          });
+        if (ddError) throw ddError;
+      }
+
+      setDrawDownPaymentAmount("");
+      
+      // Refresh
+      const { data, error } = await supabase
+        .from('loan_transactions')
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('transaction_date', { ascending: false });
+      if (!error) setTransactions((data || []) as Transaction[]);
+      
+      await fetchDrawDownBalance();
+      onBalanceUpdate?.();
+
+      toast({ title: "Success", description: `${formatCurrency(amount)} paid from Draw Down Account` });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    } finally {
+      setIsPayingFromDrawDown(false);
+    }
+  };
 
   const getTransactionBadge = (type: string) => {
     switch (type) {
@@ -431,7 +524,39 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         <h3 className="text-lg font-semibold">Transactions</h3>
       </div>
 
-      {/* Payment Form - Admin only */}
+      {/* Draw Down Account Card */}
+      {isAdmin && drawDownBalance > 0 && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wallet className="h-4 w-4" />
+              Draw Down Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
+            <p className="text-2xl font-bold mb-3">{formatCurrency(drawDownBalance)}</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                step="0.01"
+                max={drawDownBalance}
+                placeholder="Amount to pay"
+                value={drawDownPaymentAmount}
+                onChange={(e) => setDrawDownPaymentAmount(e.target.value)}
+                className="max-w-[200px]"
+              />
+              <Button
+                onClick={handlePayFromDrawDown}
+                disabled={isPayingFromDrawDown || !drawDownPaymentAmount}
+                size="sm"
+              >
+                {isPayingFromDrawDown ? "Processing..." : "Pay from Account"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {isAdmin && (
       <Card>
         <CardHeader>
