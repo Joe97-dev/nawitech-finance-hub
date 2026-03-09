@@ -149,6 +149,32 @@ const Login = () => {
               
               <TabsContent value="signup">
                 <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-first-name">First Name</Label>
+                      <Input
+                        id="signup-first-name"
+                        type="text"
+                        placeholder="First name"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-last-name">Last Name</Label>
+                      <Input
+                        id="signup-last-name"
+                        type="text"
+                        placeholder="Last name"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <Input
