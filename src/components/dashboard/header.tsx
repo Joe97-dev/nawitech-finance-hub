@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/AuthContext";
+import { useOrganization } from "@/context/OrganizationContext";
 import { LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
