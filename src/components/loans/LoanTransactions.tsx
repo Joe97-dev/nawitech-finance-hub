@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { RevertPaymentDialog } from "./RevertPaymentDialog";
 import { useRole } from "@/context/RoleContext";
 
