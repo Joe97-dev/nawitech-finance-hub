@@ -91,8 +91,11 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
 
       let loanId: string;
 
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       if (loanFetchError && loanFetchError.code === 'PGRST116') {
-        // No existing fee account, create one
         const { data: newLoan, error: loanCreateError } = await supabase
           .from("loans")
           .insert({
@@ -102,6 +105,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
             amount: 0,
             balance: 0,
             date: new Date().toISOString().split('T')[0],
+            organization_id: orgId
           })
           .select("id")
           .single();
@@ -124,6 +128,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
+          organization_id: orgId
         });
 
       if (error) throw error;

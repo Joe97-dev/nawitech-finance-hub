@@ -230,13 +230,17 @@ const NewClientPage = () => {
   const saveClientDocuments = async (clientId: string, filePaths: string[], documentType: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
+    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+    const orgId = profile?.organization_id;
+    if (!orgId) throw new Error('No organization found');
 
     const documentRecords = filePaths.map(filePath => ({
       client_id: clientId,
       document_name: filePath.split('/').pop() || 'Unknown',
       file_path: filePath,
       document_type: documentType,
-      uploaded_by: user.id
+      uploaded_by: user.id,
+      organization_id: orgId
     }));
 
     const { error } = await supabase
@@ -250,13 +254,19 @@ const NewClientPage = () => {
     const validReferees = referees.filter(ref => ref.name && ref.phone && ref.relationship);
     
     if (validReferees.length > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user?.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       const { error } = await supabase
         .from('client_referees')
         .insert(validReferees.map(ref => ({
           client_id: clientId,
           name: ref.name,
           phone: ref.phone,
-          relationship: ref.relationship
+          relationship: ref.relationship,
+          organization_id: orgId
         })));
       
       if (error) throw error;
@@ -277,6 +287,13 @@ const NewClientPage = () => {
         throw new Error("Please fill in all required fields");
       }
       
+      // Get organization_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       // Create client record
       const clientData: any = {
         first_name: formData.firstName,
@@ -294,7 +311,8 @@ const NewClientPage = () => {
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
         marital_status: formData.maritalStatus || null,
         photo_url: null,
-        status: 'pending'
+        status: 'pending',
+        organization_id: orgId
       };
       
       if (selectedOfficerId) {

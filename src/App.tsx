@@ -13,6 +13,7 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
+import { OrganizationProvider } from "./context/OrganizationContext";
 import { Toaster } from "./components/ui/toaster";
 import ClientsIndex from "./pages/clients/Index";
 import ClientNew from "./pages/clients/New";
@@ -40,6 +41,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <RoleProvider>
+        <OrganizationProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -83,6 +85,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
+        </OrganizationProvider>
         </RoleProvider>
       </AuthProvider>
     </BrowserRouter>
