@@ -177,7 +177,7 @@ export function LoanOfficerPerformance() {
             </SelectTrigger>
             <SelectContent>
               {officers.map(o => (
-                <SelectItem key={o.id} value={o.id}>{o.username}</SelectItem>
+                <SelectItem key={o.id} value={o.id}>{o.displayName}</SelectItem>
               ))}
             </SelectContent>
           </Select>
