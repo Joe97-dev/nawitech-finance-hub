@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useRole } from "@/context/RoleContext";
 import { Wallet, ArrowDownToLine, Minus } from "lucide-react";
 import {
@@ -73,9 +74,10 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
 
       if (!accountData) {
         // Create account if it doesn't exist
+        const organizationId = await getOrganizationId();
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0 })
+          .insert({ client_id: clientId, balance: 0, organization_id: organizationId })
           .select()
           .single();
 
@@ -139,6 +141,7 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      const organizationId = await getOrganizationId();
       const { error } = await supabase
         .from('client_account_transactions')
         .insert({
@@ -148,7 +151,8 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
           notes: withdrawForm.notes || null,
           created_by: user.id,
           previous_balance: balance,
-          new_balance: balance - amount
+          new_balance: balance - amount,
+          organization_id: organizationId
         });
 
       if (error) throw error;

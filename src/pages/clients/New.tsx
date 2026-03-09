@@ -25,6 +25,7 @@ import { ArrowLeft, Upload, Image, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 
 interface Branch {
   id: string;
@@ -230,13 +231,15 @@ const NewClientPage = () => {
   const saveClientDocuments = async (clientId: string, filePaths: string[], documentType: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
+    const organizationId = await getOrganizationId();
 
     const documentRecords = filePaths.map(filePath => ({
       client_id: clientId,
       document_name: filePath.split('/').pop() || 'Unknown',
       file_path: filePath,
       document_type: documentType,
-      uploaded_by: user.id
+      uploaded_by: user.id,
+      organization_id: organizationId
     }));
 
     const { error } = await supabase
@@ -250,13 +253,15 @@ const NewClientPage = () => {
     const validReferees = referees.filter(ref => ref.name && ref.phone && ref.relationship);
     
     if (validReferees.length > 0) {
+      const organizationId = await getOrganizationId();
       const { error } = await supabase
         .from('client_referees')
         .insert(validReferees.map(ref => ({
           client_id: clientId,
           name: ref.name,
           phone: ref.phone,
-          relationship: ref.relationship
+          relationship: ref.relationship,
+          organization_id: organizationId
         })));
       
       if (error) throw error;
