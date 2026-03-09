@@ -140,6 +140,9 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
 
       // Record loan transaction
       const { error: txError } = await supabase
@@ -151,7 +154,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           payment_method: 'draw_down_account',
           receipt_number: `DDA-${Date.now()}`,
           notes: 'Payment from Draw Down Account',
-          created_by: user.id
+          created_by: user.id,
+          organization_id: orgId
         });
       if (txError) throw txError;
 
