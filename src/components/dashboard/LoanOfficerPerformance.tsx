@@ -11,6 +11,7 @@ import { format, subMonths, eachMonthOfInterval } from "date-fns";
 interface LoanOfficer {
   id: string;
   username: string;
+  displayName: string;
 }
 
 interface OfficerStats {
