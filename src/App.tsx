@@ -41,6 +41,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <RoleProvider>
+        <OrganizationProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
