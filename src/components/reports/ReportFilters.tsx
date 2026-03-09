@@ -69,7 +69,7 @@ export const ReportFilters = ({
           </div>
         </div>
         <CollapsibleContent>
-          <CardContent className="p-4 pt-4 space-y-4">
+          <CardContent className="p-4 pt-4 space-y-4 overflow-visible">
             {children}
           </CardContent>
         </CollapsibleContent>
