@@ -85,6 +85,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
+        </OrganizationProvider>
         </RoleProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -124,6 +124,10 @@ export function LoanProductsManager() {
     }
     
     try {
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       const productData = {
         name: newProduct.name,
         interest_rate: parseFloat(newProduct.interest_rate),
@@ -134,7 +138,8 @@ export function LoanProductsManager() {
         amount_max: parseFloat(newProduct.amount_max),
         description: newProduct.description || null,
         status: newProduct.status,
-        created_by: user.id
+        created_by: user.id,
+        organization_id: orgId
       };
       
       let operation: any;

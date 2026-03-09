@@ -167,7 +167,10 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
           status: "pending",
         };
 
-        const { error } = await supabase.from("clients").insert(clientData);
+        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+        const orgId = profile?.organization_id;
+        if (!orgId) throw new Error('No organization found');
+        const { error } = await supabase.from("clients").insert({ ...clientData, organization_id: orgId });
 
         if (error) {
           failed++;
