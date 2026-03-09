@@ -25,6 +25,7 @@ import { ArrowLeft, Upload, Image, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 
 interface Branch {
   id: string;
