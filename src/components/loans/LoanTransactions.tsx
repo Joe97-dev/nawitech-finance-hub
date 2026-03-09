@@ -50,6 +50,10 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [revertDialogOpen, setRevertDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [drawDownBalance, setDrawDownBalance] = useState<number>(0);
+  const [drawDownAccountId, setDrawDownAccountId] = useState<string | null>(null);
+  const [isPayingFromDrawDown, setIsPayingFromDrawDown] = useState(false);
+  const [drawDownPaymentAmount, setDrawDownPaymentAmount] = useState("");
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     receipt_number: "",
