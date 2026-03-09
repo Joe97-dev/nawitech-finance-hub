@@ -425,9 +425,10 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       if (accountError) throw accountError;
 
       if (!accountData) {
+        const organizationId = await getOrganizationId();
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0 })
+          .insert({ client_id: clientId, balance: 0, organization_id: organizationId })
           .select()
           .single();
 
@@ -445,7 +446,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: 'Excess payment deposited to client account',
             created_by: user.id,
             previous_balance: 0,
-            new_balance: amount
+            new_balance: amount,
+            organization_id: organizationId
           });
 
         if (transactionError) throw transactionError;
