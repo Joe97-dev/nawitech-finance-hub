@@ -806,7 +806,9 @@ export type Database = {
         Row: {
           branch_id: string | null
           created_at: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           organization_id: string | null
           updated_at: string | null
           username: string | null
@@ -814,7 +816,9 @@ export type Database = {
         Insert: {
           branch_id?: string | null
           created_at?: string | null
+          first_name?: string | null
           id: string
+          last_name?: string | null
           organization_id?: string | null
           updated_at?: string | null
           username?: string | null
@@ -822,7 +826,9 @@ export type Database = {
         Update: {
           branch_id?: string | null
           created_at?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           organization_id?: string | null
           updated_at?: string | null
           username?: string | null
