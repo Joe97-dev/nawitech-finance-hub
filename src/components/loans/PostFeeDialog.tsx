@@ -82,10 +82,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
-      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user?.id).single();
-      const orgId = profile?.organization_id;
-      if (!orgId) throw new Error('No organization found');
-      
       const { error } = await supabase
         .from("loan_transactions")
         .insert({
@@ -96,7 +92,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
           created_by: user?.id || null,
-          organization_id: orgId
         });
 
       if (error) throw error;

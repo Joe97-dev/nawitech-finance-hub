@@ -2,7 +2,6 @@
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/context/AuthContext";
-import { useOrganization } from "@/context/OrganizationContext";
 import { LogOut, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +14,6 @@ export function AppHeader() {
   // Use try/catch to safely access the auth context
   try {
     const { user, logout } = useAuth();
-    const { organization } = useOrganization();
     
     // Fetch user profile and role data
     useEffect(() => {
@@ -75,7 +73,7 @@ export function AppHeader() {
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
         <SidebarTrigger />
         <div className="flex-1">
-          <h1 className="text-lg font-semibold">{organization?.name || 'Superdon Microfinance'}</h1>
+          <h1 className="text-lg font-semibold">Superdon Microfinance</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">

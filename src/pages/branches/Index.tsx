@@ -77,17 +77,12 @@ const BranchesIndex = () => {
     }
 
     try {
-      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
-      const orgId = profile?.organization_id;
-      if (!orgId) throw new Error('No organization found');
-      
       const branch = {
         name: newBranch.name,
         location: newBranch.location,
         staff_count: 0,
         active_loans: 0,
         total_portfolio: 0,
-        organization_id: orgId
       };
 
       const { data, error } = await supabase

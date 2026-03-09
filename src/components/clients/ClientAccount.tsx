@@ -73,12 +73,9 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
 
       if (!accountData) {
         // Create account if it doesn't exist
-        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
-        const orgId = profile?.organization_id;
-        if (!orgId) throw new Error('No organization found');
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0, organization_id: orgId })
+          .insert({ client_id: clientId, balance: 0 })
           .select()
           .single();
 
@@ -142,10 +139,6 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
-      const orgId = profile?.organization_id;
-      if (!orgId) throw new Error('No organization found');
-      
       const { error } = await supabase
         .from('client_account_transactions')
         .insert({
@@ -155,8 +148,7 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
           notes: withdrawForm.notes || null,
           created_by: user.id,
           previous_balance: balance,
-          new_balance: balance - amount,
-          organization_id: orgId
+          new_balance: balance - amount
         });
 
       if (error) throw error;
