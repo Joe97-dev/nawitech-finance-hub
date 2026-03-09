@@ -253,13 +253,15 @@ const NewClientPage = () => {
     const validReferees = referees.filter(ref => ref.name && ref.phone && ref.relationship);
     
     if (validReferees.length > 0) {
+      const organizationId = await getOrganizationId();
       const { error } = await supabase
         .from('client_referees')
         .insert(validReferees.map(ref => ({
           client_id: clientId,
           name: ref.name,
           phone: ref.phone,
-          relationship: ref.relationship
+          relationship: ref.relationship,
+          organization_id: organizationId
         })));
       
       if (error) throw error;
