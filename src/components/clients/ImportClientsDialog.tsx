@@ -131,6 +131,7 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
       let success = 0;
       let failed = 0;
       const errors: { row: number; message: string }[] = [];
+      const organizationId = await getOrganizationId();
 
       for (let i = 0; i < records.length; i++) {
         const r = records[i];
