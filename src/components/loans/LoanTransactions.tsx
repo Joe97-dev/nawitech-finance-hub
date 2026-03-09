@@ -141,6 +141,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+      const organizationId = await getOrganizationId();
 
       // Record loan transaction
       const { error: txError } = await supabase
@@ -152,7 +153,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           payment_method: 'draw_down_account',
           receipt_number: `DDA-${Date.now()}`,
           notes: 'Payment from Draw Down Account',
-          created_by: user.id
+          created_by: user.id,
+          organization_id: organizationId
         });
       if (txError) throw txError;
 
