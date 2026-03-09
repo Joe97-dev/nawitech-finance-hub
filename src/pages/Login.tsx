@@ -14,6 +14,8 @@ const Login = () => {
   // Login form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, signUp, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
