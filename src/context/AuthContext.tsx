@@ -10,7 +10,7 @@ type AuthContextType = {
   session: Session | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
   approvalStatus: 'pending' | 'approved' | 'rejected' | 'deactivated' | null;
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setLoading(true);
       
@@ -129,7 +129,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email, 
         password,
         options: {
-          emailRedirectTo: redirectUrl
+          emailRedirectTo: redirectUrl,
+          data: {
+            first_name: firstName || '',
+            last_name: lastName || '',
+          }
         }
       });
       
