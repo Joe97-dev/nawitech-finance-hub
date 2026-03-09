@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useRole } from "@/context/RoleContext";
 import { Wallet, ArrowDownToLine, Minus } from "lucide-react";
 import {
