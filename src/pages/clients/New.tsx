@@ -287,6 +287,13 @@ const NewClientPage = () => {
         throw new Error("Please fill in all required fields");
       }
       
+      // Get organization_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       // Create client record
       const clientData: any = {
         first_name: formData.firstName,
@@ -304,7 +311,8 @@ const NewClientPage = () => {
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
         marital_status: formData.maritalStatus || null,
         photo_url: null,
-        status: 'pending'
+        status: 'pending',
+        organization_id: orgId
       };
       
       if (selectedOfficerId) {

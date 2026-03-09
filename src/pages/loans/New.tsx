@@ -192,6 +192,13 @@ const NewLoanPage = () => {
       }
       const totalAmountWithInterest = amount + totalInterest;
       
+      // Get organization_id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       const loanData: any = {
         client: clientName,
         amount: amount,
@@ -203,6 +210,7 @@ const NewLoanPage = () => {
         term_months: parseInt(loanTerm),
         interest_rate: parseFloat(interestRate),
         business_address: purpose || null,
+        organization_id: orgId
       };
       
       if (selectedOfficerId) {
