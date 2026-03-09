@@ -254,13 +254,19 @@ const NewClientPage = () => {
     const validReferees = referees.filter(ref => ref.name && ref.phone && ref.relationship);
     
     if (validReferees.length > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user?.id).single();
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error('No organization found');
+      
       const { error } = await supabase
         .from('client_referees')
         .insert(validReferees.map(ref => ({
           client_id: clientId,
           name: ref.name,
           phone: ref.phone,
-          relationship: ref.relationship
+          relationship: ref.relationship,
+          organization_id: orgId
         })));
       
       if (error) throw error;

@@ -472,7 +472,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: 'Excess payment deposited to client account',
             created_by: user.id,
             previous_balance: previousBalance,
-            new_balance: previousBalance + amount
+            new_balance: previousBalance + amount,
+            organization_id: orgId
           });
 
         if (transactionError) throw transactionError;
