@@ -167,6 +167,7 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
             return isNaN(parsed) ? null : parsed;
           })(),
           status: "pending",
+          organization_id: organizationId,
         };
 
         const { error } = await supabase.from("clients").insert(clientData);

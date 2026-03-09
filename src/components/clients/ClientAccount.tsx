@@ -141,6 +141,7 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      const organizationId = await getOrganizationId();
       const { error } = await supabase
         .from('client_account_transactions')
         .insert({
@@ -150,7 +151,8 @@ export function ClientAccount({ clientId }: ClientAccountProps) {
           notes: withdrawForm.notes || null,
           created_by: user.id,
           previous_balance: balance,
-          new_balance: balance - amount
+          new_balance: balance - amount,
+          organization_id: organizationId
         });
 
       if (error) throw error;
