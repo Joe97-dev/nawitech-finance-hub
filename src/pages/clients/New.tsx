@@ -283,6 +283,7 @@ const NewClientPage = () => {
       }
       
       // Create client record
+      const organizationId = await getOrganizationId();
       const clientData: any = {
         first_name: formData.firstName,
         last_name: formData.lastName,
@@ -299,7 +300,8 @@ const NewClientPage = () => {
         monthly_income: formData.monthlyIncome ? Number(formData.monthlyIncome) : null,
         marital_status: formData.maritalStatus || null,
         photo_url: null,
-        status: 'pending'
+        status: 'pending',
+        organization_id: organizationId
       };
       
       if (selectedOfficerId) {
