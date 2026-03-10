@@ -162,19 +162,19 @@ export function RevertPaymentDialog({
       amountToReverse -= reverseAmount;
       }
 
-      // Recalculate and update loan balance
+      // Recalculate loan balance
       const { data: newBalance } = await supabase.rpc('calculate_outstanding_balance', { p_loan_id: loanId });
       
-      // Update loan balance and set status to active (since payment was reversed, loan can't be closed)
-      const { error: loanUpdateError } = await supabase
+      // Update loan balance first
+      const { error: balanceUpdateError } = await supabase
         .from('loans')
-        .update({ 
-          balance: newBalance || amount,
-          status: 'active'
-        })
+        .update({ balance: newBalance || amount })
         .eq('id', loanId);
       
-      if (loanUpdateError) throw loanUpdateError;
+      if (balanceUpdateError) throw balanceUpdateError;
+
+      // Run update_loan_status to properly determine status (active vs in arrears)
+      await supabase.rpc('update_loan_status', { p_loan_id: loanId });
 
       // Reverse client account (draw down) balance if payment was from draw down or had excess deposited
       await reverseClientAccountEffect(clientId, loanId, amount, paymentMethod, user.id);
