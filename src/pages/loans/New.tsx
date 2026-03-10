@@ -324,28 +324,46 @@ const NewLoanPage = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
-                  <Select
-                    value={clientId}
-                    onValueChange={setClientId}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingClients ? (
-                        <SelectItem value="loading" disabled>Loading clients...</SelectItem>
-                      ) : clients.length === 0 ? (
-                        <SelectItem value="no-clients" disabled>No clients found</SelectItem>
-                      ) : (
-                        clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {getFullClientName(client)}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <div ref={clientSearchRef} className="relative">
+                    <Input
+                      placeholder="Search by name, ID, phone..."
+                      value={clientSearch}
+                      onChange={(e) => {
+                        setClientSearch(e.target.value);
+                        if (!e.target.value) {
+                          setClientId("");
+                        }
+                      }}
+                      onFocus={() => clients.length > 0 && setShowClientDropdown(true)}
+                    />
+                    {showClientDropdown && (
+                      <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover shadow-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                        {loadingClients ? (
+                          <div className="flex items-center justify-center py-3">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                          </div>
+                        ) : (
+                          <ul className="py-1">
+                            {clients.map((client) => (
+                              <li key={client.id}>
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                                  onClick={() => {
+                                    setClientId(client.id);
+                                    setClientSearch(getFullClientName(client));
+                                    setShowClientDropdown(false);
+                                  }}
+                                >
+                                  {getFullClientName(client)}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
