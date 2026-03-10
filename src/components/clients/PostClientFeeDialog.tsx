@@ -92,6 +92,8 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
 
       let loanId: string;
 
+      const organizationId = await getOrganizationId();
+
       if (loanFetchError && loanFetchError.code === 'PGRST116') {
         // No existing fee account, create one
         const { data: newLoan, error: loanCreateError } = await supabase
@@ -103,6 +105,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
             amount: 0,
             balance: 0,
             date: new Date().toISOString().split('T')[0],
+            organization_id: organizationId,
           })
           .select("id")
           .single();
