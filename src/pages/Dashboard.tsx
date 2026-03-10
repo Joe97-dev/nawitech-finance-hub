@@ -234,7 +234,7 @@ const Dashboard = () => {
               <CardDescription>Loan distribution by status</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80 w-full">
+              <div className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
