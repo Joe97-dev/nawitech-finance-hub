@@ -116,6 +116,9 @@ export function RevertPaymentDialog({
     paymentMethod: string | null
   ) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       // Get paid schedule items ordered by due date (newest first for reversal)
       const { data: paidScheduleItems, error: scheduleError } = await supabase
         .from('loan_schedule')
@@ -158,9 +161,91 @@ export function RevertPaymentDialog({
         
         amountToReverse -= reverseAmount;
       }
+
+      // Reverse client account (draw down) balance if payment was from draw down or had excess deposited
+      await reverseClientAccountEffect(clientId, loanId, amount, paymentMethod, user.id);
       
     } catch (error) {
       console.error('Error reversing payment allocation:', error);
+      throw error;
+    }
+  };
+
+  const reverseClientAccountEffect = async (
+    clientId: string,
+    loanId: string,
+    amount: number,
+    paymentMethod: string | null,
+    userId: string
+  ) => {
+    try {
+      // Get client account
+      const { data: account, error: accountError } = await supabase
+        .from('client_accounts')
+        .select('id, balance')
+        .eq('client_id', clientId)
+        .maybeSingle();
+
+      if (accountError) throw accountError;
+      if (!account) return; // No client account, nothing to reverse
+
+      const { data: orgData } = await supabase.rpc('get_user_organization_id', { _user_id: userId });
+      const organizationId = orgData as string;
+
+      if (paymentMethod === 'draw_down_account') {
+        // Payment was FROM draw down — reverse means ADD back to draw down
+        const { error } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: account.id,
+            amount: amount,
+            transaction_type: 'reversal_credit',
+            related_loan_id: loanId,
+            notes: 'Reversed: payment from Draw Down Account was reverted',
+            created_by: userId,
+            previous_balance: account.balance,
+            new_balance: account.balance + amount,
+            organization_id: organizationId
+          });
+        if (error) throw error;
+      } else {
+        // Check if excess was deposited to client account for this loan transaction
+        // Find deposit transactions linked to this loan
+        const { data: depositTxns, error: depositError } = await supabase
+          .from('client_account_transactions')
+          .select('*')
+          .eq('client_account_id', account.id)
+          .eq('related_loan_id', loanId)
+          .eq('transaction_type', 'deposit')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (depositError) throw depositError;
+
+        if (depositTxns && depositTxns.length > 0) {
+          const depositTxn = depositTxns[0];
+          // Deduct the deposited excess back from client account
+          const deductAmount = Math.min(depositTxn.amount, account.balance);
+          if (deductAmount > 0) {
+            const { error } = await supabase
+              .from('client_account_transactions')
+              .insert({
+                client_account_id: account.id,
+                amount: -deductAmount,
+                transaction_type: 'reversal_debit',
+                related_loan_id: loanId,
+                notes: 'Reversed: excess deposit was reverted',
+                created_by: userId,
+                previous_balance: account.balance,
+                new_balance: account.balance - deductAmount,
+                organization_id: organizationId
+              });
+            if (error) throw error;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reversing client account effect:', error);
       throw error;
     }
   };
