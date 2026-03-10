@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useAuth } from "@/context/AuthContext";
 import { useRole } from "@/context/RoleContext";
 import { FileText, PlusCircle, Download, Eye, Trash2, Loader2 } from "lucide-react";
