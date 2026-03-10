@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import {
   Card,
   CardContent,

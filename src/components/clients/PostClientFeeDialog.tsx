@@ -128,6 +128,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
+          organization_id: organizationId,
         });
 
       if (error) throw error;

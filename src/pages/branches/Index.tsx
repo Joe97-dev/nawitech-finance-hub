@@ -78,12 +78,14 @@ const BranchesIndex = () => {
     }
 
     try {
+      const organizationId = await getOrganizationId();
       const branch = {
         name: newBranch.name,
         location: newBranch.location,
         staff_count: 0,
         active_loans: 0,
         total_portfolio: 0,
+        organization_id: organizationId,
       };
 
       const { data, error } = await supabase
