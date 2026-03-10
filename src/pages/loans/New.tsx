@@ -193,6 +193,8 @@ const NewLoanPage = () => {
       }
       const totalAmountWithInterest = amount + totalInterest;
       
+      const organizationId = await getOrganizationId();
+
       const loanData: any = {
         client: clientName,
         amount: amount,
@@ -204,6 +206,7 @@ const NewLoanPage = () => {
         term_months: parseInt(loanTerm),
         interest_rate: parseFloat(interestRate),
         business_address: purpose || null,
+        organization_id: organizationId,
       };
       
       if (selectedOfficerId) {
