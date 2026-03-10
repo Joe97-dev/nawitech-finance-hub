@@ -292,6 +292,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      const organizationId = await getOrganizationId();
+
       // Insert the transaction
       const { error: transactionError } = await supabase
         .from('loan_transactions')
@@ -302,7 +304,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
-          created_by: user.id
+          created_by: user.id,
+          organization_id: organizationId
         });
 
       if (transactionError) throw transactionError;
