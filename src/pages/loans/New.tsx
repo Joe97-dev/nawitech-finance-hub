@@ -39,6 +39,8 @@ interface Client {
 interface LoanOfficer {
   id: string;
   username: string;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 const NewLoanPage = () => {
@@ -106,9 +108,9 @@ const NewLoanPage = () => {
           const userIds = roles.map(r => r.user_id);
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, username')
+            .select('id, username, first_name, last_name')
             .in('id', userIds);
-          setLoanOfficers(profiles || []);
+          setLoanOfficers((profiles || []) as LoanOfficer[]);
         }
       } catch (error) {
         console.error("Error fetching officers:", error);
@@ -348,7 +350,9 @@ const NewLoanPage = () => {
                       ) : (
                         loanOfficers.map((officer) => (
                           <SelectItem key={officer.id} value={officer.id}>
-                            {officer.username}
+                            {officer.first_name && officer.last_name
+                              ? `${officer.first_name} ${officer.last_name}`
+                              : officer.username || officer.id.substring(0, 8)}
                           </SelectItem>
                         ))
                       )}
