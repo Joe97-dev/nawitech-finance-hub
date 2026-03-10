@@ -107,3 +107,10 @@
     @apply text-sm text-muted-foreground;
   }
 }
+
+/* Improve popover/calendar display on mobile */
+@media (max-width: 640px) {
+  [data-radix-popper-content-wrapper] {
+    max-width: calc(100vw - 1.5rem) !important;
+  }
+}

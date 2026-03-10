@@ -12,7 +12,7 @@ export const DashboardLayout = ({ children }: PropsWithChildren) => {
         
         <div className="flex-1 flex flex-col">
           <AppHeader />
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-3 sm:p-6">
             {children}
           </main>
           <footer className="border-t p-4 text-center text-sm text-muted-foreground">

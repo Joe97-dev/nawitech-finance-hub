@@ -204,7 +204,7 @@ const Dashboard = () => {
               <CardDescription>Monthly performance comparison (in thousands)</CardDescription>
             </CardHeader>
             <CardContent className="pt-2">
-              <div className="h-80 w-full">
+              <div className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={loanData}
@@ -234,7 +234,7 @@ const Dashboard = () => {
               <CardDescription>Loan distribution by status</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80 w-full">
+              <div className="h-64 sm:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -266,7 +266,7 @@ const Dashboard = () => {
             <CardDescription>Number of loans by days past due</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full">
+            <div className="h-64 sm:h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={arrearsData}
