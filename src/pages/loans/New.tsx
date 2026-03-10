@@ -110,6 +110,7 @@ const NewLoanPage = () => {
   }, [clientSearch]);
 
   // Fetch loan officers
+  useEffect(() => {
     const fetchOfficers = async () => {
       try {
         const { data: roles } = await supabase
@@ -129,7 +130,7 @@ const NewLoanPage = () => {
       }
     };
     fetchOfficers();
-  }, [toast]);
+  }, []);
   
   const calculateTotal = () => {
     const amount = parseFloat(loanAmount) || 0;
