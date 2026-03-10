@@ -59,7 +59,10 @@ const NewLoanPage = () => {
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
   const [clients, setClients] = useState<Client[]>([]);
-  const [loadingClients, setLoadingClients] = useState(true);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientSearchRef = useRef<HTMLDivElement>(null);
   const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
