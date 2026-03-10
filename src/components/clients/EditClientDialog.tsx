@@ -25,6 +25,15 @@ interface Client {
   employment_status: string | null;
   monthly_income: number | null;
   status: string;
+  loan_officer_id?: string | null;
+  [key: string]: any;
+}
+
+interface LoanOfficer {
+  id: string;
+  username: string;
+  first_name: string | null;
+  last_name: string | null;
 }
 
 interface EditClientDialogProps {
@@ -37,11 +46,35 @@ interface EditClientDialogProps {
 export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }: EditClientDialogProps) {
   const [formData, setFormData] = useState<Client>(client);
   const [loading, setLoading] = useState(false);
+  const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     setFormData(client);
   }, [client]);
+
+  useEffect(() => {
+    if (!open) return;
+    const fetchOfficers = async () => {
+      try {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'loan_officer');
+        if (roles && roles.length > 0) {
+          const userIds = roles.map(r => r.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, first_name, last_name')
+            .in('id', userIds);
+          setLoanOfficers((profiles || []) as LoanOfficer[]);
+        }
+      } catch (error) {
+        console.error("Error fetching officers:", error);
+      }
+    };
+    fetchOfficers();
+  }, [open]);
 
   const handleInputChange = (field: keyof Client, value: string | number | null) => {
     setFormData(prev => ({
@@ -70,7 +103,8 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
           occupation: formData.occupation || null,
           employment_status: formData.employment_status || null,
           monthly_income: formData.monthly_income || null,
-          status: formData.status
+          status: formData.status,
+          loan_officer_id: formData.loan_officer_id || null,
         })
         .eq('id', client.id)
         .select()
@@ -128,7 +162,6 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
                 required
               />
             </div>
-
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone *</Label>
@@ -212,6 +245,31 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
                 value={formData.monthly_income || ''}
                 onChange={(e) => handleInputChange('monthly_income', e.target.value ? Number(e.target.value) : null)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="loan_officer">Loan Officer</Label>
+              <Select
+                value={formData.loan_officer_id || ''}
+                onValueChange={(value) => handleInputChange('loan_officer_id', value || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select loan officer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {loanOfficers.length === 0 ? (
+                    <SelectItem value="none" disabled>No officers found</SelectItem>
+                  ) : (
+                    loanOfficers.map((officer) => (
+                      <SelectItem key={officer.id} value={officer.id}>
+                        {officer.first_name && officer.last_name
+                          ? `${officer.first_name} ${officer.last_name}`
+                          : officer.username || officer.id.substring(0, 8)}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
