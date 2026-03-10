@@ -153,12 +153,10 @@ const IncomeReport = () => {
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-        />
-      </div>
+      <DateRangePicker
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
       
       <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div className="text-sm mb-2 sm:mb-0">

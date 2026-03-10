@@ -35,7 +35,7 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", className)}>
+    <div className={cn("grid grid-cols-2 gap-3", className)}>
       <div>
         <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
           Start Date
