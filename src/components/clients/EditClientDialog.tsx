@@ -25,7 +25,8 @@ interface Client {
   employment_status: string | null;
   monthly_income: number | null;
   status: string;
-  loan_officer_id: string | null;
+  loan_officer_id?: string | null;
+  [key: string]: any;
 }
 
 interface LoanOfficer {
