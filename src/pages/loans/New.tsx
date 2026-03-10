@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
 import { useRole } from "@/context/RoleContext";
+import { getOrganizationId } from "@/lib/get-organization-id";
 
 // Define interface for clients
 interface Client {
@@ -192,6 +193,8 @@ const NewLoanPage = () => {
       }
       const totalAmountWithInterest = amount + totalInterest;
       
+      const organizationId = await getOrganizationId();
+      
       const loanData: any = {
         client: clientName,
         amount: amount,
@@ -203,6 +206,7 @@ const NewLoanPage = () => {
         term_months: parseInt(loanTerm),
         interest_rate: parseFloat(interestRate),
         business_address: purpose || null,
+        organization_id: organizationId,
       };
       
       if (selectedOfficerId) {
