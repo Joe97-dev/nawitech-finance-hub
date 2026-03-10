@@ -24,7 +24,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
@@ -82,7 +81,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      const organizationId = await getOrganizationId();
       
       const { error } = await supabase
         .from("loan_transactions")
@@ -94,7 +92,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
           created_by: user?.id || null,
-          organization_id: organizationId,
         });
 
       if (error) throw error;

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getOrganizationId } from "@/lib/get-organization-id";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +124,6 @@ export function LoanProductsManager() {
     }
     
     try {
-      const organizationId = await getOrganizationId();
       const productData = {
         name: newProduct.name,
         interest_rate: parseFloat(newProduct.interest_rate),
@@ -136,8 +134,7 @@ export function LoanProductsManager() {
         amount_max: parseFloat(newProduct.amount_max),
         description: newProduct.description || null,
         status: newProduct.status,
-        created_by: user.id,
-        organization_id: organizationId
+        created_by: user.id
       };
       
       let operation: any;

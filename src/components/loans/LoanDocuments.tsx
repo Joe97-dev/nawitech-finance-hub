@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from "react";
-import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,7 +130,6 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
       if (uploadError) throw uploadError;
 
       // 2. Add document record to database
-      const organizationId = await getOrganizationId();
       const { error: dbError } = await supabase
         .from('loan_documents')
         .insert({
@@ -139,8 +137,7 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
           name: documentName,
           document_type: documentType,
           file_path: filePath,
-          uploaded_by: user.id,
-          organization_id: organizationId
+          uploaded_by: user.id
         });
         
       if (dbError) throw dbError;

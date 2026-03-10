@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/table";
 import { RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getOrganizationId } from "@/lib/get-organization-id";
 import { RevertPaymentDialog } from "./RevertPaymentDialog";
 import { useRole } from "@/context/RoleContext";
 
@@ -141,7 +140,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
-      const organizationId = await getOrganizationId();
 
       // Record loan transaction
       const { error: txError } = await supabase
@@ -153,8 +151,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           payment_method: 'draw_down_account',
           receipt_number: `DDA-${Date.now()}`,
           notes: 'Payment from Draw Down Account',
-          created_by: user.id,
-          organization_id: organizationId
+          created_by: user.id
         });
       if (txError) throw txError;
 
@@ -173,8 +170,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: `Loan repayment from Draw Down Account`,
             created_by: user.id,
             previous_balance: drawDownBalance,
-            new_balance: drawDownBalance - amount,
-            organization_id: organizationId
+            new_balance: drawDownBalance - amount
           });
         if (ddError) throw ddError;
       }
@@ -290,7 +286,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
-      const organizationId = await getOrganizationId();
 
       // Insert the transaction
       const { error: transactionError } = await supabase
@@ -302,8 +297,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
-          created_by: user.id,
-          organization_id: organizationId
+          created_by: user.id
         });
 
       if (transactionError) throw transactionError;
@@ -425,10 +419,9 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       if (accountError) throw accountError;
 
       if (!accountData) {
-        const organizationId = await getOrganizationId();
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0, organization_id: organizationId })
+          .insert({ client_id: clientId, balance: 0 })
           .select()
           .single();
 
@@ -446,8 +439,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: 'Excess payment deposited to client account',
             created_by: user.id,
             previous_balance: 0,
-            new_balance: amount,
-            organization_id: organizationId
+            new_balance: amount
           });
 
         if (transactionError) throw transactionError;
@@ -456,7 +448,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         const previousBalance = accountData.balance;
         
         // Create transaction
-        const organizationId = await getOrganizationId();
         const { error: transactionError } = await supabase
           .from('client_account_transactions')
           .insert({
@@ -467,8 +458,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
             notes: 'Excess payment deposited to client account',
             created_by: user.id,
             previous_balance: previousBalance,
-            new_balance: previousBalance + amount,
-            organization_id: organizationId
+            new_balance: previousBalance + amount
           });
 
         if (transactionError) throw transactionError;

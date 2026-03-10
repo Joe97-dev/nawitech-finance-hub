@@ -17,7 +17,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { getOrganizationId } from "@/lib/get-organization-id";
 
 interface Branch {
   id: string;
@@ -78,14 +77,12 @@ const BranchesIndex = () => {
     }
 
     try {
-      const organizationId = await getOrganizationId();
       const branch = {
         name: newBranch.name,
         location: newBranch.location,
         staff_count: 0,
         active_loans: 0,
         total_portfolio: 0,
-        organization_id: organizationId,
       };
 
       const { data, error } = await supabase

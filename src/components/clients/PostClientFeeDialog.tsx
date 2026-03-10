@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { getOrganizationId } from "@/lib/get-organization-id";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,7 +80,6 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const organizationId = await getOrganizationId();
       // First, we need to get or create a "virtual" loan for client fees
       // We'll create a special loan record to associate client fees with
       let { data: existingLoan, error: loanFetchError } = await supabase
@@ -104,7 +102,6 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
             amount: 0,
             balance: 0,
             date: new Date().toISOString().split('T')[0],
-            organization_id: organizationId,
           })
           .select("id")
           .single();
@@ -127,7 +124,6 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
-          organization_id: organizationId,
         });
 
       if (error) throw error;
