@@ -190,11 +190,11 @@ const CollectionRateReport = () => {
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
         <DateRangePicker
           dateRange={date}
           onDateRangeChange={setDate}
-          className="md:col-span-2"
+          className="col-span-2"
         />
         
         <div>

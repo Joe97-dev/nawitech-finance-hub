@@ -121,11 +121,11 @@ const LoansDueReport = () => {
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
         <DateRangePicker
           dateRange={date}
           onDateRangeChange={setDate}
-          className="sm:col-span-2 lg:col-span-1"
+          className="col-span-2"
         />
 
         <div>
@@ -151,7 +151,7 @@ const LoansDueReport = () => {
             Search
           </label>
           <Input
-            placeholder="Search by client name or phone"
+            placeholder="Search by client name"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="border-dashed"
