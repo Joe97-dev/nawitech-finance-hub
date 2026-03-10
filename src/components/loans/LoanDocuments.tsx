@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useAuth } from "@/context/AuthContext";
 import { useRole } from "@/context/RoleContext";
 import { FileText, PlusCircle, Download, Eye, Trash2, Loader2 } from "lucide-react";
@@ -130,6 +131,7 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
       if (uploadError) throw uploadError;
 
       // 2. Add document record to database
+      const organizationId = await getOrganizationId();
       const { error: dbError } = await supabase
         .from('loan_documents')
         .insert({
@@ -137,7 +139,8 @@ export function LoanDocuments({ loanId }: LoanDocumentsProps) {
           name: documentName,
           document_type: documentType,
           file_path: filePath,
-          uploaded_by: user.id
+          uploaded_by: user.id,
+          organization_id: organizationId
         });
         
       if (dbError) throw dbError;

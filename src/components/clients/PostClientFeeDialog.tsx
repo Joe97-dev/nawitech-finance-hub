@@ -24,6 +24,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
@@ -91,6 +92,8 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
 
       let loanId: string;
 
+      const organizationId = await getOrganizationId();
+
       if (loanFetchError && loanFetchError.code === 'PGRST116') {
         // No existing fee account, create one
         const { data: newLoan, error: loanCreateError } = await supabase
@@ -102,6 +105,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
             amount: 0,
             balance: 0,
             date: new Date().toISOString().split('T')[0],
+            organization_id: organizationId,
           })
           .select("id")
           .single();
@@ -124,6 +128,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
+          organization_id: organizationId,
         });
 
       if (error) throw error;

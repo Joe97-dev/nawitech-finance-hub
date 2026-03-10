@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { Download, Upload, FileUp, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
@@ -146,6 +147,7 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
           continue;
         }
 
+        const organizationId = await getOrganizationId();
         const clientData = {
           first_name: firstName,
           last_name: lastName,
@@ -165,6 +167,7 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
             return isNaN(parsed) ? null : parsed;
           })(),
           status: "pending",
+          organization_id: organizationId,
         };
 
         const { error } = await supabase.from("clients").insert(clientData);
