@@ -199,7 +199,7 @@ export function RevertPaymentDialog({
           .insert({
             client_account_id: account.id,
             amount: amount,
-            transaction_type: 'reversal_credit',
+            transaction_type: 'deposit',
             related_loan_id: loanId,
             notes: 'Reversed: payment from Draw Down Account was reverted',
             created_by: userId,
@@ -210,7 +210,6 @@ export function RevertPaymentDialog({
         if (error) throw error;
       } else {
         // Check if excess was deposited to client account for this loan transaction
-        // Find deposit transactions linked to this loan
         const { data: depositTxns, error: depositError } = await supabase
           .from('client_account_transactions')
           .select('*')
@@ -224,7 +223,6 @@ export function RevertPaymentDialog({
 
         if (depositTxns && depositTxns.length > 0) {
           const depositTxn = depositTxns[0];
-          // Deduct the deposited excess back from client account
           const deductAmount = Math.min(depositTxn.amount, account.balance);
           if (deductAmount > 0) {
             const { error } = await supabase
@@ -232,7 +230,7 @@ export function RevertPaymentDialog({
               .insert({
                 client_account_id: account.id,
                 amount: -deductAmount,
-                transaction_type: 'reversal_debit',
+                transaction_type: 'withdrawal',
                 related_loan_id: loanId,
                 notes: 'Reversed: excess deposit was reverted',
                 created_by: userId,
