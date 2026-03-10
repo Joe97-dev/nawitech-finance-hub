@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
 import { useRole } from "@/context/RoleContext";
+import { getOrganizationId } from "@/lib/get-organization-id";
 
 // Define interface for clients
 interface Client {
