@@ -220,7 +220,7 @@ const CashFlowReport = () => {
                   No cash flow data found for the selected period
                 </div>
               ) : (
-                <div className="h-80 w-full">
+                <div className="h-64 sm:h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={cashFlowData}
