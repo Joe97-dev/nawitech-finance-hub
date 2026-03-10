@@ -110,9 +110,9 @@ const NewClientPage = () => {
           const userIds = roles.map(r => r.user_id);
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, username')
+            .select('id, username, first_name, last_name')
             .in('id', userIds);
-          setLoanOfficers(profiles || []);
+          setLoanOfficers((profiles || []) as LoanOfficer[]);
         }
       } catch (error) {
         console.error("Error fetching officers:", error);
