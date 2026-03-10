@@ -68,39 +68,48 @@ const NewLoanPage = () => {
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
   
   
-  // Fetch clients from Supabase
+  // Close client dropdown on outside click
   useEffect(() => {
-    const fetchClients = async () => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clientSearchRef.current && !clientSearchRef.current.contains(e.target as Node)) {
+        setShowClientDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Search clients from Supabase with debounce
+  useEffect(() => {
+    if (clientSearch.length < 2) {
+      setClients([]);
+      setShowClientDropdown(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setLoadingClients(true);
       try {
-        setLoadingClients(true);
-        
-        // Get actual clients from Supabase
         const { data, error } = await supabase
           .from('clients')
-          .select('id, first_name, last_name');
-        
-        if (error) {
-          throw error;
-        }
-        
-        // Set clients from database
+          .select('id, first_name, last_name')
+          .or(`first_name.ilike.%${clientSearch}%,last_name.ilike.%${clientSearch}%,client_number.ilike.%${clientSearch}%,id_number.ilike.%${clientSearch}%,phone.ilike.%${clientSearch}%`)
+          .limit(10);
+
+        if (error) throw error;
         setClients(data || []);
-        
+        setShowClientDropdown((data || []).length > 0);
       } catch (error: any) {
-        console.error("Error fetching clients:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load clients",
-          description: "There was an error loading the client list." + (error.message ? ` (${error.message})` : ""),
-        });
+        console.error("Error searching clients:", error);
       } finally {
         setLoadingClients(false);
       }
-    };
+    }, 300);
 
-    fetchClients();
-    
-    // Fetch loan officers
+    return () => clearTimeout(timeout);
+  }, [clientSearch]);
+
+  // Fetch loan officers
     const fetchOfficers = async () => {
       try {
         const { data: roles } = await supabase
