@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
