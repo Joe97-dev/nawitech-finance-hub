@@ -427,9 +427,10 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       if (accountError) throw accountError;
 
       if (!accountData) {
+        const orgId = await getOrganizationId();
         const { data: newAccount, error: createError } = await supabase
           .from('client_accounts')
-          .insert({ client_id: clientId, balance: 0 })
+          .insert({ client_id: clientId, balance: 0, organization_id: orgId })
           .select()
           .single();
 
