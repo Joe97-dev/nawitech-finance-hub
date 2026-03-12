@@ -89,9 +89,6 @@ const ClientDetailPage = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editPhotosOpen, setEditPhotosOpen] = useState(false);
-  const [editRefereesOpen, setEditRefereesOpen] = useState(false);
-  const [editDocumentsOpen, setEditDocumentsOpen] = useState(false);
   const [signedUrls, setSignedUrls] = useState<SignedUrls>({});
   const [refreshKey, setRefreshKey] = useState(0);
 
