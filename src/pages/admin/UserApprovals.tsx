@@ -24,9 +24,11 @@ interface UserApproval {
   approved_at?: string;
   rejection_reason?: string;
   created_at: string;
-  email?: string; // Add email field
+  email?: string;
   profiles?: {
-    username?: string;
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
   } | null;
 }
 
@@ -51,10 +53,10 @@ const UserApprovals = () => {
 
       if (approvalsError) throw approvalsError;
 
-      // Fetch profiles for usernames
+      // Fetch profiles for user names
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username');
+        .select('id, username, first_name, last_name');
 
       if (profilesError) throw profilesError;
 
@@ -86,7 +88,11 @@ const UserApprovals = () => {
           
           return {
             ...approval,
-            profiles: { username: profile.username }
+            profiles: {
+              username: profile.username,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+            }
           };
         })
       );
@@ -197,6 +203,19 @@ const UserApprovals = () => {
     }
   };
 
+  const getUserDisplayName = (approval: UserApproval) => {
+    const fullName = [approval.profiles?.first_name, approval.profiles?.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (fullName) return fullName;
+    if (approval.profiles?.username) return approval.profiles.username;
+    if (approval.email) return approval.email;
+
+    return `User ${approval.user_id.slice(0, 8)}`;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -266,7 +285,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || approval.email || `User ${approval.user_id.slice(0, 8)}`}
+                          {getUserDisplayName(approval)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Registered: {new Date(approval.created_at).toLocaleDateString()}
@@ -403,7 +422,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || approval.email || `User ${approval.user_id.slice(0, 8)}`}
+                          {getUserDisplayName(approval)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Processed: {approval.approved_at ? new Date(approval.approved_at).toLocaleDateString() : 'N/A'}

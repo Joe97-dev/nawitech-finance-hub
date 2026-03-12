@@ -34,7 +34,7 @@ interface Branch {
 
 interface LoanOfficer {
   id: string;
-  username: string;
+  username: string | null;
   first_name: string | null;
   last_name: string | null;
 }
@@ -102,18 +102,37 @@ const NewClientPage = () => {
     // Fetch loan officers
     const fetchOfficers = async () => {
       try {
-        const { data: roles } = await supabase
+        const organizationId = await getOrganizationId();
+
+        const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('user_id')
           .eq('role', 'loan_officer');
-        if (roles && roles.length > 0) {
-          const userIds = roles.map(r => r.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, username, first_name, last_name')
-            .in('id', userIds);
-          setLoanOfficers((profiles || []) as LoanOfficer[]);
+
+        if (rolesError) throw rolesError;
+
+        if (!roles || roles.length === 0) {
+          setLoanOfficers([]);
+          return;
         }
+
+        const userIds = Array.from(new Set(roles.map((r) => r.user_id)));
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name')
+          .in('id', userIds)
+          .eq('organization_id', organizationId);
+
+        if (profilesError) throw profilesError;
+
+        const sortedOfficers = [...(profiles || [])].sort((a, b) => {
+          const aName = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || '';
+          const bName = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.username || '';
+          return aName.localeCompare(bName);
+        });
+
+        setLoanOfficers(sortedOfficers as LoanOfficer[]);
       } catch (error) {
         console.error("Error fetching officers:", error);
       }
@@ -121,6 +140,18 @@ const NewClientPage = () => {
     fetchOfficers();
   }, [toast]);
   
+  const getOfficerDisplayName = (officer: LoanOfficer) => {
+    const fullName = [officer.first_name, officer.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (fullName) return fullName;
+    if (officer.username) return officer.username;
+
+    return officer.id.substring(0, 8);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
@@ -615,9 +646,7 @@ const NewClientPage = () => {
                       ) : (
                         loanOfficers.map((officer) => (
                           <SelectItem key={officer.id} value={officer.id}>
-                            {officer.first_name && officer.last_name
-                              ? `${officer.first_name} ${officer.last_name}`
-                              : officer.username || officer.id.substring(0, 8)}
+                            {getOfficerDisplayName(officer)}
                           </SelectItem>
                         ))
                       )}

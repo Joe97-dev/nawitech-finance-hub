@@ -927,15 +927,15 @@ export type Database = {
         | { Args: { target_user_id: string }; Returns: undefined }
         | {
             Args: {
-              assigned_role?: Database["public"]["Enums"]["user_role"]
+              assigned_role: Database["public"]["Enums"]["user_role"]
               target_user_id: string
             }
             Returns: undefined
           }
         | {
             Args: {
-              assigned_branch_id?: string
-              assigned_role?: Database["public"]["Enums"]["user_role"]
+              assigned_branch_id: string
+              assigned_role: Database["public"]["Enums"]["user_role"]
               target_user_id: string
             }
             Returns: undefined
