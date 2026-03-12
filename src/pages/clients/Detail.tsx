@@ -516,9 +516,6 @@ const ClientDetailPage = () => {
                    </CardTitle>
                    <CardDescription>Client uploaded documents</CardDescription>
                  </div>
-                 <Button size="sm" variant="outline" onClick={() => setEditDocumentsOpen(true)}>
-                   <Edit className="h-3 w-3 mr-1" /> Manage
-                 </Button>
                 </CardHeader>
                <CardContent>
                  {client.documents.length > 0 ? (
