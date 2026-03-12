@@ -284,6 +284,12 @@ const LoansPage = () => {
           </Table>
         </div>
       </div>
+
+      <ImportLoansDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImportComplete={fetchLoans}
+      />
     </DashboardLayout>
   );
 };
