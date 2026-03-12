@@ -45,61 +45,44 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      // Fetch total clients
-      const { count: clientCount } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch active loans
-      const { data: activeLoansData, count: activeLoanCount } = await supabase
-        .from('loans')
-        .select('*', { count: 'exact' })
-        .eq('status', 'active');
-
-      // Fetch disbursals for today
       const today = new Date();
-      const { data: todayLoans } = await supabase
-        .from('loans')
-        .select('amount')
-        .eq('date', format(today, 'yyyy-MM-dd'));
+      const sixMonthsAgo = subMonths(today, 6);
+      const sixMonthsAgoStr = format(sixMonthsAgo, 'yyyy-MM-01');
+      const todayStr = format(today, 'yyyy-MM-dd');
 
+      // Run all independent queries in parallel (5 queries instead of 14+)
+      const [clientResult, activeLoansResult, todayLoansResult, allLoansResult, allTransactionsResult] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }),
+        supabase.from('loans').select('*', { count: 'exact' }).eq('status', 'active'),
+        supabase.from('loans').select('amount').eq('date', todayStr),
+        supabase.from('loans').select('amount, date').gte('date', sixMonthsAgoStr).lte('date', todayStr),
+        supabase.from('loan_transactions').select('amount, transaction_date').eq('transaction_type', 'payment').eq('is_reverted', false).gte('transaction_date', sixMonthsAgoStr).lte('transaction_date', todayStr),
+      ]);
+
+      const clientCount = clientResult.count || 0;
+      const activeLoanCount = activeLoansResult.count || 0;
+      const todayLoans = todayLoansResult.data;
       const disbursedToday = todayLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0;
 
-      // Fetch loan data for last 6 months for chart
-      const sixMonthsAgo = subMonths(new Date(), 6);
-      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: new Date() });
-      
-      const monthlyData = await Promise.all(
-        months.map(async (month) => {
-          const monthStr = format(month, 'yyyy-MM');
-          
-          // Disbursals for the month
-          const { data: monthLoans } = await supabase
-            .from('loans')
-            .select('amount')
-            .gte('date', format(month, 'yyyy-MM-01'))
-            .lt('date', format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd'));
-          
-          const disbursed = monthLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0;
+      // Group loans and transactions by month client-side
+      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
+      const monthlyData = months.map((month) => {
+        const monthStr = format(month, 'yyyy-MM');
+        
+        const disbursed = (allLoansResult.data || [])
+          .filter(l => l.date?.startsWith(monthStr))
+          .reduce((sum, l) => sum + Number(l.amount), 0);
 
-          // Collections for the month
-          const { data: monthTransactions } = await supabase
-            .from('loan_transactions')
-            .select('amount')
-            .eq('transaction_type', 'payment')
-            .eq('is_reverted', false)
-            .gte('transaction_date', format(month, 'yyyy-MM-01'))
-            .lt('transaction_date', format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd'));
-          
-          const collected = monthTransactions?.reduce((sum, trans) => sum + Number(trans.amount), 0) || 0;
+        const collected = (allTransactionsResult.data || [])
+          .filter(t => t.transaction_date?.startsWith(monthStr))
+          .reduce((sum, t) => sum + Number(t.amount), 0);
 
-          return {
-            month: format(month, 'MMM'),
-            disbursed: Math.round(disbursed / 1000), // Convert to thousands for readability
-            collected: Math.round(collected / 1000)
-          };
-        })
-      );
+        return {
+          month: format(month, 'MMM'),
+          disbursed: Math.round(disbursed / 1000),
+          collected: Math.round(collected / 1000)
+        };
+      });
 
       // Calculate portfolio quality (simplified)
       const totalActiveLoans = activeLoanCount || 0;
