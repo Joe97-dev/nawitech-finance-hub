@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { ArrowLeft, Phone, MapPin, Calendar, CreditCard, FileText, Edit, Users, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
+import { EditClientPhotosDialog } from "@/components/clients/EditClientPhotosDialog";
+import { EditClientRefereesDialog } from "@/components/clients/EditClientRefereesDialog";
+import { EditClientDocumentsDialog } from "@/components/clients/EditClientDocumentsDialog";
 import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
 import { ClientAccount } from "@/components/clients/ClientAccount";
 
@@ -89,7 +92,15 @@ const ClientDetailPage = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editPhotosOpen, setEditPhotosOpen] = useState(false);
+  const [editRefereesOpen, setEditRefereesOpen] = useState(false);
+  const [editDocumentsOpen, setEditDocumentsOpen] = useState(false);
   const [signedUrls, setSignedUrls] = useState<SignedUrls>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refreshClientData = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
   
   useEffect(() => {
     const fetchClientData = async () => {
@@ -208,7 +219,7 @@ const ClientDetailPage = () => {
     };
     
     fetchClientData();
-  }, [clientId, toast]);
+  }, [clientId, toast, refreshKey]);
   
   if (loading) {
     return (
@@ -375,13 +386,18 @@ const ClientDetailPage = () => {
 
              {/* ID and Business Photos */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Image className="h-4 w-4" />
-                   Photos
-                 </CardTitle>
-                 <CardDescription>ID and business photos</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Image className="h-4 w-4" />
+                     Photos
+                   </CardTitle>
+                   <CardDescription>ID and business photos</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditPhotosOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Edit
+                 </Button>
+                </CardHeader>
                 <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 gap-4">
                    {client.id_photo_front_url && signedUrls.id_photo_front && (
@@ -501,13 +517,18 @@ const ClientDetailPage = () => {
 
              {/* Documents */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <FileText className="h-4 w-4" />
-                   Documents ({client.documents.length})
-                 </CardTitle>
-                 <CardDescription>Client uploaded documents</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <FileText className="h-4 w-4" />
+                     Documents ({client.documents.length})
+                   </CardTitle>
+                   <CardDescription>Client uploaded documents</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditDocumentsOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Manage
+                 </Button>
+                </CardHeader>
                <CardContent>
                  {client.documents.length > 0 ? (
                    <div className="space-y-2">
@@ -557,13 +578,18 @@ const ClientDetailPage = () => {
 
              {/* Referees */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Users className="h-4 w-4" />
-                   Referees ({client.referees.length})
-                 </CardTitle>
-                 <CardDescription>Client references and guarantors</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Users className="h-4 w-4" />
+                     Referees ({client.referees.length})
+                   </CardTitle>
+                   <CardDescription>Client references and guarantors</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditRefereesOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Edit
+                 </Button>
+                </CardHeader>
                <CardContent>
                  {client.referees.length > 0 ? (
                    <div className="space-y-3">
@@ -737,12 +763,44 @@ const ClientDetailPage = () => {
 
         {/* Edit Client Dialog */}
         {client && (
-          <EditClientDialog
-            client={client}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            onClientUpdated={handleClientUpdated}
-          />
+          <>
+            <EditClientDialog
+              client={client}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              onClientUpdated={handleClientUpdated}
+            />
+            <EditClientPhotosDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentPhotos={{
+                photo_url: client.photo_url,
+                id_photo_front_url: client.id_photo_front_url,
+                id_photo_back_url: client.id_photo_back_url,
+                business_photo_url: client.business_photo_url,
+              }}
+              signedUrls={signedUrls}
+              open={editPhotosOpen}
+              onOpenChange={setEditPhotosOpen}
+              onPhotosUpdated={refreshClientData}
+            />
+            <EditClientRefereesDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentReferees={client.referees}
+              open={editRefereesOpen}
+              onOpenChange={setEditRefereesOpen}
+              onRefereesUpdated={refreshClientData}
+            />
+            <EditClientDocumentsDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentDocuments={client.documents}
+              open={editDocumentsOpen}
+              onOpenChange={setEditDocumentsOpen}
+              onDocumentsUpdated={refreshClientData}
+            />
+          </>
         )}
       </div>
     </DashboardLayout>
