@@ -34,8 +34,8 @@ serve(async (req) => {
 
     // 2. Register C2B URLs
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const validationUrl = `${supabaseUrl}/functions/v1/mpesa-c2b-validation`;
-    const confirmationUrl = `${supabaseUrl}/functions/v1/mpesa-c2b-confirmation`;
+    const validationUrl = `${supabaseUrl}/functions/v1/payment-c2b-validation`;
+    const confirmationUrl = `${supabaseUrl}/functions/v1/payment-c2b-confirmation`;
 
     console.log("Registering C2B URLs:");
     console.log("Validation URL:", validationUrl);
