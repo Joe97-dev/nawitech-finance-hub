@@ -2,8 +2,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { useSessionTimeout } from "./hooks/use-session-timeout";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { AuthProvider } from "./context/AuthContext";
