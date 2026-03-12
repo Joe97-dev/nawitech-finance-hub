@@ -306,9 +306,6 @@ const Settings = () => {
               <LoanProductsManager />
             </TabsContent>
             
-            <TabsContent value="mpesa" className="space-y-4">
-              <MpesaC2BSettings />
-            </TabsContent>
 
             <TabsContent value="security" className="space-y-4">
               <Card>

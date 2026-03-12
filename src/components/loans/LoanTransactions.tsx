@@ -612,28 +612,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                   </SelectContent>
                 </Select>
               </div>
-              {paymentForm.payment_method === "mpesa" && (
-                <div className="space-y-2">
-                  <Label htmlFor="mpesa_phone">M-Pesa Phone Number *</Label>
-                  <Input
-                    id="mpesa_phone"
-                    placeholder="e.g. 0712345678 or 254712345678"
-                    value={paymentForm.mpesa_phone}
-                    onChange={(e) => setPaymentForm(prev => ({ ...prev, mpesa_phone: e.target.value }))}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleMpesaStkPush}
-                    disabled={!paymentForm.amount || !paymentForm.mpesa_phone || isStkPushSent}
-                    className="mt-1"
-                  >
-                    <Smartphone className="h-4 w-4 mr-1" />
-                    {isStkPushSent ? "STK Push Sent ✓" : "Send STK Push"}
-                  </Button>
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Input
