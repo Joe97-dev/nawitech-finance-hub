@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.mpesa-callback]
 verify_jwt = false
+
+[functions.mpesa-c2b-validation]
+verify_jwt = false
+
+[functions.mpesa-c2b-confirmation]
+verify_jwt = false
+
+[functions.mpesa-c2b-register]
+verify_jwt = false
