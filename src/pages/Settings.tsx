@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSessionTimeoutMinutes, setSessionTimeoutMinutes } from "@/hooks/use-session-timeout";
 import {
   Card,
   CardContent,
