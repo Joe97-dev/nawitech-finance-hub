@@ -312,6 +312,18 @@ const NewLoanPage = () => {
     }
   };
 
+  const getOfficerDisplayName = (officer: LoanOfficer) => {
+    const fullName = [officer.first_name, officer.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (fullName) return fullName;
+    if (officer.username) return officer.username;
+
+    return officer.id.substring(0, 8);
+  };
+
   const getFullClientName = (client: Client) => {
     return `${client.first_name} ${client.last_name}`;
   };
