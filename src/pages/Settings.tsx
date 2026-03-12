@@ -188,6 +188,14 @@ const Settings = () => {
                 <BookText className="mr-2 h-4 w-4" />
                 Loan Products
               </TabsTrigger>
+              <TabsTrigger value="loanProducts" className="flex items-center">
+                <BookText className="mr-2 h-4 w-4" />
+                Loan Products
+              </TabsTrigger>
+              <TabsTrigger value="mpesa" className="flex items-center">
+                <Smartphone className="mr-2 h-4 w-4" />
+                M-Pesa
+              </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Security
