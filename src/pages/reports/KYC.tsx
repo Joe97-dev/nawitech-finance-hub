@@ -40,14 +40,10 @@ interface Loan {
   type: string;
 }
 
-const branches = [
-  { value: "all", label: "All Branches" },
-  { value: "head-office", label: "HEAD OFFICE" },
-  { value: "westlands", label: "Westlands Branch" },
-  { value: "mombasa", label: "Mombasa Branch" },
-  { value: "kisumu", label: "Kisumu Branch" },
-  { value: "nakuru", label: "Nakuru Branch" }
-];
+interface Branch {
+  id: string;
+  name: string;
+}
 
 const statusOptions = [
   { value: "all", label: "All Status" },
@@ -77,6 +73,7 @@ const KYCReport = () => {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Fetch clients and loans from Supabase
@@ -85,20 +82,20 @@ const KYCReport = () => {
       try {
         setLoading(true);
         
-        // Fetch clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
+        // Fetch clients and branches in parallel
+        const [clientsResult, loansResult, branchesResult] = await Promise.all([
+          supabase.from('clients').select('*'),
+          supabase.from('loans').select('*').neq('type', 'client_fee_account'),
+          supabase.from('branches').select('id, name')
+        ]);
         
-        if (clientsError) throw clientsError;
+        if (clientsResult.error) throw clientsResult.error;
+        if (loansResult.error) throw loansResult.error;
         
-        // Fetch loans
-        const { data: loansData, error: loansError } = await supabase
-          .from('loans')
-          .select('*')
-          .neq('type', 'client_fee_account');
-          
-        if (loansError) throw loansError;
+        const clientsData = clientsResult.data;
+        const loansData = loansResult.data;
+        const branchesData = branchesResult.data || [];
+        setBranches(branchesData);
         
         // Map loans to clients
         const enhancedClients = (clientsData || []).map((client: any) => {
@@ -171,9 +168,10 @@ const KYCReport = () => {
                 <SelectValue placeholder="Select Branch" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Branches</SelectItem>
                 {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -207,7 +205,7 @@ const KYCReport = () => {
                 gender: client.gender || "Not specified",
                 dob: client.date_of_birth || "Not specified",
                 address: client.address || "Not specified",
-                branch: getBranchLabel(client.branch_id),
+                branch: branches.find(b => b.id === client.branch_id)?.name || "Not assigned",
                 status: client.status,
                 registrationDate: client.registration_date || "Not specified"
               }))} 
@@ -293,14 +291,7 @@ const KYCReport = () => {
   );
 };
 
-// Helper function to get branch label
-const getBranchLabel = (branch_id: string | null) => {
-  if (!branch_id) return "Not assigned";
-  
-  // In a real implementation, you would fetch branch names from your database
-  // For now, we'll return a placeholder
-  return "Branch";
-};
+// getBranchLabel is now defined inside the component, not needed as standalone
 
 // Updated ClientDetail component to handle loan navigation
 const ClientDetail = ({ 
