@@ -281,9 +281,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         receipt_number: "",
         payment_method: "",
         notes: "",
-        mpesa_phone: ""
       });
-      setIsStkPushSent(false);
 
       // Refresh transactions
       const { data, error } = await supabase
