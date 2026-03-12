@@ -36,11 +36,17 @@ import DormantReport from "./pages/reports/Dormant";
 import ForecastingReport from "./pages/reports/Forecasting";
 import TransactionsReport from "./pages/reports/Transactions";
 
+function SessionTimeoutWrapper({ children }: { children: React.ReactNode }) {
+  useSessionTimeout();
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <RoleProvider>
+          <SessionTimeoutWrapper>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
