@@ -221,45 +221,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     }).format(amount);
   };
 
-  const handleMpesaStkPush = async () => {
-    if (!paymentForm.mpesa_phone || !paymentForm.amount) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter phone number and amount for M-Pesa payment"
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
-        body: {
-          phone_number: paymentForm.mpesa_phone,
-          amount: parseFloat(paymentForm.amount),
-          account_reference: `Loan-${loanId.substring(0, 8)}`,
-          transaction_desc: "Loan Repayment"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        setIsStkPushSent(true);
-        toast({
-          title: "STK Push Sent",
-          description: data.data?.CustomerMessage || "Check your phone to complete the M-Pesa payment"
-        });
-      } else {
-        throw new Error(data?.error || "STK Push failed");
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "M-Pesa Error",
-        description: `Failed to initiate M-Pesa payment: ${error.message}`
-      });
-    }
-  };
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
