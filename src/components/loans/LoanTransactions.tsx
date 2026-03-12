@@ -611,6 +611,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                     <SelectItem value="mpesa">M-Pesa</SelectItem>
                     <SelectItem value="mobile_money">Mobile Money (Other)</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="draw_down_account">Draw Down Account</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
