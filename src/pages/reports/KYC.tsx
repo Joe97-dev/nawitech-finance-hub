@@ -205,7 +205,7 @@ const KYCReport = () => {
                 gender: client.gender || "Not specified",
                 dob: client.date_of_birth || "Not specified",
                 address: client.address || "Not specified",
-                branch: getBranchLabel(client.branch_id),
+                branch: branches.find(b => b.id === client.branch_id)?.name || "Not assigned",
                 status: client.status,
                 registrationDate: client.registration_date || "Not specified"
               }))} 
