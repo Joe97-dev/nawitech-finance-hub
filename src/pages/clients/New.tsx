@@ -34,7 +34,7 @@ interface Branch {
 
 interface LoanOfficer {
   id: string;
-  username: string;
+  username: string | null;
   first_name: string | null;
   last_name: string | null;
 }
