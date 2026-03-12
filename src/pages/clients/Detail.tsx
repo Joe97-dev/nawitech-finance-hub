@@ -578,13 +578,18 @@ const ClientDetailPage = () => {
 
              {/* Referees */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Users className="h-4 w-4" />
-                   Referees ({client.referees.length})
-                 </CardTitle>
-                 <CardDescription>Client references and guarantors</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Users className="h-4 w-4" />
+                     Referees ({client.referees.length})
+                   </CardTitle>
+                   <CardDescription>Client references and guarantors</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditRefereesOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Edit
+                 </Button>
+                </CardHeader>
                <CardContent>
                  {client.referees.length > 0 ? (
                    <div className="space-y-3">
