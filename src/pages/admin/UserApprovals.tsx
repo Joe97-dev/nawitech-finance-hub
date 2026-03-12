@@ -422,7 +422,7 @@ const UserApprovals = () => {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {approval.profiles?.username || approval.email || `User ${approval.user_id.slice(0, 8)}`}
+                          {getUserDisplayName(approval)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Processed: {approval.approved_at ? new Date(approval.approved_at).toLocaleDateString() : 'N/A'}
