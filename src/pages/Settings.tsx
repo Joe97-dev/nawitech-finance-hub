@@ -326,8 +326,16 @@ const Settings = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="session-timeout">Session Timeout</Label>
-                    <Select defaultValue="8h">
+                    <Label htmlFor="session-timeout">Session Timeout (auto-logout after inactivity)</Label>
+                    <Select 
+                      value={sessionTimeout} 
+                      onValueChange={(value) => {
+                        setSessionTimeout(value);
+                        const minutesMap: Record<string, number> = { "1h": 60, "4h": 240, "8h": 480, "24h": 1440 };
+                        setSessionTimeoutMinutes(minutesMap[value] || 480);
+                        toast.success(`Session timeout updated to ${value.replace("h", " hour(s)")}`);
+                      }}
+                    >
                       <SelectTrigger id="session-timeout">
                         <SelectValue />
                       </SelectTrigger>
@@ -339,8 +347,6 @@ const Settings = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <Button className="mt-4">Save Security Settings</Button>
                 </CardContent>
               </Card>
 
