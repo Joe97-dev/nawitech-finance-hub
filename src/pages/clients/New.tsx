@@ -646,9 +646,7 @@ const NewClientPage = () => {
                       ) : (
                         loanOfficers.map((officer) => (
                           <SelectItem key={officer.id} value={officer.id}>
-                            {officer.first_name && officer.last_name
-                              ? `${officer.first_name} ${officer.last_name}`
-                              : officer.username || officer.id.substring(0, 8)}
+                            {getOfficerDisplayName(officer)}
                           </SelectItem>
                         ))
                       )}
