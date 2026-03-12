@@ -53,6 +53,13 @@ type UserWithRole = {
 
 const Settings = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [sessionTimeout, setSessionTimeout] = useState(() => {
+    const mins = getSessionTimeoutMinutes();
+    if (mins <= 60) return "1h";
+    if (mins <= 240) return "4h";
+    if (mins <= 480) return "8h";
+    return "24h";
+  });
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
   const [loading, setLoading] = useState(false);
