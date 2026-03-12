@@ -219,7 +219,7 @@ const ClientDetailPage = () => {
     };
     
     fetchClientData();
-  }, [clientId, toast]);
+  }, [clientId, toast, refreshKey]);
   
   if (loading) {
     return (
