@@ -87,6 +87,7 @@ const Dashboard = () => {
             .from('loan_transactions')
             .select('amount')
             .eq('transaction_type', 'payment')
+            .eq('is_reverted', false)
             .gte('transaction_date', format(month, 'yyyy-MM-01'))
             .lt('transaction_date', format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd'));
           
