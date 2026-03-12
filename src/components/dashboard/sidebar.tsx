@@ -1,5 +1,6 @@
 
 import { NavLink, useLocation } from "react-router-dom";
+import logo from "@/assets/logo.png";
 import {
   LayoutDashboard,
   Users,
@@ -164,7 +165,7 @@ export function AppSidebar() {
     return (
       <Sidebar className={`border-r ${collapsed ? "w-14" : "w-64"} transition-all duration-200`}>
         <div className="flex h-16 items-center justify-center border-b">
-          <span className="text-xl font-bold text-superdon-600">S</span>
+          <img src={logo} alt="SM" className="h-8 w-8 object-contain" />
         </div>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -178,13 +179,17 @@ export function AppSidebar() {
       className={`border-r ${collapsed ? "w-14" : "w-64"} transition-all duration-200`}
       collapsible="icon"
     >
-      <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-6" : ""}`}>
+      <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-4 gap-3" : ""}`}>
         {collapsed ? (
-          <span className="text-xl font-bold text-superdon-600">S</span>
+          <img src={logo} alt="SM" className="h-8 w-8 object-contain" />
         ) : (
-          <span className="text-xl font-bold text-superdon-600">Superdon</span>
+          <>
+            <img src={logo} alt="Superdon Microfinance" className="h-10 w-10 object-contain" />
+            <span className="text-xl font-bold text-superdon-600">Superdon</span>
+          </>
         )}
       </div>
+
       <SidebarContent className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
