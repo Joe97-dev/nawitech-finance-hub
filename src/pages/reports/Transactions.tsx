@@ -48,7 +48,7 @@ const paymentMethods = [
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "mobile_money", label: "Mobile Money" },
   { value: "cheque", label: "Cheque" },
-  { value: "client_draw_down", label: "Client Draw Down" },
+  { value: "draw_down_account", label: "Draw Down Account" },
 ];
 
 const columns = [

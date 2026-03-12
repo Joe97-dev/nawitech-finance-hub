@@ -60,6 +60,7 @@ const paymentMethods = [
   { value: "mobile_money", label: "Mobile Money" },
   { value: "cheque", label: "Cheque" },
   { value: "card", label: "Card Payment" },
+  { value: "draw_down_account", label: "Draw Down Account" },
 ];
 
 export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostClientFeeDialogProps) {
