@@ -28,6 +28,8 @@ interface TransactionData {
   created_by: string;
   created_at: string;
   processed_by: string;
+  loan_officer: string;
+  branch: string;
 }
 
 const transactionTypes = [
@@ -57,6 +59,8 @@ const columns = [
   { key: "amount", header: "Amount" },
   { key: "payment_method", header: "Payment Method" },
   { key: "receipt_number", header: "Receipt #" },
+  { key: "loan_officer", header: "Loan Officer" },
+  { key: "branch", header: "Branch" },
   { key: "processed_by", header: "Processed By" },
   { key: "notes", header: "Notes" }
 ];
@@ -67,9 +71,33 @@ const TransactionsReport = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedType, setSelectedType] = useState("all");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+  const [selectedBranch, setSelectedBranch] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loanOfficers, setLoanOfficers] = useState<{ id: string; name: string }[]>([]);
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+
+  // Fetch loan officers and branches for filters
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      const [profilesRes, branchesRes] = await Promise.all([
+        supabase.from('profiles').select('id, first_name, last_name, username'),
+        supabase.from('branches').select('id, name'),
+      ]);
+      if (profilesRes.data) {
+        setLoanOfficers(profilesRes.data.map(p => ({
+          id: p.id,
+          name: [p.first_name, p.last_name].filter(Boolean).join(' ') || p.username || 'Unknown'
+        })));
+      }
+      if (branchesRes.data) {
+        setBranches(branchesRes.data.map(b => ({ id: b.id, name: b.name })));
+      }
+    };
+    fetchFilterOptions();
+  }, []);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -78,7 +106,6 @@ const TransactionsReport = () => {
 
         const allTransactions: TransactionData[] = [];
         
-        // Helper to format date as YYYY-MM-DD in local time
         const formatLocal = (date: Date) => {
           const y = date.getFullYear();
           const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -86,13 +113,67 @@ const TransactionsReport = () => {
           return `${y}-${m}-${d}`;
         };
 
-        // Build date bounds in local time
         const fromDate = dateRange?.from ? formatLocal(dateRange.from) : undefined;
         const toDate = dateRange?.to ? formatLocal(dateRange.to) : undefined;
-        // End-of-day timestamp for timestamp columns
         const toDateEndOfDay = toDate ? `${toDate}T23:59:59.999` : undefined;
 
-        // Fetch loan_transactions (repayments, fees, draw downs, etc.)
+        // Fetch all loans to map loan_officer_id and client -> branch
+        const { data: allLoans } = await supabase
+          .from('loans')
+          .select('id, client, loan_number, amount, date, created_at, loan_officer_id');
+
+        // Fetch all clients to map client name -> branch_id
+        const { data: allClients } = await supabase
+          .from('clients')
+          .select('first_name, last_name, branch_id');
+
+        // Build client name -> branch_id map
+        const clientBranchMap = new Map<string, string>();
+        (allClients || []).forEach(c => {
+          const name = `${c.first_name} ${c.last_name}`.toLowerCase();
+          if (c.branch_id) clientBranchMap.set(name, c.branch_id);
+        });
+
+        // Build loan info map
+        const loanInfoMap = new Map<string, { client: string; loan_number: string; loan_officer_id: string | null }>();
+        (allLoans || []).forEach(loan => {
+          loanInfoMap.set(loan.id, {
+            client: loan.client,
+            loan_number: loan.loan_number || 'N/A',
+            loan_officer_id: loan.loan_officer_id
+          });
+        });
+
+        // Fetch all profiles for officer name resolution
+        const { data: allProfiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, username');
+        
+        const profileMap = new Map<string, string>();
+        (allProfiles || []).forEach(p => {
+          const name = [p.first_name, p.last_name].filter(Boolean).join(' ') || p.username || 'Unknown';
+          profileMap.set(p.id, name);
+        });
+
+        // Build branch id -> name map
+        const branchNameMap = new Map<string, string>();
+        branches.forEach(b => branchNameMap.set(b.id, b.name));
+        // If branches not loaded yet, fetch directly
+        if (branchNameMap.size === 0) {
+          const { data: branchData } = await supabase.from('branches').select('id, name');
+          (branchData || []).forEach(b => branchNameMap.set(b.id, b.name));
+        }
+
+        const resolveOfficerAndBranch = (loanId: string) => {
+          const loanInfo = loanInfoMap.get(loanId);
+          const officerName = loanInfo?.loan_officer_id ? profileMap.get(loanInfo.loan_officer_id) || '—' : '—';
+          const clientName = loanInfo?.client || '';
+          const branchId = clientBranchMap.get(clientName.toLowerCase());
+          const branchName = branchId ? branchNameMap.get(branchId) || '—' : '—';
+          return { officerName, branchName, branchId, officerId: loanInfo?.loan_officer_id || '' };
+        };
+
+        // Fetch loan_transactions
         const shouldFetchLoanTransactions = selectedType === "all" || selectedType !== "disbursement";
         
         if (shouldFetchLoanTransactions) {
@@ -101,18 +182,11 @@ const TransactionsReport = () => {
             .select('*')
             .order('transaction_date', { ascending: false });
 
-          if (fromDate) {
-            transactionQuery = transactionQuery.gte('transaction_date', fromDate);
-          }
-          if (toDateEndOfDay) {
-            transactionQuery = transactionQuery.lte('transaction_date', toDateEndOfDay);
-          }
-
-          // Apply transaction type filter (skip for 'all' and 'disbursement')
+          if (fromDate) transactionQuery = transactionQuery.gte('transaction_date', fromDate);
+          if (toDateEndOfDay) transactionQuery = transactionQuery.lte('transaction_date', toDateEndOfDay);
           if (selectedType !== "all" && selectedType !== "disbursement") {
             transactionQuery = transactionQuery.eq('transaction_type', selectedType);
           }
-
           if (selectedPaymentMethod !== "all") {
             transactionQuery = transactionQuery.eq('payment_method', selectedPaymentMethod);
           }
@@ -120,91 +194,52 @@ const TransactionsReport = () => {
           const { data: transactionData, error: transactionError } = await transactionQuery;
           if (transactionError) throw transactionError;
 
-          // Get loan info for these transactions
-          const loanIds = [...new Set(transactionData?.map(t => t.loan_id) || [])];
-          
-          // Get user profiles for created_by
-          const userIds = [...new Set(transactionData?.map(t => t.created_by).filter(Boolean) || [])];
-          
-          let profileMap = new Map<string, string>();
-          if (userIds.length > 0) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('id, username')
-              .in('id', userIds);
-            profileData?.forEach(p => {
-              profileMap.set(p.id, p.username || 'Unknown');
+          (transactionData || []).forEach(transaction => {
+            const loanInfo = loanInfoMap.get(transaction.loan_id);
+            const { officerName, branchName } = resolveOfficerAndBranch(transaction.loan_id);
+            allTransactions.push({
+              ...transaction,
+              client_name: loanInfo?.client || 'Unknown Client',
+              loan_number: loanInfo?.loan_number || 'N/A',
+              processed_by: profileMap.get(transaction.created_by) || '—',
+              loan_officer: officerName,
+              branch: branchName,
             });
-          }
-          
-          if (loanIds.length > 0) {
-            const { data: loanData, error: loanError } = await supabase
-              .from('loans')
-              .select('id, client, loan_number')
-              .in('id', loanIds);
-            if (loanError) throw loanError;
-
-            const loanInfoMap = new Map();
-            loanData?.forEach(loan => {
-              loanInfoMap.set(loan.id, {
-                client: loan.client,
-                loan_number: loan.loan_number || 'N/A'
-              });
-            });
-
-            (transactionData || []).forEach(transaction => {
-              const loanInfo = loanInfoMap.get(transaction.loan_id);
-              allTransactions.push({
-                ...transaction,
-                client_name: loanInfo?.client || 'Unknown Client',
-                loan_number: loanInfo?.loan_number || 'N/A',
-                processed_by: profileMap.get(transaction.created_by) || '—'
-              });
-            });
-          }
+          });
         }
 
-        // Fetch disbursements from loans table
+        // Fetch disbursements
         const shouldFetchDisbursements = selectedType === "all" || selectedType === "disbursement";
         
-        if (shouldFetchDisbursements) {
-          let loansQuery = supabase
-            .from('loans')
-            .select('id, client, loan_number, amount, date, created_at');
+        if (shouldFetchDisbursements && selectedPaymentMethod === "all") {
+          const filteredLoans = (allLoans || []).filter(loan => {
+            if (fromDate && loan.date < fromDate) return false;
+            if (toDate && loan.date > toDate) return false;
+            return true;
+          });
 
-          if (fromDate) {
-            loansQuery = loansQuery.gte('date', fromDate);
-          }
-          if (toDate) {
-            loansQuery = loansQuery.lte('date', toDate);
-          }
-
-          // Skip disbursements if filtering by payment method (they don't have one)
-          if (selectedPaymentMethod === "all") {
-            const { data: loansData, error: loansError } = await loansQuery;
-            if (loansError) throw loansError;
-
-            (loansData || []).forEach(loan => {
-              allTransactions.push({
-                id: `disb-${loan.id}`,
-                loan_id: loan.id,
-                loan_number: loan.loan_number || 'N/A',
-                client_name: loan.client || 'Unknown Client',
-                amount: loan.amount,
-                transaction_date: loan.created_at || loan.date,
-                transaction_type: 'disbursement',
-                payment_method: null,
-                receipt_number: null,
-                notes: 'Loan disbursement',
-                created_by: '',
-                created_at: loan.created_at || loan.date,
-                processed_by: '—',
-              });
+          filteredLoans.forEach(loan => {
+            const { officerName, branchName } = resolveOfficerAndBranch(loan.id);
+            allTransactions.push({
+              id: `disb-${loan.id}`,
+              loan_id: loan.id,
+              loan_number: loan.loan_number || 'N/A',
+              client_name: loan.client || 'Unknown Client',
+              amount: loan.amount,
+              transaction_date: loan.created_at || loan.date,
+              transaction_type: 'disbursement',
+              payment_method: null,
+              receipt_number: null,
+              notes: 'Loan disbursement',
+              created_by: '',
+              created_at: loan.created_at || loan.date,
+              processed_by: '—',
+              loan_officer: officerName,
+              branch: branchName,
             });
-          }
+          });
         }
 
-        // Sort all by date descending
         allTransactions.sort((a, b) => 
           new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime()
         );
@@ -224,32 +259,32 @@ const TransactionsReport = () => {
     };
 
     fetchTransactions();
-  }, [toast, dateRange, selectedType, selectedPaymentMethod]);
+  }, [toast, dateRange, selectedType, selectedPaymentMethod, branches]);
 
-  // Filter data based on search term
+  // Filter data based on search term, officer, branch
   const filteredData = transactions.filter(transaction => {
+    if (selectedOfficer !== "all") {
+      const officerName = loanOfficers.find(o => o.id === selectedOfficer)?.name || '';
+      if (transaction.loan_officer !== officerName) return false;
+    }
+    if (selectedBranch !== "all") {
+      const branchName = branches.find(b => b.id === selectedBranch)?.name || '';
+      if (transaction.branch !== branchName) return false;
+    }
     if (!searchTerm) return true;
-    
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        transaction.client_name?.toLowerCase().includes(searchLower) ||
-        transaction.loan_number?.toLowerCase().includes(searchLower) ||
-        transaction.receipt_number?.toLowerCase().includes(searchLower) ||
-        transaction.notes?.toLowerCase().includes(searchLower)
-      );
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      transaction.client_name?.toLowerCase().includes(searchLower) ||
+      transaction.loan_number?.toLowerCase().includes(searchLower) ||
+      transaction.receipt_number?.toLowerCase().includes(searchLower) ||
+      transaction.notes?.toLowerCase().includes(searchLower)
+    );
   });
 
-  // Calculate statistics
-  const totalAmount = filteredData.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const repaymentAmount = filteredData
-    .filter(t => t.transaction_type === 'repayment')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const disbursementAmount = filteredData
-    .filter(t => t.transaction_type === 'disbursement')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const feeAmount = filteredData
-    .filter(t => t.transaction_type === 'fee' || t.transaction_type === 'client_fee')
-    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalAmount = filteredData.reduce((sum, t) => sum + t.amount, 0);
+  const repaymentAmount = filteredData.filter(t => t.transaction_type === 'repayment').reduce((sum, t) => sum + t.amount, 0);
+  const disbursementAmount = filteredData.filter(t => t.transaction_type === 'disbursement').reduce((sum, t) => sum + t.amount, 0);
+  const feeAmount = filteredData.filter(t => t.transaction_type === 'fee' || t.transaction_type === 'client_fee').reduce((sum, t) => sum + t.amount, 0);
 
   const getTransactionBadge = (type: string) => {
     switch (type) {
@@ -279,11 +314,13 @@ const TransactionsReport = () => {
     }).format(amount);
   };
 
-  const hasActiveFilters = selectedType !== "all" || selectedPaymentMethod !== "all" || (dateRange !== undefined) || searchTerm !== "";
+  const hasActiveFilters = selectedType !== "all" || selectedPaymentMethod !== "all" || selectedOfficer !== "all" || selectedBranch !== "all" || (dateRange !== undefined) || searchTerm !== "";
 
   const handleReset = () => {
     setSelectedType("all");
     setSelectedPaymentMethod("all");
+    setSelectedOfficer("all");
+    setSelectedBranch("all");
     setDateRange(undefined);
     setSearchTerm("");
   };
@@ -302,6 +339,8 @@ const TransactionsReport = () => {
             amount: transaction.amount,
             payment_method: transaction.payment_method || '',
             receipt_number: transaction.receipt_number || '',
+            loan_officer: transaction.loan_officer || '',
+            branch: transaction.branch || '',
             processed_by: transaction.processed_by || '',
             notes: transaction.notes || ''
           }))} 
@@ -314,7 +353,7 @@ const TransactionsReport = () => {
         hasActiveFilters={hasActiveFilters}
         onReset={handleReset}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <DateRangePicker
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -351,6 +390,44 @@ const TransactionsReport = () => {
                 {paymentMethods.map((method) => (
                   <SelectItem key={method.value} value={method.value}>
                     {method.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Loan Officer
+            </label>
+            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="All Officers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {loanOfficers.map((officer) => (
+                  <SelectItem key={officer.id} value={officer.id}>
+                    {officer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Branch
+            </label>
+            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="All Branches" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Branches</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -423,10 +500,12 @@ const TransactionsReport = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Payment Method</TableHead>
-                     <TableHead>Receipt #</TableHead>
-                     <TableHead>Processed By</TableHead>
-                     <TableHead>Notes</TableHead>
-                     <TableHead>Actions</TableHead>
+                    <TableHead>Receipt #</TableHead>
+                    <TableHead>Loan Officer</TableHead>
+                    <TableHead>Branch</TableHead>
+                    <TableHead>Processed By</TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -456,6 +535,12 @@ const TransactionsReport = () => {
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {transaction.receipt_number || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {transaction.loan_officer || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {transaction.branch || "—"}
                       </TableCell>
                       <TableCell className="text-sm">
                         {transaction.processed_by || "—"}
