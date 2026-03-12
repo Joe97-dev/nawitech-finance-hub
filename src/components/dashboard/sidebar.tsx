@@ -185,7 +185,7 @@ export function AppSidebar() {
         ) : (
           <>
             <img src={logo} alt="Superdon Microfinance" className="h-10 w-10 object-contain" />
-            <span className="text-xl font-bold text-superdon-600">Superdon</span>
+            <span className="text-xl font-extrabold text-superdon-600">Superdon</span>
           </>
         )}
       </div>
