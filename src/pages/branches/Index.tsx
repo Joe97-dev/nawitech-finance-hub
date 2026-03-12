@@ -38,20 +38,66 @@ const BranchesIndex = () => {
   });
   const { toast } = useToast();
 
-  // Fetch branches from Supabase
+  // Fetch branches with computed stats
   useEffect(() => {
     const fetchBranches = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        const { data: branchData, error } = await supabase
           .from('branches')
           .select('*');
         
-        if (error) {
-          throw error;
-        }
-        
-        setBranches(data || []);
+        if (error) throw error;
+        if (!branchData) { setBranches([]); return; }
+
+        // Fetch staff counts per branch from profiles
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('branch_id');
+
+        // Fetch clients per branch to map loans
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name, branch_id');
+
+        // Fetch active loans
+        const { data: activeLoans } = await supabase
+          .from('loans')
+          .select('client, amount, balance, status')
+          .in('status', ['active', 'in arrears']);
+
+        // Build a map of client name -> branch_id
+        const clientBranchMap = new Map<string, string>();
+        (clients || []).forEach(c => {
+          if (c.branch_id) {
+            clientBranchMap.set(`${c.first_name} ${c.last_name}`.toLowerCase(), c.branch_id);
+          }
+        });
+
+        const enrichedBranches = branchData.map(branch => {
+          // Count staff in this branch
+          const staffCount = (profiles || []).filter(p => p.branch_id === branch.id).length;
+
+          // Count active loans and portfolio for this branch
+          let branchActiveLoans = 0;
+          let branchPortfolio = 0;
+          (activeLoans || []).forEach(loan => {
+            const loanBranchId = clientBranchMap.get(loan.client.toLowerCase());
+            if (loanBranchId === branch.id) {
+              branchActiveLoans++;
+              branchPortfolio += Number(loan.balance);
+            }
+          });
+
+          return {
+            ...branch,
+            staff_count: staffCount,
+            active_loans: branchActiveLoans,
+            total_portfolio: branchPortfolio,
+          };
+        });
+
+        setBranches(enrichedBranches);
       } catch (error: any) {
         console.error("Error fetching branches:", error);
         toast({
