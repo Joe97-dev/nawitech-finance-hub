@@ -40,14 +40,10 @@ interface Loan {
   type: string;
 }
 
-const branches = [
-  { value: "all", label: "All Branches" },
-  { value: "head-office", label: "HEAD OFFICE" },
-  { value: "westlands", label: "Westlands Branch" },
-  { value: "mombasa", label: "Mombasa Branch" },
-  { value: "kisumu", label: "Kisumu Branch" },
-  { value: "nakuru", label: "Nakuru Branch" }
-];
+interface Branch {
+  id: string;
+  name: string;
+}
 
 const statusOptions = [
   { value: "all", label: "All Status" },
