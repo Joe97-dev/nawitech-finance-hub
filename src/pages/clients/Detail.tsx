@@ -517,13 +517,18 @@ const ClientDetailPage = () => {
 
              {/* Documents */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <FileText className="h-4 w-4" />
-                   Documents ({client.documents.length})
-                 </CardTitle>
-                 <CardDescription>Client uploaded documents</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <FileText className="h-4 w-4" />
+                     Documents ({client.documents.length})
+                   </CardTitle>
+                   <CardDescription>Client uploaded documents</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditDocumentsOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Manage
+                 </Button>
+                </CardHeader>
                <CardContent>
                  {client.documents.length > 0 ? (
                    <div className="space-y-2">
