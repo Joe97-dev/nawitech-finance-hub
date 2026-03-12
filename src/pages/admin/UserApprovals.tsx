@@ -88,7 +88,11 @@ const UserApprovals = () => {
           
           return {
             ...approval,
-            profiles: { username: profile.username }
+            profiles: {
+              username: profile.username,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+            }
           };
         })
       );
