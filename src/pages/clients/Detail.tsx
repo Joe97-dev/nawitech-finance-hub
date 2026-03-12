@@ -386,13 +386,18 @@ const ClientDetailPage = () => {
 
              {/* ID and Business Photos */}
              <Card>
-               <CardHeader>
-                 <CardTitle className="flex items-center gap-2">
-                   <Image className="h-4 w-4" />
-                   Photos
-                 </CardTitle>
-                 <CardDescription>ID and business photos</CardDescription>
-               </CardHeader>
+               <CardHeader className="flex flex-row items-center justify-between">
+                 <div>
+                   <CardTitle className="flex items-center gap-2">
+                     <Image className="h-4 w-4" />
+                     Photos
+                   </CardTitle>
+                   <CardDescription>ID and business photos</CardDescription>
+                 </div>
+                 <Button size="sm" variant="outline" onClick={() => setEditPhotosOpen(true)}>
+                   <Edit className="h-3 w-3 mr-1" /> Edit
+                 </Button>
+                </CardHeader>
                 <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 gap-4">
                    {client.id_photo_front_url && signedUrls.id_photo_front && (
