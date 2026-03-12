@@ -179,11 +179,16 @@ export function AppSidebar() {
       className={`border-r ${collapsed ? "w-14" : "w-64"} transition-all duration-200`}
       collapsible="icon"
     >
-      <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-6" : ""}`}>
+      <div className={`flex h-16 items-center justify-center border-b ${!collapsed ? "px-4 gap-3" : ""}`}>
         {collapsed ? (
-          <span className="text-xl font-bold text-superdon-600">S</span>
+          <img src={logo} alt="SM" className="h-8 w-8 object-contain" />
         ) : (
-          <span className="text-xl font-bold text-superdon-600">Superdon</span>
+          <>
+            <img src={logo} alt="Superdon Microfinance" className="h-10 w-10 object-contain" />
+            <span className="text-xl font-bold text-superdon-600">Superdon</span>
+          </>
+        )}
+      </div>
         )}
       </div>
       <SidebarContent className="p-2">
