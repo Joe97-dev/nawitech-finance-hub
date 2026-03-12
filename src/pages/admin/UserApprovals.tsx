@@ -53,10 +53,10 @@ const UserApprovals = () => {
 
       if (approvalsError) throw approvalsError;
 
-      // Fetch profiles for usernames
+      // Fetch profiles for user names
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, username');
+        .select('id, username, first_name, last_name');
 
       if (profilesError) throw profilesError;
 
