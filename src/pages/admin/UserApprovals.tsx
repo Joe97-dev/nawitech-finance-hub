@@ -24,9 +24,11 @@ interface UserApproval {
   approved_at?: string;
   rejection_reason?: string;
   created_at: string;
-  email?: string; // Add email field
+  email?: string;
   profiles?: {
-    username?: string;
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
   } | null;
 }
 
