@@ -763,12 +763,44 @@ const ClientDetailPage = () => {
 
         {/* Edit Client Dialog */}
         {client && (
-          <EditClientDialog
-            client={client}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            onClientUpdated={handleClientUpdated}
-          />
+          <>
+            <EditClientDialog
+              client={client}
+              open={editDialogOpen}
+              onOpenChange={setEditDialogOpen}
+              onClientUpdated={handleClientUpdated}
+            />
+            <EditClientPhotosDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentPhotos={{
+                photo_url: client.photo_url,
+                id_photo_front_url: client.id_photo_front_url,
+                id_photo_back_url: client.id_photo_back_url,
+                business_photo_url: client.business_photo_url,
+              }}
+              signedUrls={signedUrls}
+              open={editPhotosOpen}
+              onOpenChange={setEditPhotosOpen}
+              onPhotosUpdated={refreshClientData}
+            />
+            <EditClientRefereesDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentReferees={client.referees}
+              open={editRefereesOpen}
+              onOpenChange={setEditRefereesOpen}
+              onRefereesUpdated={refreshClientData}
+            />
+            <EditClientDocumentsDialog
+              clientId={client.id}
+              clientName={`${client.first_name} ${client.last_name}`}
+              currentDocuments={client.documents}
+              open={editDocumentsOpen}
+              onOpenChange={setEditDocumentsOpen}
+              onDocumentsUpdated={refreshClientData}
+            />
+          </>
         )}
       </div>
     </DashboardLayout>
