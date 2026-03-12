@@ -66,56 +66,54 @@ const LoansPage = () => {
   const { toast } = useToast();
   const { isAdmin } = useRole();
   
-  useEffect(() => {
-    const fetchLoans = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('loans')
-          .select('*')
-          .neq('type', 'client_fee_account')
-          .order('date', { ascending: false });
-          
-        if (error) throw error;
+  const fetchLoans = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('loans')
+        .select('*')
+        .neq('type', 'client_fee_account')
+        .order('date', { ascending: false });
         
-        // Transform data to match our Loan interface
-        const formattedLoans: Loan[] = (data || []).map((loan: any) => ({
-          id: loan.id,
-          loan_number: loan.loan_number,
-          client: loan.client,
-          amount: loan.amount,
-          balance: loan.balance,
-          type: loan.type,
-          status: loan.status,
-          date: loan.date,
-          draw_down_balance: loan.draw_down_balance || 0
-        }));
-        
-        setLoans(formattedLoans);
+      if (error) throw error;
+      
+      const formattedLoans: Loan[] = (data || []).map((loan: any) => ({
+        id: loan.id,
+        loan_number: loan.loan_number,
+        client: loan.client,
+        amount: loan.amount,
+        balance: loan.balance,
+        type: loan.type,
+        status: loan.status,
+        date: loan.date,
+        draw_down_balance: loan.draw_down_balance || 0
+      }));
+      
+      setLoans(formattedLoans);
 
-        // Build client name -> id map
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, first_name, last_name');
-        if (clients) {
-          const map: ClientMap = {};
-          clients.forEach(c => {
-            map[`${c.first_name} ${c.last_name}`] = c.id;
-          });
-          setClientMap(map);
-        }
-      } catch (error: any) {
-        console.error("Error fetching loans:", error);
-        toast({
-          variant: "destructive",
-          title: "Failed to fetch loans",
-          description: error.message || "An error occurred while fetching loans"
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name');
+      if (clients) {
+        const map: ClientMap = {};
+        clients.forEach(c => {
+          map[`${c.first_name} ${c.last_name}`] = c.id;
         });
-      } finally {
-        setLoading(false);
+        setClientMap(map);
       }
-    };
-    
+    } catch (error: any) {
+      console.error("Error fetching loans:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch loans",
+        description: error.message || "An error occurred while fetching loans"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLoans();
   }, [toast]);
   
