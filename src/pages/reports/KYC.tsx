@@ -97,16 +97,6 @@ const KYCReport = () => {
         const branchesData = branchesResult.data || [];
         setBranches(branchesData);
         
-        if (clientsError) throw clientsError;
-        
-        // Fetch loans
-        const { data: loansData, error: loansError } = await supabase
-          .from('loans')
-          .select('*')
-          .neq('type', 'client_fee_account');
-          
-        if (loansError) throw loansError;
-        
         // Map loans to clients
         const enhancedClients = (clientsData || []).map((client: any) => {
           // Match loans with clients based on client name
