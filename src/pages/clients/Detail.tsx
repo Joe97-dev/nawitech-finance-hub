@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { ArrowLeft, Phone, MapPin, Calendar, CreditCard, FileText, Edit, Users, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
+import { EditClientPhotosDialog } from "@/components/clients/EditClientPhotosDialog";
+import { EditClientRefereesDialog } from "@/components/clients/EditClientRefereesDialog";
+import { EditClientDocumentsDialog } from "@/components/clients/EditClientDocumentsDialog";
 import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
 import { ClientAccount } from "@/components/clients/ClientAccount";
 
