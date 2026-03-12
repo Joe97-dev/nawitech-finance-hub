@@ -140,6 +140,18 @@ const NewClientPage = () => {
     fetchOfficers();
   }, [toast]);
   
+  const getOfficerDisplayName = (officer: LoanOfficer) => {
+    const fullName = [officer.first_name, officer.last_name]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (fullName) return fullName;
+    if (officer.username) return officer.username;
+
+    return officer.id.substring(0, 8);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
