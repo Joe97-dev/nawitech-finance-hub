@@ -82,10 +82,20 @@ const KYCReport = () => {
       try {
         setLoading(true);
         
-        // Fetch clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
+        // Fetch clients and branches in parallel
+        const [clientsResult, loansResult, branchesResult] = await Promise.all([
+          supabase.from('clients').select('*'),
+          supabase.from('loans').select('*').neq('type', 'client_fee_account'),
+          supabase.from('branches').select('id, name')
+        ]);
+        
+        if (clientsResult.error) throw clientsResult.error;
+        if (loansResult.error) throw loansResult.error;
+        
+        const clientsData = clientsResult.data;
+        const loansData = loansResult.data;
+        const branchesData = branchesResult.data || [];
+        setBranches(branchesData);
         
         if (clientsError) throw clientsError;
         
