@@ -126,6 +126,7 @@ export function LoanOfficerPerformance() {
               .from('loan_transactions')
               .select('amount')
               .eq('transaction_type', 'payment')
+              .eq('is_reverted', false)
               .in('loan_id', loanIds)
               .gte('transaction_date', monthStart)
               .lt('transaction_date', nextMonth);
