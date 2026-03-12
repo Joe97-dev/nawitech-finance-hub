@@ -62,6 +62,7 @@ const LoansPage = () => {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientMap, setClientMap] = useState<ClientMap>({});
+  const [importOpen, setImportOpen] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useRole();
   
