@@ -168,9 +168,10 @@ const KYCReport = () => {
                 <SelectValue placeholder="Select Branch" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Branches</SelectItem>
                 {branches.map((branch) => (
-                  <SelectItem key={branch.value} value={branch.value}>
-                    {branch.label}
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
                   </SelectItem>
                 ))}
               </SelectContent>
