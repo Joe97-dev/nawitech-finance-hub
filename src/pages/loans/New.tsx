@@ -59,6 +59,7 @@ const NewLoanPage = () => {
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
   const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [loadingClients, setLoadingClients] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
@@ -186,10 +187,13 @@ const NewLoanPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Get selected client name
-      const selectedClient = clients.find(client => client.id === clientId);
       if (!selectedClient) {
-        throw new Error("Selected client not found");
+        toast({
+          variant: "destructive",
+          title: "Missing information",
+          description: "Please select a client.",
+        });
+        return;
       }
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
@@ -351,6 +355,7 @@ const NewLoanPage = () => {
                                   className="flex w-full items-center px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
                                   onClick={() => {
                                     setClientId(client.id);
+                                    setSelectedClient(client);
                                     setClientSearch(getFullClientName(client));
                                     setShowClientDropdown(false);
                                   }}
