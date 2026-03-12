@@ -291,14 +291,7 @@ const KYCReport = () => {
   );
 };
 
-// Helper function to get branch label
-const getBranchLabel = (branch_id: string | null) => {
-  if (!branch_id) return "Not assigned";
-  
-  // In a real implementation, you would fetch branch names from your database
-  // For now, we'll return a placeholder
-  return "Branch";
-};
+// getBranchLabel is now defined inside the component, not needed as standalone
 
 // Updated ClientDetail component to handle loan navigation
 const ClientDetail = ({ 
