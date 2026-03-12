@@ -169,6 +169,12 @@ const LoansPage = () => {
               Export
             </Button>
             {isAdmin && (
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+            )}
+            {isAdmin && (
               <Button asChild>
                 <Link to="/loans/new">
                   <Plus className="h-4 w-4 mr-2" />
