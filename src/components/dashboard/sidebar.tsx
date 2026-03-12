@@ -189,8 +189,7 @@ export function AppSidebar() {
           </>
         )}
       </div>
-        )}
-      </div>
+
       <SidebarContent className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
