@@ -180,6 +180,7 @@ const TransactionsReport = () => {
           let transactionQuery = supabase
             .from('loan_transactions')
             .select('*')
+            .eq('is_reverted', false)
             .order('transaction_date', { ascending: false });
 
           if (fromDate) transactionQuery = transactionQuery.gte('transaction_date', fromDate);
