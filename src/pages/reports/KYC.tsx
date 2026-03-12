@@ -73,6 +73,7 @@ const KYCReport = () => {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Fetch clients and loans from Supabase
