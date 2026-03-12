@@ -60,9 +60,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     receipt_number: "",
     payment_method: "",
     notes: "",
-    mpesa_phone: ""
   });
-  const [isStkPushSent, setIsStkPushSent] = useState(false);
 
   useEffect(() => {
     const fetchTransactions = async () => {
