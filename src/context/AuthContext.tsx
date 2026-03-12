@@ -159,15 +159,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signOut();
+      // Clear local state first to prevent redirect loops
+      setUser(null);
+      setSession(null);
+      setApprovalStatus(null);
+      
+      // Attempt sign out - may fail if session already expired
+      await supabase.auth.signOut().catch(() => {});
+      
       toast.success("Logged out successfully");
-      // Use navigate here to ensure we only redirect once after logout
-      navigate("/login", { replace: true });
     } catch (error: any) {
-      toast.error(error.message || "Failed to logout");
       console.error("Logout error:", error);
     } finally {
       setLoading(false);
+      // Always navigate to login regardless of signOut result
+      navigate("/login", { replace: true });
     }
   };
 
