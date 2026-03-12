@@ -388,9 +388,6 @@ const ClientDetailPage = () => {
                    </CardTitle>
                    <CardDescription>ID and business photos</CardDescription>
                  </div>
-                 <Button size="sm" variant="outline" onClick={() => setEditPhotosOpen(true)}>
-                   <Edit className="h-3 w-3 mr-1" /> Edit
-                 </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 gap-4">
