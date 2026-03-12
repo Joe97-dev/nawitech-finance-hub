@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.mpesa-c2b-register]
 verify_jwt = false
+
+[functions.mpesa-manage-credentials]
+verify_jwt = false
