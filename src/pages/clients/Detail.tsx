@@ -574,9 +574,6 @@ const ClientDetailPage = () => {
                    </CardTitle>
                    <CardDescription>Client references and guarantors</CardDescription>
                  </div>
-                 <Button size="sm" variant="outline" onClick={() => setEditRefereesOpen(true)}>
-                   <Edit className="h-3 w-3 mr-1" /> Edit
-                 </Button>
                 </CardHeader>
                <CardContent>
                  {client.referees.length > 0 ? (
