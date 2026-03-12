@@ -187,10 +187,13 @@ const NewLoanPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Get selected client name
-      const selectedClient = clients.find(client => client.id === clientId);
       if (!selectedClient) {
-        throw new Error("Selected client not found");
+        toast({
+          variant: "destructive",
+          title: "Missing information",
+          description: "Please select a client.",
+        });
+        return;
       }
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
