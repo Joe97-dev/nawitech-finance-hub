@@ -256,8 +256,8 @@ const ClientDetailPage = () => {
    const closedLoans = client.loans.filter(loan => loan.status === "closed");
   const totalLoanAmount = client.loans.reduce((acc, loan) => acc + loan.amount, 0);
 
-  const handleClientUpdated = (updatedClient: Client) => {
-    setClient(prev => prev ? { ...prev, ...updatedClient } : null);
+  const handleClientUpdated = () => {
+    refreshClientData();
   };
   
   return (
