@@ -1,40 +1,49 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { useSessionTimeout } from "./hooks/use-session-timeout";
 import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
-import Settings from "./pages/Settings";
-import PendingApproval from "./pages/PendingApproval";
-import Rejected from "./pages/Rejected";
-import UserApprovals from "./pages/admin/UserApprovals";
-import DataMigration from "./pages/admin/DataMigration";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleGuard } from "./components/auth/RoleGuard";
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProvider } from "./context/RoleContext";
 import { Toaster } from "./components/ui/toaster";
-import ClientsIndex from "./pages/clients/Index";
-import ClientNew from "./pages/clients/New";
-import ClientDetail from "./pages/clients/Detail";
-import LoansIndex from "./pages/loans/Index";
-import LoanNew from "./pages/loans/New";
-import LoanDetail from "./pages/loans/Detail";
-import BranchesIndex from "./pages/branches/Index";
-import BranchDetail from "./pages/branches/Detail";
-import PARReport from "./pages/reports/PAR";
-import CashFlowReport from "./pages/reports/CashFlow";
-import CollectionReport from "./pages/reports/Collection";
-import DisbursalReport from "./pages/reports/Disbursal";
-import LoansDueReport from "./pages/reports/LoansDue";
-import LoanPerformanceReport from "./pages/reports/LoanPerformance";
-import KYCReport from "./pages/reports/KYC";
-import IncomeReport from "./pages/reports/Income";
-import ArrearsReport from "./pages/reports/Arrears";
-import DormantReport from "./pages/reports/Dormant";
-import ForecastingReport from "./pages/reports/Forecasting";
-import TransactionsReport from "./pages/reports/Transactions";
+
+// Lazy load all heavy pages
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PendingApproval = lazy(() => import("./pages/PendingApproval"));
+const Rejected = lazy(() => import("./pages/Rejected"));
+const UserApprovals = lazy(() => import("./pages/admin/UserApprovals"));
+const DataMigration = lazy(() => import("./pages/admin/DataMigration"));
+const ClientsIndex = lazy(() => import("./pages/clients/Index"));
+const ClientNew = lazy(() => import("./pages/clients/New"));
+const ClientDetail = lazy(() => import("./pages/clients/Detail"));
+const LoansIndex = lazy(() => import("./pages/loans/Index"));
+const LoanNew = lazy(() => import("./pages/loans/New"));
+const LoanDetail = lazy(() => import("./pages/loans/Detail"));
+const BranchesIndex = lazy(() => import("./pages/branches/Index"));
+const BranchDetail = lazy(() => import("./pages/branches/Detail"));
+const PARReport = lazy(() => import("./pages/reports/PAR"));
+const CashFlowReport = lazy(() => import("./pages/reports/CashFlow"));
+const CollectionReport = lazy(() => import("./pages/reports/Collection"));
+const DisbursalReport = lazy(() => import("./pages/reports/Disbursal"));
+const LoansDueReport = lazy(() => import("./pages/reports/LoansDue"));
+const LoanPerformanceReport = lazy(() => import("./pages/reports/LoanPerformance"));
+const KYCReport = lazy(() => import("./pages/reports/KYC"));
+const IncomeReport = lazy(() => import("./pages/reports/Income"));
+const ArrearsReport = lazy(() => import("./pages/reports/Arrears"));
+const DormantReport = lazy(() => import("./pages/reports/Dormant"));
+const ForecastingReport = lazy(() => import("./pages/reports/Forecasting"));
+const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 function SessionTimeoutWrapper({ children }: { children: React.ReactNode }) {
   useSessionTimeout();
@@ -47,6 +56,7 @@ function App() {
       <AuthProvider>
         <RoleProvider>
           <SessionTimeoutWrapper>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -89,6 +99,7 @@ function App() {
             
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           <Toaster />
           </SessionTimeoutWrapper>
         </RoleProvider>
