@@ -59,6 +59,7 @@ const NewLoanPage = () => {
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
   const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [loadingClients, setLoadingClients] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
