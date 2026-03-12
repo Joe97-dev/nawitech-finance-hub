@@ -1,5 +1,6 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useSessionTimeout } from "./hooks/use-session-timeout";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
@@ -35,11 +36,17 @@ import DormantReport from "./pages/reports/Dormant";
 import ForecastingReport from "./pages/reports/Forecasting";
 import TransactionsReport from "./pages/reports/Transactions";
 
+function SessionTimeoutWrapper({ children }: { children: React.ReactNode }) {
+  useSessionTimeout();
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <RoleProvider>
+          <SessionTimeoutWrapper>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -83,6 +90,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
+          </SessionTimeoutWrapper>
         </RoleProvider>
       </AuthProvider>
     </BrowserRouter>

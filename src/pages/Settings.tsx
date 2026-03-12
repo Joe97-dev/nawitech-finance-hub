@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSessionTimeoutMinutes, setSessionTimeoutMinutes } from "@/hooks/use-session-timeout";
 import {
   Card,
   CardContent,
@@ -52,6 +53,13 @@ type UserWithRole = {
 
 const Settings = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [sessionTimeout, setSessionTimeout] = useState(() => {
+    const mins = getSessionTimeoutMinutes();
+    if (mins <= 60) return "1h";
+    if (mins <= 240) return "4h";
+    if (mins <= 480) return "8h";
+    return "24h";
+  });
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
   const [loading, setLoading] = useState(false);
@@ -318,8 +326,16 @@ const Settings = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="session-timeout">Session Timeout</Label>
-                    <Select defaultValue="8h">
+                    <Label htmlFor="session-timeout">Session Timeout (auto-logout after inactivity)</Label>
+                    <Select 
+                      value={sessionTimeout} 
+                      onValueChange={(value) => {
+                        setSessionTimeout(value);
+                        const minutesMap: Record<string, number> = { "1h": 60, "4h": 240, "8h": 480, "24h": 1440 };
+                        setSessionTimeoutMinutes(minutesMap[value] || 480);
+                        toast.success(`Session timeout updated to ${value.replace("h", " hour(s)")}`);
+                      }}
+                    >
                       <SelectTrigger id="session-timeout">
                         <SelectValue />
                       </SelectTrigger>
@@ -331,8 +347,6 @@ const Settings = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  <Button className="mt-4">Save Security Settings</Button>
                 </CardContent>
               </Card>
 
