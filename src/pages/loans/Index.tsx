@@ -12,11 +12,12 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Download, Loader2 } from "lucide-react";
+import { Plus, Search, Download, Upload, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ImportLoansDialog } from "@/components/loans/ImportLoansDialog";
 
 interface ClientMap {
   [name: string]: string;
