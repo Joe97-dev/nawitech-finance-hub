@@ -15,20 +15,3 @@ verify_jwt = false
 [functions.process-migration]
 verify_jwt = true
 
-[functions.mpesa-stk-push]
-verify_jwt = false
-
-[functions.mpesa-callback]
-verify_jwt = false
-
-[functions.payment-c2b-validation]
-verify_jwt = false
-
-[functions.payment-c2b-confirmation]
-verify_jwt = false
-
-[functions.mpesa-c2b-register]
-verify_jwt = false
-
-[functions.mpesa-manage-credentials]
-verify_jwt = false

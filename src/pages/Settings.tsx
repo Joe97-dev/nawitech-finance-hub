@@ -40,9 +40,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, ShieldCheck, BookText, Smartphone } from "lucide-react";
+import { Users, ShieldCheck, BookText } from "lucide-react";
 import { LoanProductsManager } from "@/components/admin/LoanProductsManager";
-import { MpesaC2BSettings } from "@/components/admin/MpesaC2BSettings";
 import { AdminPasswordReset } from "@/components/admin/AdminPasswordReset";
 
 type UserWithRole = {
@@ -192,10 +191,6 @@ const Settings = () => {
                 <BookText className="mr-2 h-4 w-4" />
                 Loan Products
               </TabsTrigger>
-              <TabsTrigger value="mpesa" className="flex items-center">
-                <Smartphone className="mr-2 h-4 w-4" />
-                M-Pesa
-              </TabsTrigger>
               <TabsTrigger value="security" className="flex items-center">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Security
@@ -311,9 +306,6 @@ const Settings = () => {
               <LoanProductsManager />
             </TabsContent>
             
-            <TabsContent value="mpesa" className="space-y-4">
-              <MpesaC2BSettings />
-            </TabsContent>
 
             <TabsContent value="security" className="space-y-4">
               <Card>

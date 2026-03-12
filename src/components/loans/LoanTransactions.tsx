@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Smartphone, Wallet } from "lucide-react";
+import { Wallet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -60,9 +60,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     receipt_number: "",
     payment_method: "",
     notes: "",
-    mpesa_phone: ""
   });
-  const [isStkPushSent, setIsStkPushSent] = useState(false);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -223,45 +221,6 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     }).format(amount);
   };
 
-  const handleMpesaStkPush = async () => {
-    if (!paymentForm.mpesa_phone || !paymentForm.amount) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter phone number and amount for M-Pesa payment"
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
-        body: {
-          phone_number: paymentForm.mpesa_phone,
-          amount: parseFloat(paymentForm.amount),
-          account_reference: `Loan-${loanId.substring(0, 8)}`,
-          transaction_desc: "Loan Repayment"
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.success) {
-        setIsStkPushSent(true);
-        toast({
-          title: "STK Push Sent",
-          description: data.data?.CustomerMessage || "Check your phone to complete the M-Pesa payment"
-        });
-      } else {
-        throw new Error(data?.error || "STK Push failed");
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "M-Pesa Error",
-        description: `Failed to initiate M-Pesa payment: ${error.message}`
-      });
-    }
-  };
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,9 +281,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         receipt_number: "",
         payment_method: "",
         notes: "",
-        mpesa_phone: ""
       });
-      setIsStkPushSent(false);
 
       // Refresh transactions
       const { data, error } = await supabase
@@ -608,35 +565,12 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                   <SelectContent>
                     <SelectItem value="cash">Cash</SelectItem>
                     <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="mpesa">M-Pesa</SelectItem>
-                    <SelectItem value="mobile_money">Mobile Money (Other)</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
                     <SelectItem value="draw_down_account">Draw Down Account</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {paymentForm.payment_method === "mpesa" && (
-                <div className="space-y-2">
-                  <Label htmlFor="mpesa_phone">M-Pesa Phone Number *</Label>
-                  <Input
-                    id="mpesa_phone"
-                    placeholder="e.g. 0712345678 or 254712345678"
-                    value={paymentForm.mpesa_phone}
-                    onChange={(e) => setPaymentForm(prev => ({ ...prev, mpesa_phone: e.target.value }))}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleMpesaStkPush}
-                    disabled={!paymentForm.amount || !paymentForm.mpesa_phone || isStkPushSent}
-                    className="mt-1"
-                  >
-                    <Smartphone className="h-4 w-4 mr-1" />
-                    {isStkPushSent ? "STK Push Sent ✓" : "Send STK Push"}
-                  </Button>
-                </div>
-              )}
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Input
