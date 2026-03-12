@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfDay, endOfDay, subMonths, eachMonthOfInterval } from "date-fns";
+import { format, subMonths, eachMonthOfInterval } from "date-fns";
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
