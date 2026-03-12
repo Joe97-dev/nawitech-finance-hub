@@ -90,6 +90,7 @@ function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
+          </SessionTimeoutWrapper>
         </RoleProvider>
       </AuthProvider>
     </BrowserRouter>
