@@ -172,7 +172,7 @@ const LoansPage = () => {
                 Import
               </Button>
             )}
-            {isAdmin && (
+            {(isAdmin || isLoanOfficer) && (
               <Button asChild>
                 <Link to="/loans/new">
                   <Plus className="h-4 w-4 mr-2" />
