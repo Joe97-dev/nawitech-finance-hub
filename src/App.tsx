@@ -76,7 +76,7 @@ function App() {
             
             {/* Loans */}
             <Route path="/loans" element={<ProtectedRoute><LoansIndex /></ProtectedRoute>} />
-            <Route path="/loans/new" element={<ProtectedRoute><RoleGuard allowedRoles={["admin"]}><LoanNew /></RoleGuard></ProtectedRoute>} />
+            <Route path="/loans/new" element={<ProtectedRoute><RoleGuard allowedRoles={["admin", "loan_officer"]}><LoanNew /></RoleGuard></ProtectedRoute>} />
             <Route path="/loans/:loanId" element={<ProtectedRoute><LoanDetail /></ProtectedRoute>} />
             
             {/* Branches */}

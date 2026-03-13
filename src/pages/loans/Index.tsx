@@ -64,7 +64,7 @@ const LoansPage = () => {
   const [clientMap, setClientMap] = useState<ClientMap>({});
   const [importOpen, setImportOpen] = useState(false);
   const { toast } = useToast();
-  const { isAdmin } = useRole();
+  const { isAdmin, isLoanOfficer } = useRole();
   
   const fetchLoans = async () => {
     try {
@@ -172,7 +172,7 @@ const LoansPage = () => {
                 Import
               </Button>
             )}
-            {isAdmin && (
+            {(isAdmin || isLoanOfficer) && (
               <Button asChild>
                 <Link to="/loans/new">
                   <Plus className="h-4 w-4 mr-2" />
