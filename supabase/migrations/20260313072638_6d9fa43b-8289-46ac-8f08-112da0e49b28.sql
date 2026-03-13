@@ -1,0 +1,1 @@
+DELETE FROM branches WHERE id IN ('a20a717e-e1ac-4684-84f6-ae77607bc6e7', '2d398884-45f9-438e-b2a9-5395e9efddd9');
