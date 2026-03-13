@@ -64,7 +64,7 @@ const LoansPage = () => {
   const [clientMap, setClientMap] = useState<ClientMap>({});
   const [importOpen, setImportOpen] = useState(false);
   const { toast } = useToast();
-  const { isAdmin } = useRole();
+  const { isAdmin, isLoanOfficer } = useRole();
   
   const fetchLoans = async () => {
     try {
