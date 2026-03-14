@@ -145,7 +145,7 @@ const DuesByDayReport = () => {
       setAllItems(items);
 
       // Build buckets
-      const builtBuckets: DayBucket[] = DAY_BUCKETS.map(day => {
+      const builtBuckets: DayBucket[] = dayBuckets.map(day => {
         const bucketItems = items.filter(item => item.dayNumber === day);
         return {
           label: `Day ${day}`,
