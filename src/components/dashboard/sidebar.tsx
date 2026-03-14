@@ -128,6 +128,12 @@ const reportNavItems = [
     href: "/reports/transactions",
     icon: BarChartHorizontal,
     requiredRoles: ["admin", "loan_officer", "data_entry"],
+  },
+  {
+    title: "Installment Bounds",
+    href: "/reports/installment-bounds",
+    icon: CalendarRange,
+    requiredRoles: ["admin", "loan_officer", "data_entry"],
   }
 ];
 
