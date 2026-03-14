@@ -65,6 +65,7 @@ const LoanDetailPage = () => {
   const { toast } = useToast();
   const { isAdmin, isLoanOfficer } = useRole();
   const [loan, setLoan] = useState<LoanData | null>(null);
+  const [maturityDate, setMaturityDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,6 +98,17 @@ const LoanDetailPage = () => {
             client_id: clientData?.id || '',
           } as LoanData;
           setLoan(loanData);
+
+          // Fetch maturity date (last installment due date)
+          const { data: lastSchedule } = await supabase
+            .from('loan_schedule')
+            .select('due_date')
+            .eq('loan_id', loanId!)
+            .order('due_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          setMaturityDate(lastSchedule?.due_date || null);
         }
       } catch (error: any) {
         console.error("Error fetching loan details:", error);
@@ -237,6 +249,13 @@ const LoanDetailPage = () => {
                     <span className="text-sm text-muted-foreground">Disbursed Date</span>
                     <span className="font-medium">{format(new Date(loan.date), "PPP")}</span>
                   </div>
+
+                  {maturityDate && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Maturity Date</span>
+                      <span className="font-medium">{format(new Date(maturityDate), "PPP")}</span>
+                    </div>
+                  )}
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Created</span>
