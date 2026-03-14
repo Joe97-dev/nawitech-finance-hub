@@ -39,6 +39,7 @@ const DormantReport = lazy(() => import("./pages/reports/Dormant"));
 const ForecastingReport = lazy(() => import("./pages/reports/Forecasting"));
 const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
 const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
+const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
