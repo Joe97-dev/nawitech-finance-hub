@@ -463,6 +463,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          interest_method: string
           interest_rate: number
           name: string
           organization_id: string
@@ -479,6 +480,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          interest_method?: string
           interest_rate: number
           name: string
           organization_id: string
@@ -495,6 +497,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          interest_method?: string
           interest_rate?: number
           name?: string
           organization_id?: string
@@ -646,6 +649,7 @@ export type Database = {
           date: string
           frequency: string | null
           id: string
+          interest_method: string
           interest_rate: number | null
           loan_number: string | null
           loan_officer_id: string | null
@@ -664,6 +668,7 @@ export type Database = {
           date?: string
           frequency?: string | null
           id?: string
+          interest_method?: string
           interest_rate?: number | null
           loan_number?: string | null
           loan_officer_id?: string | null
@@ -682,6 +687,7 @@ export type Database = {
           date?: string
           frequency?: string | null
           id?: string
+          interest_method?: string
           interest_rate?: number | null
           loan_number?: string | null
           loan_officer_id?: string | null
