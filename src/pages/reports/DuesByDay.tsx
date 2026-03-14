@@ -73,10 +73,15 @@ const DuesByDayReport = () => {
   const [allItems, setAllItems] = useState<DueItem[]>([]);
   const [buckets, setBuckets] = useState<DayBucket[]>([]);
   const [activeTab, setActiveTab] = useState("all");
+  const [dayBuckets, setDayBuckets] = useState<number[]>(() => {
+    const saved = localStorage.getItem("duesByDay_customDays");
+    return saved ? JSON.parse(saved) : DEFAULT_DAY_BUCKETS;
+  });
+  const [newDay, setNewDay] = useState("");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [dayBuckets]);
 
   const fetchData = async () => {
     try {
