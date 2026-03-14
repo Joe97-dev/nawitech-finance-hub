@@ -249,6 +249,14 @@ const LoanDetailPage = () => {
                     <span className="text-sm text-muted-foreground">Disbursed Date</span>
                     <span className="font-medium">{format(new Date(loan.date), "PPP")}</span>
                   </div>
+
+                  {maturityDate && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Maturity Date</span>
+                      <span className="font-medium">{format(new Date(maturityDate), "PPP")}</span>
+                    </div>
+                  )}
+                  </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Created</span>
