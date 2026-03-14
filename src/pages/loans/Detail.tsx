@@ -65,6 +65,7 @@ const LoanDetailPage = () => {
   const { toast } = useToast();
   const { isAdmin, isLoanOfficer } = useRole();
   const [loan, setLoan] = useState<LoanData | null>(null);
+  const [maturityDate, setMaturityDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
