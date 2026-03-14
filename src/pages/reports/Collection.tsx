@@ -10,6 +10,7 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getOrganizationId } from "@/lib/get-organization-id";
 
 interface CollectionData {
   month: string;
@@ -17,8 +18,6 @@ interface CollectionData {
   collected: number;
   rate: number;
 }
-
-const years = ["2025", "2024", "2023"];
 
 const columns = [
   { key: "month", header: "Month" },
@@ -29,164 +28,100 @@ const columns = [
 
 const CollectionRateReport = () => {
   const { toast } = useToast();
-  const [selectedYear, setSelectedYear] = useState("2025");
-  const [selectedBranch, setSelectedBranch] = useState("all");
+  const currentYear = new Date().getFullYear();
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2025, 0, 1), // Jan 1, 2025
-    to: new Date(2025, 11, 31), // Dec 31, 2025
+    from: new Date(currentYear, 0, 1),
+    to: new Date(currentYear, 11, 31),
   });
   const [activeView, setActiveView] = useState("chart");
   const [collectionData, setCollectionData] = useState<CollectionData[]>([]);
-  const [branches, setBranches] = useState([{ value: "all", label: "All Branches" }]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('branches')
-          .select('id, name')
-          .order('name');
-
-        if (error) throw error;
-        
-        const branchOptions = [
-          { value: "all", label: "All Branches" },
-          ...(data || []).map(branch => ({ 
-            value: branch.id, 
-            label: branch.name 
-          }))
-        ];
-        
-        setBranches(branchOptions);
-      } catch (error: any) {
-        console.error("Error fetching branches:", error);
-      }
-    };
-
-    fetchBranches();
-  }, []);
-
-  useEffect(() => {
-    const fetchCollectionData = async () => {
-      try {
-        setLoading(true);
-        
-        const startDate = date?.from || new Date(parseInt(selectedYear), 0, 1);
-        const endDate = date?.to || new Date(parseInt(selectedYear), 11, 31);
-        
-        const formatLocal = (d: Date) => {
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          return `${y}-${m}-${day}`;
-        };
-        
-        const fromStr = formatLocal(startDate);
-        const toStr = formatLocal(endDate);
-        const toEndOfDay = `${toStr}T23:59:59.999`;
-        
-        // Get expected amounts from loan schedule
-        let scheduleQuery = supabase
-          .from('loan_schedule')
-          .select('total_due, due_date, amount_paid')
-          .gte('due_date', fromStr)
-          .lte('due_date', toStr);
-
-        // Get actual payments from transactions
-        let transactionQuery = supabase
-          .from('loan_transactions')
-          .select('amount, transaction_date')
-          .eq('transaction_type', 'repayment')
-          .gte('transaction_date', fromStr)
-          .lte('transaction_date', toEndOfDay);
-
-        const [scheduleResult, transactionResult] = await Promise.all([
-          scheduleQuery,
-          transactionQuery
-        ]);
-
-        if (scheduleResult.error) throw scheduleResult.error;
-        if (transactionResult.error) throw transactionResult.error;
-
-        // Group by month
-        const monthlyData: Record<string, { expected: number; collected: number }> = {};
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        // Initialize all months
-        months.forEach(month => {
-          monthlyData[month] = { expected: 0, collected: 0 };
-        });
-
-        // Process expected amounts
-        scheduleResult.data?.forEach(schedule => {
-          const month = months[new Date(schedule.due_date).getMonth()];
-          monthlyData[month].expected += Number(schedule.total_due);
-          monthlyData[month].collected += Number(schedule.amount_paid || 0);
-        });
-
-        // Process actual payments
-        transactionResult.data?.forEach(transaction => {
-          const month = months[new Date(transaction.transaction_date).getMonth()];
-          monthlyData[month].collected += Number(transaction.amount);
-        });
-
-        // Convert to chart format
-        const chartData: CollectionData[] = months.map(month => {
-          const expected = monthlyData[month].expected;
-          const collected = monthlyData[month].collected;
-          const rate = expected > 0 ? Math.round((collected / expected) * 100) : 0;
-          
-          return {
-            month,
-            expected,
-            collected,
-            rate
-          };
-        });
-
-        setCollectionData(chartData);
-      } catch (error: any) {
-        console.error("Error fetching collection data:", error);
-        toast({
-          variant: "destructive",
-          title: "Data fetch error",
-          description: "Failed to load collection data."
-        });
-        setCollectionData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCollectionData();
-  }, [toast, selectedYear, selectedBranch, date]);
-  
-  const filteredData = collectionData;
-  
-  const totalExpected = filteredData.reduce(
-    (acc, month) => acc + month.expected, 
-    0
-  );
-  
-  const totalCollected = filteredData.reduce(
-    (acc, month) => acc + month.collected, 
-    0
-  );
-  
-  const averageRate = Math.round((totalCollected / totalExpected) * 100);
+  }, [date]);
 
-  const hasActiveFilters = selectedBranch !== "all" || selectedYear !== "2025" || (date !== undefined);
+  const fetchCollectionData = async () => {
+    try {
+      setLoading(true);
+      const orgId = await getOrganizationId();
+
+      const startDate = date?.from || new Date(currentYear, 0, 1);
+      const endDate = date?.to || new Date(currentYear, 11, 31);
+
+      const formatLocal = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      const fromStr = formatLocal(startDate);
+      const toStr = formatLocal(endDate);
+
+      // Use loan_schedule as the single source of truth:
+      // total_due = expected, amount_paid = collected
+      const { data: schedules, error } = await supabase
+        .from('loan_schedule')
+        .select('total_due, due_date, amount_paid')
+        .eq('organization_id', orgId)
+        .gte('due_date', fromStr)
+        .lte('due_date', toStr);
+
+      if (error) throw error;
+
+      // Group by month
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlyData: Record<string, { expected: number; collected: number }> = {};
+      months.forEach(month => {
+        monthlyData[month] = { expected: 0, collected: 0 };
+      });
+
+      (schedules || []).forEach(s => {
+        const month = months[new Date(s.due_date).getMonth()];
+        monthlyData[month].expected += Number(s.total_due);
+        monthlyData[month].collected += Number(s.amount_paid || 0);
+      });
+
+      const chartData: CollectionData[] = months.map(month => {
+        const expected = monthlyData[month].expected;
+        const collected = monthlyData[month].collected;
+        const rate = expected > 0 ? Math.round((collected / expected) * 100) : 0;
+        return { month, expected, collected, rate };
+      });
+
+      setCollectionData(chartData);
+    } catch (error: any) {
+      console.error("Error fetching collection data:", error);
+      toast({
+        variant: "destructive",
+        title: "Data fetch error",
+        description: "Failed to load collection data."
+      });
+      setCollectionData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredData = collectionData;
+
+  const totalExpected = filteredData.reduce((acc, m) => acc + m.expected, 0);
+  const totalCollected = filteredData.reduce((acc, m) => acc + m.collected, 0);
+  const averageRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+
+  const hasActiveFilters = date !== undefined;
 
   const handleReset = () => {
-    setSelectedBranch("all");
-    setSelectedYear("2025");
-    setDate(undefined);
+    setDate({
+      from: new Date(currentYear, 0, 1),
+      to: new Date(currentYear, 11, 31),
+    });
   };
 
   const filters = (
-    <ReportFilters 
-      title="Collection Rate Filters" 
+    <ReportFilters
+      title="Collection Rate Filters"
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
@@ -196,42 +131,6 @@ const CollectionRateReport = () => {
           onDateRangeChange={setDate}
           className="col-span-2"
         />
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Year
-          </label>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="border-dashed">
-              <SelectValue placeholder="Select Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Branch
-          </label>
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="border-dashed">
-              <SelectValue placeholder="Select Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((branch) => (
-                <SelectItem key={branch.value} value={branch.value}>
-                  {branch.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
     </ReportFilters>
   );
@@ -241,14 +140,14 @@ const CollectionRateReport = () => {
       title="Collection Rate Report"
       description="Analysis of monthly loan collection performance."
       actions={
-        <ExportButton 
+        <ExportButton
           data={filteredData.map(item => ({
             month: item.month,
             expected: item.expected,
             collected: item.collected,
             rate: item.rate
-          }))} 
-          filename={`collection-rate-${selectedBranch}-${selectedYear}`} 
+          }))}
+          filename="collection-rate-report"
           columns={columns}
         />
       }
@@ -277,19 +176,19 @@ const CollectionRateReport = () => {
               <CardContent className="pt-6">
                 <h3 className="text-sm font-medium text-muted-foreground">Average Collection Rate</h3>
                 <p className="mt-2 text-2xl font-semibold">{averageRate}%</p>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                  <div 
+                <div className="w-full bg-muted rounded-full h-2.5 mt-2">
+                  <div
                     className={`h-2.5 rounded-full ${
-                      averageRate >= 95 ? 'bg-green-600' : 
+                      averageRate >= 95 ? 'bg-green-600' :
                       averageRate >= 90 ? 'bg-yellow-400' : 'bg-red-600'
-                    }`} 
+                    }`}
                     style={{ width: `${Math.min(averageRate, 100)}%` }}
                   />
                 </div>
               </CardContent>
             </Card>
           </div>
-          
+
           <Card className="shadow-sm">
             <CardContent className="pt-6">
               <Tabs defaultValue="chart" value={activeView} onValueChange={setActiveView} className="mb-4">
@@ -297,28 +196,20 @@ const CollectionRateReport = () => {
                   <TabsTrigger value="chart">Chart View</TabsTrigger>
                   <TabsTrigger value="table">Table View</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="chart" className="pt-4">
-                  {filteredData.length === 0 ? (
+                  {filteredData.every(d => d.expected === 0) ? (
                     <div className="text-center py-8 text-muted-foreground">
                       No collection data found for the selected period
                     </div>
                   ) : (
                     <div className="h-80">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={filteredData}
-                          margin={{
-                            top: 20,
-                            right: 30,
-                            left: 20,
-                            bottom: 5,
-                          }}
-                        >
+                        <AreaChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
                           <YAxis />
-                          <Tooltip formatter={(value, name) => 
+                          <Tooltip formatter={(value: number, name: string) =>
                             name === "rate" ? `${value}%` : `KES ${value.toLocaleString()}`
                           } />
                           <Legend />
@@ -329,9 +220,9 @@ const CollectionRateReport = () => {
                     </div>
                   )}
                 </TabsContent>
-                
+
                 <TabsContent value="table" className="pt-4">
-                  {filteredData.length === 0 ? (
+                  {filteredData.every(d => d.expected === 0) ? (
                     <div className="text-center py-8 text-muted-foreground">
                       No collection data found for the selected period
                     </div>
@@ -355,12 +246,12 @@ const CollectionRateReport = () => {
                               <td className="p-4 align-middle">
                                 <div className="flex items-center">
                                   <span className="mr-2">{item.rate}%</span>
-                                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                                    <div 
+                                  <div className="w-16 bg-muted rounded-full h-1.5">
+                                    <div
                                       className={`h-1.5 rounded-full ${
-                                        item.rate >= 95 ? 'bg-green-600' : 
+                                        item.rate >= 95 ? 'bg-green-600' :
                                         item.rate >= 90 ? 'bg-yellow-400' : 'bg-red-600'
-                                      }`} 
+                                      }`}
                                       style={{ width: `${Math.min(item.rate, 100)}%` }}
                                     />
                                   </div>
