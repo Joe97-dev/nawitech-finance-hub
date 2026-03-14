@@ -108,22 +108,57 @@ export default function InstallmentBoundsReport() {
 
       if (schedError) throw schedError;
 
-      // Fetch client names in batches to avoid URL length limits
-      const clientIds = [...new Set(loans.map(l => l.client).filter(Boolean))];
-      const clientMap = new Map<string, string>();
-      
+      // Resolve client references (legacy data can store UUID, client number, or full name)
+      const clientRefs = [...new Set(loans.map((l) => (l.client || "").trim()).filter(Boolean))];
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const clientIds = clientRefs.filter((ref) => uuidPattern.test(ref));
+      const clientNumbers = clientRefs.filter((ref) => !uuidPattern.test(ref) && /^cl\d+/i.test(ref));
+
+      const clientMapById = new Map<string, string>();
+      const clientMapByNumber = new Map<string, string>();
       const batchSize = 50;
+
       for (let i = 0; i < clientIds.length; i += batchSize) {
         const batch = clientIds.slice(i, i + batchSize);
         const { data: clients, error: clientsError } = await supabase
           .from("clients")
           .select("id, first_name, last_name")
           .in("id", batch);
-        
-        if (!clientsError && clients) {
-          clients.forEach(c => clientMap.set(c.id, `${c.first_name} ${c.last_name}`));
-        }
+
+        if (clientsError) throw clientsError;
+        (clients || []).forEach((c) => {
+          clientMapById.set(c.id, `${c.first_name} ${c.last_name}`);
+        });
       }
+
+      for (let i = 0; i < clientNumbers.length; i += batchSize) {
+        const batch = clientNumbers.slice(i, i + batchSize);
+        const { data: clients, error: clientsError } = await supabase
+          .from("clients")
+          .select("id, client_number, first_name, last_name")
+          .in("client_number", batch);
+
+        if (clientsError) throw clientsError;
+        (clients || []).forEach((c) => {
+          if (c.client_number) {
+            clientMapByNumber.set(c.client_number, `${c.first_name} ${c.last_name}`);
+          }
+        });
+      }
+
+      const resolveClientName = (clientRef: string) => {
+        const normalizedRef = (clientRef || "").trim();
+        if (!normalizedRef) return "Unknown";
+
+        const byId = clientMapById.get(normalizedRef);
+        if (byId) return byId;
+
+        const byNumber = clientMapByNumber.get(normalizedRef);
+        if (byNumber) return byNumber;
+
+        // If it's not an ID/number, assume legacy data already stored the full name
+        return uuidPattern.test(normalizedRef) ? "Unknown" : normalizedRef;
+      };
 
       // Group schedules by loan
       const scheduleMap = new Map<string, any[]>();
@@ -152,7 +187,7 @@ export default function InstallmentBoundsReport() {
         const buildRow = (item: any, idx: number): LoanInstallmentData => ({
           loanId: loan.id,
           loanNumber: loan.loan_number || "N/A",
-          clientName: clientMap.get(loan.client) || "Unknown",
+          clientName: resolveClientName(loan.client),
           loanAmount: loan.amount,
           balance: loan.balance,
           loanStatus: loan.status,
