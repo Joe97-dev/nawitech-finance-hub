@@ -40,11 +40,13 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface LoanProduct {
   id: string;
   name: string;
   interest_rate: number;
+  interest_method: string;
   term_min: number;
   term_max: number;
   term_unit: string;
@@ -67,6 +69,7 @@ export function LoanProductsManager() {
   const [newProduct, setNewProduct] = useState({
     name: "",
     interest_rate: "12",
+    interest_method: "flat",
     term_min: "1",
     term_max: "36",
     term_unit: "months",
@@ -75,6 +78,19 @@ export function LoanProductsManager() {
     description: "",
     status: "active"
   });
+
+  const defaultForm = {
+    name: "",
+    interest_rate: "12",
+    interest_method: "flat",
+    term_min: "1",
+    term_max: "36",
+    term_unit: "months",
+    amount_min: "1000",
+    amount_max: "100000",
+    description: "",
+    status: "active"
+  };
 
   useEffect(() => {
     fetchLoanProducts();
@@ -109,18 +125,11 @@ export function LoanProductsManager() {
 
   const handleSaveProduct = async () => {
     if (!user) {
-      toast({
-        variant: "destructive",
-        description: "You must be logged in to manage loan products."
-      });
+      toast({ variant: "destructive", description: "You must be logged in." });
       return;
     }
-    
     if (!newProduct.name) {
-      toast({
-        variant: "destructive",
-        description: "Please enter a product name."
-      });
+      toast({ variant: "destructive", description: "Please enter a product name." });
       return;
     }
     
@@ -129,6 +138,7 @@ export function LoanProductsManager() {
       const productData = {
         name: newProduct.name,
         interest_rate: parseFloat(newProduct.interest_rate),
+        interest_method: newProduct.interest_method,
         term_min: parseInt(newProduct.term_min),
         term_max: parseInt(newProduct.term_max),
         term_unit: newProduct.term_unit,
@@ -141,16 +151,13 @@ export function LoanProductsManager() {
       };
       
       let operation: any;
-      
       if (editingProduct) {
-        // Update existing product
         operation = await supabase
           .from('loan_products')
           .update(productData)
           .eq('id', editingProduct.id)
           .select();
       } else {
-        // Insert new product
         operation = await supabase
           .from('loan_products')
           .insert(productData)
@@ -158,26 +165,11 @@ export function LoanProductsManager() {
       }
         
       const { error } = operation;
-        
       if (error) throw error;
       
-      // Reset form and close dialog
-      setNewProduct({
-        name: "",
-        interest_rate: "12",
-        term_min: "1",
-        term_max: "36",
-        term_unit: "months",
-        amount_min: "1000",
-        amount_max: "100000",
-        description: "",
-        status: "active"
-      });
-      
+      setNewProduct(defaultForm);
       setIsDialogOpen(false);
       setEditingProduct(null);
-      
-      // Refresh loan products list
       fetchLoanProducts();
       
       toast({
@@ -186,10 +178,7 @@ export function LoanProductsManager() {
           : "Loan product created successfully."
       });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        description: error.message
-      });
+      toast({ variant: "destructive", description: error.message });
     }
   };
 
@@ -198,6 +187,7 @@ export function LoanProductsManager() {
     setNewProduct({
       name: product.name,
       interest_rate: product.interest_rate.toString(),
+      interest_method: product.interest_method || "flat",
       term_min: product.term_min.toString(),
       term_max: product.term_max.toString(),
       term_unit: product.term_unit,
@@ -216,20 +206,11 @@ export function LoanProductsManager() {
           .from('loan_products')
           .delete()
           .eq('id', productId);
-          
         if (error) throw error;
-        
-        // Refresh loan products list
         fetchLoanProducts();
-        
-        toast({
-          description: "Loan product deleted successfully."
-        });
+        toast({ description: "Loan product deleted successfully." });
       } catch (error: any) {
-        toast({
-          variant: "destructive",
-          description: error.message
-        });
+        toast({ variant: "destructive", description: error.message });
       }
     }
   };
@@ -239,9 +220,7 @@ export function LoanProductsManager() {
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Loan Products</CardTitle>
-          <CardDescription>
-            Manage loan products offered to clients
-          </CardDescription>
+          <CardDescription>Manage loan products offered to clients</CardDescription>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -270,7 +249,7 @@ export function LoanProductsManager() {
                     id="name"
                     value={newProduct.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
-                    placeholder="e.g. Business Loan"
+                    placeholder="e.g. 30-Day Business Loan"
                   />
                 </div>
                 
@@ -286,6 +265,27 @@ export function LoanProductsManager() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="interest_method">Interest Calculation Method</Label>
+                <Select 
+                  value={newProduct.interest_method}
+                  onValueChange={(value) => handleInputChange("interest_method", value)}
+                >
+                  <SelectTrigger id="interest_method">
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="flat">Flat Rate</SelectItem>
+                    <SelectItem value="reducing">Reducing Balance</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {newProduct.interest_method === "flat" 
+                    ? "Interest is calculated on the original principal for the entire loan term." 
+                    : "Interest is calculated on the remaining outstanding principal each period."}
+                </p>
+              </div>
               
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
@@ -298,7 +298,6 @@ export function LoanProductsManager() {
                     onChange={(e) => handleInputChange("term_min", e.target.value)}
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="term_max">Max Term</Label>
                   <Input
@@ -309,7 +308,6 @@ export function LoanProductsManager() {
                     onChange={(e) => handleInputChange("term_max", e.target.value)}
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="term_unit">Term Unit</Label>
                   <Select 
@@ -340,7 +338,6 @@ export function LoanProductsManager() {
                     onChange={(e) => handleInputChange("amount_min", e.target.value)}
                   />
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="amount_max">Max Amount</Label>
                   <Input
@@ -386,17 +383,7 @@ export function LoanProductsManager() {
               <Button variant="outline" onClick={() => {
                 setIsDialogOpen(false);
                 setEditingProduct(null);
-                setNewProduct({
-                  name: "",
-                  interest_rate: "12",
-                  term_min: "1",
-                  term_max: "36",
-                  term_unit: "months",
-                  amount_min: "1000",
-                  amount_max: "100000",
-                  description: "",
-                  status: "active"
-                });
+                setNewProduct(defaultForm);
               }}>
                 Cancel
               </Button>
@@ -419,6 +406,7 @@ export function LoanProductsManager() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Interest Rate</TableHead>
+                  <TableHead>Method</TableHead>
                   <TableHead>Term</TableHead>
                   <TableHead>Amount Range</TableHead>
                   <TableHead>Status</TableHead>
@@ -428,7 +416,7 @@ export function LoanProductsManager() {
               <TableBody>
                 {products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                       No loan products available
                     </TableCell>
                   </TableRow>
@@ -438,18 +426,21 @@ export function LoanProductsManager() {
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>{product.interest_rate}%</TableCell>
                       <TableCell>
+                        <Badge variant="outline" className={
+                          product.interest_method === 'reducing' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }>
+                          {product.interest_method === 'reducing' ? 'Reducing' : 'Flat'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {product.term_min === product.term_max 
                           ? `${product.term_min} ${product.term_unit}` 
                           : `${product.term_min}-${product.term_max} ${product.term_unit}`}
                       </TableCell>
                       <TableCell>
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'KES'
-                        }).format(product.amount_min)} - {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'KES'
-                        }).format(product.amount_max)}
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KES' }).format(product.amount_min)} - {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KES' }).format(product.amount_max)}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -463,18 +454,10 @@ export function LoanProductsManager() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleEditProduct(product)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleDeleteProduct(product.id)}
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TableCell>
