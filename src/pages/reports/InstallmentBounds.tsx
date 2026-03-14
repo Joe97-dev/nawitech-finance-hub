@@ -108,14 +108,22 @@ export default function InstallmentBoundsReport() {
 
       if (schedError) throw schedError;
 
-      // Fetch client names
-      const clientIds = [...new Set(loans.map(l => l.client))];
-      const { data: clients } = await supabase
-        .from("clients")
-        .select("id, first_name, last_name")
-        .in("id", clientIds);
-
-      const clientMap = new Map((clients || []).map(c => [c.id, `${c.first_name} ${c.last_name}`]));
+      // Fetch client names in batches to avoid URL length limits
+      const clientIds = [...new Set(loans.map(l => l.client).filter(Boolean))];
+      const clientMap = new Map<string, string>();
+      
+      const batchSize = 50;
+      for (let i = 0; i < clientIds.length; i += batchSize) {
+        const batch = clientIds.slice(i, i + batchSize);
+        const { data: clients, error: clientsError } = await supabase
+          .from("clients")
+          .select("id, first_name, last_name")
+          .in("id", batch);
+        
+        if (!clientsError && clients) {
+          clients.forEach(c => clientMap.set(c.id, `${c.first_name} ${c.last_name}`));
+        }
+      }
 
       // Group schedules by loan
       const scheduleMap = new Map<string, any[]>();
