@@ -166,6 +166,35 @@ const DuesByDayReport = () => {
     }
   };
 
+  const addDay = () => {
+    const day = parseInt(newDay);
+    if (!day || day < 1 || day > 30 || dayBuckets.includes(day)) {
+      toast({ variant: "destructive", description: "Enter a valid day (1-30) not already added." });
+      return;
+    }
+    const updated = [...dayBuckets, day].sort((a, b) => a - b);
+    setDayBuckets(updated);
+    localStorage.setItem("duesByDay_customDays", JSON.stringify(updated));
+    setNewDay("");
+  };
+
+  const removeDay = (day: number) => {
+    const updated = dayBuckets.filter(d => d !== day);
+    if (updated.length === 0) {
+      toast({ variant: "destructive", description: "Must have at least one day interval." });
+      return;
+    }
+    setDayBuckets(updated);
+    localStorage.setItem("duesByDay_customDays", JSON.stringify(updated));
+    if (activeTab === String(day)) setActiveTab("all");
+  };
+
+  const resetDays = () => {
+    setDayBuckets(DEFAULT_DAY_BUCKETS);
+    localStorage.removeItem("duesByDay_customDays");
+    setActiveTab("all");
+  };
+
   const displayItems = activeTab === "all"
     ? allItems
     : allItems.filter(i => i.dayNumber === parseInt(activeTab));
