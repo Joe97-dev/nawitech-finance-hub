@@ -39,6 +39,7 @@ const DormantReport = lazy(() => import("./pages/reports/Dormant"));
 const ForecastingReport = lazy(() => import("./pages/reports/Forecasting"));
 const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
 const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
+const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -98,6 +99,7 @@ function App() {
             <Route path="/reports/forecasting" element={<ProtectedRoute><ForecastingReport /></ProtectedRoute>} />
             <Route path="/reports/transactions" element={<ProtectedRoute><TransactionsReport /></ProtectedRoute>} />
             <Route path="/reports/installment-bounds" element={<ProtectedRoute><InstallmentBoundsReport /></ProtectedRoute>} />
+            <Route path="/reports/dues-by-day" element={<ProtectedRoute><DuesByDayReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

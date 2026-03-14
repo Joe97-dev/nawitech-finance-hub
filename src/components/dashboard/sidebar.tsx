@@ -134,6 +134,12 @@ const reportNavItems = [
     href: "/reports/installment-bounds",
     icon: CalendarRange,
     requiredRoles: ["admin", "loan_officer", "data_entry"],
+  },
+  {
+    title: "Dues by Day (30-Day)",
+    href: "/reports/dues-by-day",
+    icon: CalendarDays,
+    requiredRoles: ["admin", "loan_officer"],
   }
 ];
 
