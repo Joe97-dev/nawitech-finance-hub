@@ -13,6 +13,7 @@ import {
   Building,
   UserCheck,
   Database,
+  CalendarRange,
 } from "lucide-react";
 import {
   Sidebar,
