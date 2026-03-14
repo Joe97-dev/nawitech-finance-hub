@@ -229,7 +229,7 @@ export function LoanProductsManager() {
               <span>Add Product</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[625px]">
+          <DialogContent className="sm:max-w-[625px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingProduct ? "Edit Loan Product" : "Add New Loan Product"}
@@ -241,7 +241,7 @@ export function LoanProductsManager() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-3 py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Product Name</Label>
@@ -400,7 +400,7 @@ export function LoanProductsManager() {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-auto max-h-[60vh]">
             <Table>
               <TableHeader>
                 <TableRow>
