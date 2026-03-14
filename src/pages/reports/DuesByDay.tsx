@@ -240,6 +240,39 @@ const DuesByDayReport = () => {
             <ReportStat label="Active Loans" value={String(new Set(allItems.map(i => i.loanNumber)).size)} subValue="30-day loans" />
           </ReportStats>
 
+          {/* Custom day interval configurator */}
+          <ReportFilters
+            title="Day Intervals"
+            hasActiveFilters={JSON.stringify(dayBuckets) !== JSON.stringify(DEFAULT_DAY_BUCKETS)}
+            onReset={resetDays}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {dayBuckets.map(day => (
+                <Badge key={day} variant="secondary" className="gap-1 px-2 py-1">
+                  Day {day}
+                  <button onClick={() => removeDay(day)} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  placeholder="Day #"
+                  value={newDay}
+                  onChange={e => setNewDay(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addDay()}
+                  className="w-20 h-8 text-sm"
+                />
+                <Button size="sm" variant="outline" onClick={addDay} className="h-8">
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
+            </div>
+          </ReportFilters>
+
           {/* Summary cards for each day bucket */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
             {buckets.map(bucket => (
@@ -263,9 +296,9 @@ const DuesByDayReport = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap h-auto">
               <TabsTrigger value="all">All Days</TabsTrigger>
-              {DAY_BUCKETS.map(day => (
+              {dayBuckets.map(day => (
                 <TabsTrigger key={day} value={String(day)}>Day {day}</TabsTrigger>
               ))}
             </TabsList>
