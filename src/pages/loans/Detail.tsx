@@ -98,6 +98,17 @@ const LoanDetailPage = () => {
             client_id: clientData?.id || '',
           } as LoanData;
           setLoan(loanData);
+
+          // Fetch maturity date (last installment due date)
+          const { data: lastSchedule } = await supabase
+            .from('loan_schedule')
+            .select('due_date')
+            .eq('loan_id', loanId!)
+            .order('due_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          setMaturityDate(lastSchedule?.due_date || null);
         }
       } catch (error: any) {
         console.error("Error fetching loan details:", error);
