@@ -256,7 +256,6 @@ const LoanDetailPage = () => {
                       <span className="font-medium">{format(new Date(maturityDate), "PPP")}</span>
                     </div>
                   )}
-                  </div>
                   
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Created</span>
