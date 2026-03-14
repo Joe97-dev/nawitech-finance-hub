@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -22,14 +21,13 @@ import {
 } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { InterestCalculationToggle } from "@/components/reports/InterestCalculationToggle";
 import { useRole } from "@/context/RoleContext";
 import { getOrganizationId } from "@/lib/get-organization-id";
 
-// Define interface for clients
 interface Client {
   id: string;
   first_name: string;
@@ -43,6 +41,20 @@ interface LoanOfficer {
   last_name: string | null;
 }
 
+interface LoanProduct {
+  id: string;
+  name: string;
+  interest_rate: number;
+  interest_method: string;
+  term_min: number;
+  term_max: number;
+  term_unit: string;
+  amount_min: number;
+  amount_max: number;
+  description: string | null;
+  status: string;
+}
+
 const NewLoanPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,6 +62,7 @@ const NewLoanPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loanAmount, setLoanAmount] = useState("");
   const [interestRate, setInterestRate] = useState("15");
+  const [interestMethod, setInterestMethod] = useState<"flat" | "reducing">("flat");
   const [loanTerm, setLoanTerm] = useState("12");
   const [clientId, setClientId] = useState("");
   const [loanType, setLoanType] = useState("");
@@ -64,11 +77,48 @@ const NewLoanPage = () => {
   const [clientSearch, setClientSearch] = useState("");
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const clientSearchRef = useRef<HTMLDivElement>(null);
-  const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
   const [selectedOfficerId, setSelectedOfficerId] = useState("");
-  
-  
+  const [loanProducts, setLoanProducts] = useState<LoanProduct[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<LoanProduct | null>(null);
+
+  // Fetch loan products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('loan_products')
+          .select('*')
+          .eq('status', 'active')
+          .order('name');
+        if (error) throw error;
+        setLoanProducts(data as LoanProduct[] || []);
+      } catch (error) {
+        console.error("Error fetching loan products:", error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // When a product is selected, auto-fill fields
+  const handleProductSelect = (productId: string) => {
+    setSelectedProductId(productId);
+    const product = loanProducts.find(p => p.id === productId);
+    if (product) {
+      setSelectedProduct(product);
+      setInterestRate(product.interest_rate.toString());
+      setInterestMethod(product.interest_method as "flat" | "reducing");
+      setLoanType(product.name);
+      // Set term to min if min === max (strict product), otherwise keep user's choice
+      if (product.term_min === product.term_max) {
+        setLoanTerm(product.term_min.toString());
+      }
+    } else {
+      setSelectedProduct(null);
+    }
+  };
+
   // Close client dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -80,14 +130,13 @@ const NewLoanPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Search clients from Supabase with debounce
+  // Search clients
   useEffect(() => {
     if (clientSearch.length < 2) {
       setClients([]);
       setShowClientDropdown(false);
       return;
     }
-
     const timeout = setTimeout(async () => {
       setLoadingClients(true);
       try {
@@ -96,7 +145,6 @@ const NewLoanPage = () => {
           .select('id, first_name, last_name')
           .or(`first_name.ilike.%${clientSearch}%,last_name.ilike.%${clientSearch}%,client_number.ilike.%${clientSearch}%,id_number.ilike.%${clientSearch}%,phone.ilike.%${clientSearch}%`)
           .limit(10);
-
         if (error) throw error;
         setClients(data || []);
         setShowClientDropdown((data || []).length > 0);
@@ -106,7 +154,6 @@ const NewLoanPage = () => {
         setLoadingClients(false);
       }
     }, 300);
-
     return () => clearTimeout(timeout);
   }, [clientSearch]);
 
@@ -115,35 +162,24 @@ const NewLoanPage = () => {
     const fetchOfficers = async () => {
       try {
         const organizationId = await getOrganizationId();
-
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('user_id')
           .eq('role', 'loan_officer');
-
         if (rolesError) throw rolesError;
-
-        if (!roles || roles.length === 0) {
-          setLoanOfficers([]);
-          return;
-        }
-
+        if (!roles || roles.length === 0) { setLoanOfficers([]); return; }
         const userIds = Array.from(new Set(roles.map((r) => r.user_id)));
-
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, username, first_name, last_name')
           .in('id', userIds)
           .eq('organization_id', organizationId);
-
         if (profilesError) throw profilesError;
-
         const sortedOfficers = [...(profiles || [])].sort((a, b) => {
           const aName = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.username || '';
           const bName = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.username || '';
           return aName.localeCompare(bName);
         });
-
         setLoanOfficers(sortedOfficers as LoanOfficer[]);
       } catch (error) {
         console.error("Error fetching officers:", error);
@@ -157,17 +193,22 @@ const NewLoanPage = () => {
     const rate = parseFloat(interestRate) || 0;
     const months = parseFloat(loanTerm) || 1;
     
-    let totalInterest;
-    if (interestCalculation === "monthly") {
-      // Monthly interest: rate per month
-      totalInterest = (amount * rate / 100) * months;
+    if (interestMethod === "reducing") {
+      // For reducing balance, total = sum of all installments
+      const monthlyRate = rate / 100;
+      let remaining = amount;
+      const principalPerInstallment = amount / months;
+      let total = 0;
+      for (let i = 0; i < months; i++) {
+        total += principalPerInstallment + (remaining * monthlyRate);
+        remaining -= principalPerInstallment;
+      }
+      return total.toLocaleString('en-US');
     } else {
-      // Annual interest: rate per year, calculated for the loan term
-      totalInterest = (amount * rate / 100) * (months / 12);
+      // Flat rate
+      const totalInterest = (amount * rate / 100) * months;
+      return (amount + totalInterest).toLocaleString('en-US');
     }
-    
-    const totalAmount = amount + totalInterest;
-    return totalAmount.toLocaleString('en-US');
   };
   
   const calculateMonthly = () => {
@@ -175,19 +216,21 @@ const NewLoanPage = () => {
     const rate = parseFloat(interestRate) || 0;
     const months = parseFloat(loanTerm) || 1;
     
-    let totalInterest;
-    if (interestCalculation === "monthly") {
-      // Monthly interest: rate per month
-      totalInterest = (amount * rate / 100) * months;
+    if (interestMethod === "reducing") {
+      const monthlyRate = rate / 100;
+      let remaining = amount;
+      const principalPerInstallment = amount / months;
+      let total = 0;
+      for (let i = 0; i < months; i++) {
+        total += principalPerInstallment + (remaining * monthlyRate);
+        remaining -= principalPerInstallment;
+      }
+      return (total / months).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     } else {
-      // Annual interest: rate per year, calculated for the loan term
-      totalInterest = (amount * rate / 100) * (months / 12);
+      const totalInterest = (amount * rate / 100) * months;
+      const totalAmount = amount + totalInterest;
+      return (totalAmount / months).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    
-    const totalAmount = amount + totalInterest;
-    const monthlyPayment = totalAmount / months;
-    
-    return monthlyPayment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -201,48 +244,71 @@ const NewLoanPage = () => {
       });
       return;
     }
-    
+
+    // Validate against product constraints
+    if (selectedProduct) {
+      const amount = parseFloat(loanAmount);
+      const term = parseInt(loanTerm);
+      if (amount < selectedProduct.amount_min || amount > selectedProduct.amount_max) {
+        toast({
+          variant: "destructive",
+          title: "Amount out of range",
+          description: `Amount must be between ${selectedProduct.amount_min.toLocaleString()} and ${selectedProduct.amount_max.toLocaleString()} for this product.`,
+        });
+        return;
+      }
+      if (term < selectedProduct.term_min || term > selectedProduct.term_max) {
+        toast({
+          variant: "destructive",
+          title: "Term out of range",
+          description: `Term must be between ${selectedProduct.term_min} and ${selectedProduct.term_max} ${selectedProduct.term_unit} for this product.`,
+        });
+        return;
+      }
+    }
     
     setIsSubmitting(true);
     
     try {
       if (!selectedClient) {
-        toast({
-          variant: "destructive",
-          title: "Missing information",
-          description: "Please select a client.",
-        });
+        toast({ variant: "destructive", title: "Missing information", description: "Please select a client." });
         return;
       }
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
-      
-      // Prepare loan data with pending status
       const amount = parseFloat(loanAmount);
       const rate = parseFloat(interestRate);
       const months = parseInt(loanTerm);
       
-      // Calculate total amount with interest (this will be the initial balance)
-      let totalInterest;
-      if (interestCalculation === "monthly") {
-        totalInterest = (amount * rate / 100) * months;
+      // Calculate initial balance
+      let totalAmountWithInterest: number;
+      if (interestMethod === "reducing") {
+        const monthlyRate = rate / 100;
+        let remaining = amount;
+        const ppmt = amount / months;
+        let total = 0;
+        for (let i = 0; i < months; i++) {
+          total += ppmt + (remaining * monthlyRate);
+          remaining -= ppmt;
+        }
+        totalAmountWithInterest = total;
       } else {
-        totalInterest = (amount * rate / 100) * (months / 12);
+        totalAmountWithInterest = amount + (amount * rate / 100) * months;
       }
-      const totalAmountWithInterest = amount + totalInterest;
       
       const organizationId = await getOrganizationId();
 
       const loanData: any = {
         client: clientName,
-        amount: amount,
+        amount,
         balance: totalAmountWithInterest,
         type: loanType,
         status: "pending",
         date: disbursementDate,
         frequency: repaymentFrequency,
-        term_months: parseInt(loanTerm),
-        interest_rate: parseFloat(interestRate),
+        term_months: months,
+        interest_rate: rate,
+        interest_method: interestMethod,
         business_address: purpose || null,
         organization_id: organizationId,
       };
@@ -251,9 +317,6 @@ const NewLoanPage = () => {
         loanData.loan_officer_id = selectedOfficerId;
       }
       
-      console.log("Creating loan with data:", loanData);
-      
-      // Insert loan into Supabase
       const { data: loan, error } = await supabase
         .from('loans')
         .insert(loanData)
@@ -262,14 +325,13 @@ const NewLoanPage = () => {
       
       if (error) throw error;
       
-      // Generate loan schedule using the new database function
       if (loan) {
-        await generateLoanSchedule(loan.id, amount, parseFloat(interestRate), parseInt(loanTerm), repaymentFrequency, disbursementDate);
+        await generateLoanSchedule(loan.id, amount, rate, months, repaymentFrequency, disbursementDate);
       }
       
       toast({
         title: "Loan created",
-        description: "The loan has been created with pending status. Post a loan fee to activate.",
+        description: "The loan has been created with pending status.",
       });
       
       navigate("/loans");
@@ -284,27 +346,16 @@ const NewLoanPage = () => {
       setIsSubmitting(false);
     }
   };
-  
 
-  // Function to generate the loan repayment schedule using database function
   const generateLoanSchedule = async (
-    loanId: string, 
-    amount: number, 
-    interestRate: number, 
-    termMonths: number, 
-    frequency: string, 
-    startDate: string
+    loanId: string, amount: number, interestRate: number, 
+    termMonths: number, frequency: string, startDate: string
   ) => {
     try {
       const { error } = await supabase.rpc('generate_loan_schedule', {
-        p_loan_id: loanId,
-        p_amount: amount,
-        p_interest_rate: interestRate,
-        p_term_months: termMonths,
-        p_frequency: frequency,
-        p_start_date: startDate
+        p_loan_id: loanId, p_amount: amount, p_interest_rate: interestRate,
+        p_term_months: termMonths, p_frequency: frequency, p_start_date: startDate
       });
-      
       if (error) throw error;
     } catch (error) {
       console.error("Error generating loan schedule:", error);
@@ -313,31 +364,17 @@ const NewLoanPage = () => {
   };
 
   const getOfficerDisplayName = (officer: LoanOfficer) => {
-    const fullName = [officer.first_name, officer.last_name]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-
-    if (fullName) return fullName;
-    if (officer.username) return officer.username;
-
-    return officer.id.substring(0, 8);
+    const fullName = [officer.first_name, officer.last_name].filter(Boolean).join(' ').trim();
+    return fullName || officer.username || officer.id.substring(0, 8);
   };
 
-  const getFullClientName = (client: Client) => {
-    return `${client.first_name} ${client.last_name}`;
-  };
+  const getFullClientName = (client: Client) => `${client.first_name} ${client.last_name}`;
   
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/loans")}
-            className="mr-4"
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate("/loans")} className="mr-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -352,11 +389,46 @@ const NewLoanPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Loan Details</CardTitle>
-                <CardDescription>
-                  Enter the loan amount and terms.
-                </CardDescription>
+                <CardDescription>Enter the loan amount and terms.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Loan Product Selector */}
+                <div className="space-y-2">
+                  <Label htmlFor="loanProduct">Loan Product</Label>
+                  <Select value={selectedProductId} onValueChange={handleProductSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a loan product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loanProducts.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name} — {product.interest_rate}% ({product.interest_method === 'reducing' ? 'Reducing' : 'Flat'})
+                        </SelectItem>
+                      ))
+                      }
+                    </SelectContent>
+                  </Select>
+                  {selectedProduct && (
+                    <div className="text-xs text-muted-foreground space-y-1 mt-1 p-2 rounded-md border bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={
+                          selectedProduct.interest_method === 'reducing' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }>
+                          {selectedProduct.interest_method === 'reducing' ? 'Reducing Balance' : 'Flat Rate'}
+                        </Badge>
+                        <span>{selectedProduct.interest_rate}% interest</span>
+                      </div>
+                      <p>Amount: {selectedProduct.amount_min.toLocaleString()} – {selectedProduct.amount_max.toLocaleString()} KES</p>
+                      <p>Term: {selectedProduct.term_min === selectedProduct.term_max 
+                        ? `${selectedProduct.term_min} ${selectedProduct.term_unit}` 
+                        : `${selectedProduct.term_min}–${selectedProduct.term_max} ${selectedProduct.term_unit}`}</p>
+                      {selectedProduct.description && <p>{selectedProduct.description}</p>}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
                   <div ref={clientSearchRef} className="relative">
@@ -365,9 +437,7 @@ const NewLoanPage = () => {
                       value={clientSearch}
                       onChange={(e) => {
                         setClientSearch(e.target.value);
-                        if (!e.target.value) {
-                          setClientId("");
-                        }
+                        if (!e.target.value) setClientId("");
                       }}
                       onFocus={() => clients.length > 0 && setShowClientDropdown(true)}
                     />
@@ -404,10 +474,7 @@ const NewLoanPage = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="loanOfficer">Loan Officer</Label>
-                  <Select
-                    value={selectedOfficerId}
-                    onValueChange={setSelectedOfficerId}
-                  >
+                  <Select value={selectedOfficerId} onValueChange={setSelectedOfficerId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select loan officer" />
                     </SelectTrigger>
@@ -427,22 +494,13 @@ const NewLoanPage = () => {
                 
                 <div className="space-y-2">
                   <Label htmlFor="loanType">Loan Type</Label>
-                  <Select
+                  <Input
+                    id="loanType"
                     value={loanType}
-                    onValueChange={setLoanType}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select loan type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Business">Business Loan</SelectItem>
-                      <SelectItem value="Personal">Personal Loan</SelectItem>
-                      <SelectItem value="Education">Education Loan</SelectItem>
-                      <SelectItem value="Emergency">Emergency Loan</SelectItem>
-                      <SelectItem value="Agricultural">Agricultural Loan</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setLoanType(e.target.value)}
+                    placeholder="e.g. Business Loan"
+                    readOnly={!!selectedProduct}
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -453,33 +511,52 @@ const NewLoanPage = () => {
                     required 
                     value={loanAmount}
                     onChange={(e) => setLoanAmount(e.target.value)}
+                    min={selectedProduct?.amount_min}
+                    max={selectedProduct?.amount_max}
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="interest">Interest Rate (%)</Label>
-                  <Input 
-                    id="interest" 
-                    type="number" 
-                    required 
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="interest">Interest Rate (%)</Label>
+                    <Input 
+                      id="interest" 
+                      type="number" 
+                      required 
+                      value={interestRate}
+                      onChange={(e) => setInterestRate(e.target.value)}
+                      readOnly={!!selectedProduct}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Interest Method</Label>
+                    <Select 
+                      value={interestMethod} 
+                      onValueChange={(v) => setInterestMethod(v as "flat" | "reducing")}
+                      disabled={!!selectedProduct}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="flat">Flat Rate</SelectItem>
+                        <SelectItem value="reducing">Reducing Balance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-
-                <InterestCalculationToggle
-                  value={interestCalculation}
-                  onChange={setInterestCalculation}
-                />
                 
                 <div className="space-y-2">
-                  <Label htmlFor="term">Loan Term (Months)</Label>
+                  <Label htmlFor="term">Loan Term ({selectedProduct?.term_unit || 'Months'})</Label>
                   <Input 
                     id="term" 
                     type="number" 
                     required 
                     value={loanTerm}
                     onChange={(e) => setLoanTerm(e.target.value)}
+                    min={selectedProduct?.term_min}
+                    max={selectedProduct?.term_max}
+                    readOnly={selectedProduct ? selectedProduct.term_min === selectedProduct.term_max : false}
                   />
                 </div>
                 
@@ -496,11 +573,7 @@ const NewLoanPage = () => {
                 
                 <div className="space-y-2">
                   <Label>Repayment Frequency</Label>
-                  <RadioGroup 
-                    value={repaymentFrequency}
-                    onValueChange={setRepaymentFrequency}
-                    defaultValue="monthly"
-                  >
+                  <RadioGroup value={repaymentFrequency} onValueChange={setRepaymentFrequency}>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="weekly" id="weekly" />
                       <Label htmlFor="weekly">Weekly</Label>
@@ -522,9 +595,7 @@ const NewLoanPage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Loan Summary</CardTitle>
-                  <CardDescription>
-                    Review the loan details before approval.
-                  </CardDescription>
+                  <CardDescription>Review the loan details before approval.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
@@ -537,77 +608,78 @@ const NewLoanPage = () => {
                     />
                   </div>
                 
-                <div className="space-y-4 rounded-md border p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Principal Amount</p>
-                      <p className="text-lg font-medium">KES {loanAmount ? parseFloat(loanAmount).toLocaleString('en-US') : '0'}</p>
+                  <div className="space-y-4 rounded-md border p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Principal Amount</p>
+                        <p className="text-lg font-medium">KES {loanAmount ? parseFloat(loanAmount).toLocaleString('en-US') : '0'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Interest Rate</p>
+                        <p className="text-lg font-medium">{interestRate}% per month</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Interest Method</p>
+                        <Badge variant="outline" className={
+                          interestMethod === 'reducing' 
+                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }>
+                          {interestMethod === 'reducing' ? 'Reducing Balance' : 'Flat Rate'}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Term</p>
+                        <p className="text-lg font-medium">{loanTerm} {selectedProduct?.term_unit || 'Months'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Avg Monthly Payment</p>
+                        <p className="text-lg font-medium">KES {calculateMonthly()}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Interest Rate</p>
-                      <p className="text-lg font-medium">{interestRate}% {interestCalculation === "monthly" ? "per month" : "per annum"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Term</p>
-                      <p className="text-lg font-medium">{loanTerm} Months</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Monthly Payment</p>
-                      <p className="text-lg font-medium">KES {calculateMonthly()}</p>
+                    <div className="border-t pt-4 mt-4">
+                      <p className="text-sm text-muted-foreground">Total Repayment</p>
+                      <p className="text-xl font-bold">KES {calculateTotal()}</p>
                     </div>
                   </div>
-                  <div className="border-t pt-4 mt-4">
-                    <p className="text-sm text-muted-foreground">Total Repayment</p>
-                    <p className="text-xl font-bold">KES {calculateTotal()}</p>
+                
+                  <div className="space-y-2">
+                    <Label>Collateral Required?</Label>
+                    <RadioGroup value={collateral} onValueChange={setCollateral}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="yes" />
+                        <Label htmlFor="yes">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="no" />
+                        <Label htmlFor="no">No</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
-                </div>
                 
-                <div className="space-y-2">
-                  <Label>Collateral Required?</Label>
-                  <RadioGroup 
-                    value={collateral}
-                    onValueChange={setCollateral}
-                    defaultValue="no"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="yes" />
-                      <Label htmlFor="yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="no" />
-                      <Label htmlFor="no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Guarantor Required?</Label>
-                  <RadioGroup 
-                    value={guarantor}
-                    onValueChange={setGuarantor}
-                    defaultValue="yes"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="g-yes" />
-                      <Label htmlFor="g-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="g-no" />
-                      <Label htmlFor="g-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="space-y-2">
+                    <Label>Guarantor Required?</Label>
+                    <RadioGroup value={guarantor} onValueChange={setGuarantor}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="yes" id="g-yes" />
+                        <Label htmlFor="g-yes">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="no" id="g-no" />
+                        <Label htmlFor="g-no">No</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Create Loan Button */}
-            <Card>
-              <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating Loan..." : "Create Loan"}
-                </Button>
-              </CardFooter>
-            </Card>
+              <Card>
+                <CardFooter>
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? "Creating Loan..." : "Create Loan"}
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
           </div>
         </form>
