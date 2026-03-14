@@ -187,7 +187,7 @@ export default function InstallmentBoundsReport() {
         const buildRow = (item: any, idx: number): LoanInstallmentData => ({
           loanId: loan.id,
           loanNumber: loan.loan_number || "N/A",
-          clientName: clientMap.get(loan.client) || "Unknown",
+          clientName: resolveClientName(loan.client),
           loanAmount: loan.amount,
           balance: loan.balance,
           loanStatus: loan.status,
