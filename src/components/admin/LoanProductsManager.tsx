@@ -400,7 +400,7 @@ export function LoanProductsManager() {
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-auto max-h-[60vh]">
             <Table>
               <TableHeader>
                 <TableRow>
