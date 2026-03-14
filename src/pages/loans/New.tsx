@@ -278,7 +278,18 @@ const NewLoanPage = () => {
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
       const amount = parseFloat(loanAmount);
       const rate = parseFloat(interestRate);
-      const months = parseInt(loanTerm);
+      const termValue = parseInt(loanTerm);
+      
+      // Convert term to months based on term_unit
+      const termUnit = selectedProduct?.term_unit || 'months';
+      let months: number;
+      if (termUnit === 'days') {
+        months = termValue / 30;
+      } else if (termUnit === 'weeks') {
+        months = termValue / 4;
+      } else {
+        months = termValue;
+      }
       
       // Calculate initial balance
       let totalAmountWithInterest: number;
