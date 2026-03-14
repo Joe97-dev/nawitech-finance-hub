@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus, X } from "lucide-react";
 
 interface DayBucket {
   label: string;
@@ -32,7 +35,7 @@ interface DueItem {
   status: string;
 }
 
-const DAY_BUCKETS = [1, 4, 7, 14, 21, 30];
+const DEFAULT_DAY_BUCKETS = [1, 4, 7, 14, 21, 30];
 
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
