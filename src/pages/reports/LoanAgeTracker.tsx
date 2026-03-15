@@ -205,7 +205,24 @@ export default function LoanAgeTracker() {
       title="Loan Age Tracker"
       description="Monitor active 30-day loans by their current day number, payment progress, and risk status."
       actions={
-        <ExportButton onClick={handleExport} disabled={filteredLoans.length === 0} />
+        <ExportButton
+          data={filteredLoans.map(l => ({
+            "Loan Number": l.loan_number || "-",
+            "Client": l.client,
+            "Amount": l.amount,
+            "Balance": l.balance,
+            "Status": l.status,
+            "Disbursement Date": l.date,
+            "Frequency": l.frequency || "-",
+            "Day Age": l.dayAge,
+            "Days Remaining": l.daysRemaining,
+            "Progress %": l.progressPercent,
+            "Total Due": l.totalDue,
+            "Total Paid": l.totalPaid,
+            "Collection Rate %": l.collectionRate,
+          }))}
+          filename="loan-age-tracker"
+        />
       }
       filters={
         <div className="flex items-end gap-4">

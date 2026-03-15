@@ -140,6 +140,12 @@ const reportNavItems = [
     href: "/reports/dues-by-day",
     icon: CalendarDays,
     requiredRoles: ["admin", "loan_officer"],
+  },
+  {
+    title: "Loan Age Tracker",
+    href: "/reports/loan-age-tracker",
+    icon: Clock,
+    requiredRoles: ["admin", "loan_officer"],
   }
 ];
 
