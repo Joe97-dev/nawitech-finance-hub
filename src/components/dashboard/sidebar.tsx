@@ -14,6 +14,7 @@ import {
   UserCheck,
   Database,
   CalendarRange,
+  Clock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -139,6 +140,12 @@ const reportNavItems = [
     title: "Dues by Day (30-Day)",
     href: "/reports/dues-by-day",
     icon: CalendarDays,
+    requiredRoles: ["admin", "loan_officer"],
+  },
+  {
+    title: "Loan Age Tracker",
+    href: "/reports/loan-age-tracker",
+    icon: Clock,
     requiredRoles: ["admin", "loan_officer"],
   }
 ];
