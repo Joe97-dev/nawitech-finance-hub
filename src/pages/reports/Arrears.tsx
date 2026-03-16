@@ -159,14 +159,15 @@ const ArrearsReport = () => {
                 clientName: loan.client,
                 loanId: loan.loan_number || loanId,
                 principalAmount: loan.amount,
-                outstandingBalance: loan.amount, // This would need to be calculated properly
+                outstandingBalance: loan.amount,
                 daysOverdue,
                 amountOverdue: outstandingAmount,
-                lastPaymentDate: "N/A", // This would need to be fetched from transactions
+                lastPaymentDate: "N/A",
                 contactInfo: client ? `${client.phone || 'N/A'} | ${client.email || 'N/A'}` : 'N/A',
                 phone: client?.phone,
                 email: client?.email,
-                riskCategory
+                riskCategory,
+                loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
               });
             }
           }
