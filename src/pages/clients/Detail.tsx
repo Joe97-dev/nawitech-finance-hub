@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
 import { ClientAccount } from "@/components/clients/ClientAccount";
+import { clientHasOpenLoans } from "@/lib/client-status";
 
 interface Loan {
   id: string;
@@ -120,16 +121,30 @@ const ClientDetailPage = () => {
         
         // Fetch loans for this client
         const clientName = `${clientData.first_name} ${clientData.last_name}`;
-        const { data: loansData, error: loansError } = await supabase
+        const { data: allLoansData, error: loansError } = await supabase
           .from('loans')
           .select('*')
-          .eq('client', clientName)
-          .neq('type', 'client_fee_account');
+          .neq('type', 'client_fee_account')
+          .or(`client.eq.${clientId},client.eq.${clientName}`);
         
         if (loansError) {
           console.error("Error fetching loans:", loansError);
-          // Don't throw here, just log the error and continue without loans
         }
+
+        const matchedLoans = (allLoansData || []).filter((loan) =>
+          loan.client === clientId || loan.client === clientName
+        );
+
+        const computedStatus = clientHasOpenLoans(
+          {
+            id: clientData.id,
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+          },
+          matchedLoans.map((loan) => ({ client: loan.client, status: loan.status }))
+        )
+          ? 'active'
+          : clientData.status;
 
         // Fetch client documents
         const { data: documentsData, error: documentsError } = await supabase
@@ -154,10 +169,11 @@ const ClientDetailPage = () => {
         // Combine client data with loans, documents, and referees
         const enrichedClient: Client = {
           ...clientData,
+          status: computedStatus,
           id_photo_front_url: clientData.id_photo_front_url || null,
           id_photo_back_url: clientData.id_photo_back_url || null,
           business_photo_url: clientData.business_photo_url || null,
-          loans: loansData || [],
+          loans: matchedLoans || [],
           documents: documentsData || [],
           referees: refereesData || []
         };
@@ -214,6 +230,61 @@ const ClientDetailPage = () => {
     
     fetchClientData();
   }, [clientId, toast, refreshKey]);
+
+  useEffect(() => {
+    if (!clientId) return;
+
+    let pollInterval = 2000;
+    let lastSync: string | null = null;
+    let isActive = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const channel = supabase
+      .channel(`client:${clientId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "clients",
+          filter: `id=eq.${clientId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") return;
+          lastSync = (payload.new as { updated_at?: string }).updated_at || null;
+          refreshClientData();
+          pollInterval = 2000;
+        }
+      )
+      .subscribe();
+
+    const poll = async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("updated_at")
+        .eq("id", clientId)
+        .gt("updated_at", lastSync || "1970-01-01")
+        .maybeSingle();
+
+      if (data?.updated_at) {
+        lastSync = data.updated_at;
+        refreshClientData();
+        pollInterval = 2000;
+      } else {
+        pollInterval = Math.min(pollInterval * 1.5, 30000);
+      }
+
+      if (isActive) timeoutId = setTimeout(poll, pollInterval);
+    };
+
+    timeoutId = setTimeout(poll, pollInterval);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, refreshClientData]);
   
   if (loading) {
     return (
