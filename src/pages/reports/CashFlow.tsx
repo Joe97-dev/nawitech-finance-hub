@@ -57,6 +57,7 @@ const CashFlowReport = () => {
         const { data: disbursements, error: disbursementsError } = await supabase
           .from('loans')
           .select('amount, date')
+          .not('status', 'in', '("rejected","pending","postponed")')
           .gte('date', fromStr)
           .lte('date', toStr);
 
