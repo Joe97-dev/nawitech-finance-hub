@@ -62,7 +62,7 @@ const DisbursalReport = () => {
         let query = supabase
           .from('loans')
           .select('id, client, loan_number, amount, date, term_months, interest_rate')
-          .in('status', ['approved', 'disbursed', 'active'])
+          .in('status', ['approved', 'disbursed', 'active', 'closed', 'in arrears'])
           .order('date', { ascending: false });
 
         const formatLocal = (d: Date) => {
