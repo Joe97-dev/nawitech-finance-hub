@@ -117,12 +117,22 @@ export default function MpesaPayments() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Smartphone className="h-6 w-6" /> M-Pesa Payments
             </h1>
-            <p className="text-muted-foreground">Manage C2B M-Pesa payment integration (Sandbox)</p>
+            <p className="text-muted-foreground">
+              Manage C2B M-Pesa payment integration ({useSandbox ? "Sandbox" : "Production"})
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <FlaskConical className={`h-4 w-4 ${useSandbox ? "text-amber-500" : "text-muted-foreground"}`} />
+            <Switch checked={!useSandbox} onCheckedChange={(checked) => setUseSandbox(!checked)} />
+            <Globe className={`h-4 w-4 ${!useSandbox ? "text-green-600" : "text-muted-foreground"}`} />
+            <Badge variant={useSandbox ? "outline" : "default"} className={!useSandbox ? "bg-green-600" : ""}>
+              {useSandbox ? "Sandbox" : "Live"}
+            </Badge>
           </div>
         </div>
 
