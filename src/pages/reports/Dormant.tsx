@@ -30,8 +30,8 @@ interface InactiveClientData {
 const columns = [
   { key: "client_name", header: "Client Name" },
   { key: "phone_number", header: "Phone Number" },
-  { key: "last_loan_date", header: "Last Loan Date" },
-  { key: "days_without_loan", header: "Days Without Loan" },
+  { key: "last_loan_date", header: "Last Due Date" },
+  { key: "days_without_loan", header: "Days Since Last Due Date" },
   { key: "category", header: "Category" },
   { key: "current_status", header: "Current Status" },
 ];
@@ -50,7 +50,7 @@ const DormantClientsReport = () => {
       setLoading(true);
       const orgId = await getOrganizationId();
 
-      // Fetch all active/inactive/dormant clients
+      // Fetch all clients (not just active — dormant/inactive too)
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
         .select("id, first_name, last_name, phone, status, created_at")
@@ -59,36 +59,81 @@ const DormantClientsReport = () => {
 
       if (clientsError) throw clientsError;
 
-      // Fetch the most recent loan date per client name
+      // Fetch all loans per client name (excluding fee accounts)
       const { data: loans, error: loansError } = await supabase
         .from("loans")
-        .select("client, date")
+        .select("id, client, status")
         .eq("organization_id", orgId)
-        .neq("type", "client_fee_account")
-        .order("date", { ascending: false });
+        .neq("type", "client_fee_account");
 
       if (loansError) throw loansError;
 
-      // Build map: client name -> most recent loan date
-      const lastLoanMap = new Map<string, string>();
+      // Group loans by client name (lowercase)
+      const loansByClient = new Map<string, typeof loans>();
       (loans || []).forEach((loan) => {
         const name = loan.client.toLowerCase();
-        if (!lastLoanMap.has(name)) {
-          lastLoanMap.set(name, loan.date);
+        if (!loansByClient.has(name)) loansByClient.set(name, []);
+        loansByClient.get(name)!.push(loan);
+      });
+
+      // Find clients with NO active loans (all loans must be closed/completed)
+      const clientsWithNoActiveLoans: typeof clients = [];
+      (clients || []).forEach((client) => {
+        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+        const clientLoans = loansByClient.get(fullName) || [];
+        const hasActiveLoan = clientLoans.some(
+          (l) => l.status === "active" || l.status === "disbursed" || l.status === "pending"
+        );
+        if (!hasActiveLoan) {
+          clientsWithNoActiveLoans.push(client);
         }
       });
+
+      // Get all closed loan IDs for these clients to fetch last due dates
+      const closedLoanIds: string[] = [];
+      const loanIdToClient = new Map<string, string>();
+      clientsWithNoActiveLoans.forEach((client) => {
+        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
+        const clientLoans = loansByClient.get(fullName) || [];
+        clientLoans.forEach((l) => {
+          closedLoanIds.push(l.id);
+          loanIdToClient.set(l.id, fullName);
+        });
+      });
+
+      // Fetch last due dates from loan_schedule in batches
+      const lastDueDateMap = new Map<string, string>();
+      const batchSize = 50;
+      for (let i = 0; i < closedLoanIds.length; i += batchSize) {
+        const batch = closedLoanIds.slice(i, i + batchSize);
+        const { data: schedules } = await supabase
+          .from("loan_schedule")
+          .select("loan_id, due_date")
+          .in("loan_id", batch)
+          .order("due_date", { ascending: false });
+
+        (schedules || []).forEach((s) => {
+          const clientName = loanIdToClient.get(s.loan_id);
+          if (clientName) {
+            const existing = lastDueDateMap.get(clientName);
+            if (!existing || s.due_date > existing) {
+              lastDueDateMap.set(clientName, s.due_date);
+            }
+          }
+        });
+      }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const results: InactiveClientData[] = [];
 
-      (clients || []).forEach((client) => {
+      clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`;
-        const lastLoanDate = lastLoanMap.get(fullName.toLowerCase());
-        
-        // Use last loan date, or fall back to client creation date
-        const referenceDate = lastLoanDate || client.created_at;
+        const lastDueDate = lastDueDateMap.get(fullName.toLowerCase());
+
+        // Use last due date from schedule, or fall back to client creation date
+        const referenceDate = lastDueDate || client.created_at;
         const refDate = new Date(referenceDate);
         refDate.setHours(0, 0, 0, 0);
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -100,7 +145,7 @@ const DormantClientsReport = () => {
             id: client.id,
             client_name: fullName,
             phone_number: client.phone || "N/A",
-            last_loan_date: lastLoanDate || "No loans",
+            last_loan_date: lastDueDate || "No loans",
             days_without_loan: daysWithoutLoan,
             current_status: client.status || "active",
             category,
@@ -250,7 +295,7 @@ const DormantClientsReport = () => {
   return (
     <ReportPage
       title="Dormant & Inactive Clients"
-      description="Clients without loan activity — Inactive (7-29 days) or Dormant (30+ days)"
+      description="Clients with no active loans — Inactive (7-29 days) or Dormant (30+ days) since last due date"
       actions={
         <ExportButton
           data={filteredData.map((c) => ({
@@ -335,8 +380,8 @@ const DormantClientsReport = () => {
                       <TableRow>
                         <TableHead>Client Name</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Last Loan Date</TableHead>
-                        <TableHead>Days Without Loan</TableHead>
+                        <TableHead>Last Due Date</TableHead>
+                        <TableHead>Days Since</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
