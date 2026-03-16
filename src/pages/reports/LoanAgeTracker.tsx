@@ -69,6 +69,18 @@ export default function LoanAgeTracker() {
         return;
       }
 
+      // Fetch client phone numbers
+      const { data: clientsData } = await supabase
+        .from("clients")
+        .select("first_name, last_name, phone")
+        .eq("organization_id", organizationId);
+
+      const clientPhoneMap = new Map<string, string>();
+      (clientsData || []).forEach(c => {
+        const fullName = `${c.first_name} ${c.last_name}`;
+        clientPhoneMap.set(fullName.toLowerCase(), c.phone);
+      });
+
       // Fetch schedules for these loans in batches
       const loanIds = loansData.map(l => l.id);
       const allSchedules: any[] = [];
