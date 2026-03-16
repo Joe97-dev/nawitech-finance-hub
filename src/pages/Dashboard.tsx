@@ -42,27 +42,6 @@ const Dashboard = () => {
     return `Ksh ${amount.toLocaleString()}`;
   };
 
-  /** Paginated fetch helper */
-  const fetchAllPages = async (
-    table: string,
-    selectCols: string,
-    buildQuery: (q: any) => any
-  ) => {
-    const pageSize = 1000;
-    const all: any[] = [];
-    let from = 0;
-    while (true) {
-      let q = supabase.from(table).select(selectCols).range(from, from + pageSize - 1);
-      q = buildQuery(q);
-      const { data, error } = await q;
-      if (error) throw error;
-      if (data) all.push(...data);
-      if (!data || data.length < pageSize) break;
-      from += pageSize;
-    }
-    return all;
-  };
-
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
