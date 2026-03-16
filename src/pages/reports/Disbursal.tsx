@@ -75,6 +75,7 @@ const DisbursalReport = () => {
             .from('loans')
             .select('id, client, loan_number, amount, date, term_months, interest_rate, loan_officer_id')
             .in('status', ['approved', 'disbursed', 'active', 'closed', 'in arrears'])
+            .neq('status', 'abandoned')
             .neq('type', 'client_fee_account')
             .order('date', { ascending: false })
             .range(from, from + pageSize - 1);

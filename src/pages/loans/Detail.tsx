@@ -72,6 +72,7 @@ const LoanDetailPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [abandonDialogOpen, setAbandonDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchLoanDetails = async () => {
