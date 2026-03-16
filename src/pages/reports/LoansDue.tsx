@@ -183,9 +183,17 @@ const LoansDueReport = () => {
 
       const results: DueInstallment[] = [];
 
+      const today = new Date().toISOString().split("T")[0];
+
       schedules.forEach((s) => {
         const loan = loanMap.get(s.loan_id);
         if (!loan) return;
+
+        // Dynamic overdue detection
+        let effectiveStatus = s.status;
+        if (effectiveStatus === "pending" && s.due_date < today) {
+          effectiveStatus = "overdue";
+        }
 
         results.push({
           loanId: loan.id,
@@ -196,7 +204,7 @@ const LoansDueReport = () => {
           amountPaid: s.amount_paid || 0,
           outstanding: s.total_due - (s.amount_paid || 0),
           dueDate: s.due_date,
-          installmentStatus: s.status,
+          installmentStatus: effectiveStatus,
           loanStatus: loan.status,
           branchName: resolveClientBranch(loan.client),
           loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
