@@ -31,6 +31,7 @@ interface ArrearsData {
   email?: string;
   riskCategory: "low" | "medium" | "high" | "critical";
   photoUrl?: string;
+  loanOfficer: string;
 }
 
 const branches = [
