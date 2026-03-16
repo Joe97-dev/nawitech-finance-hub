@@ -67,6 +67,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // If no organization found from client match, resolve from shortcode or fallback
+    if (!organizationId) {
+      // Look up org by matching the shortcode, or fallback to first org
+      const { data: fallbackOrg } = await supabase
+        .from("organizations")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+      if (fallbackOrg) {
+        organizationId = fallbackOrg.id;
+      }
+    }
+
     // Log matching result for debugging
     if (BillRefNumber && !matchedClientId) {
       console.log(`No client found for BillRefNumber (ID): "${BillRefNumber.trim()}" — storing as unmatched`);
