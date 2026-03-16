@@ -283,16 +283,16 @@ const DormantClientsReport = () => {
   };
 
   useEffect(() => {
-    if (clientsData.length > 0) {
-      const needsSync = clientsData.some(
-        (c) =>
-          (c.category === "dormant" && c.current_status !== "dormant") ||
-          (c.category === "inactive" && c.current_status !== "inactive")
-      );
-      if (needsSync) {
-        syncStatuses();
-      }
+    const needsSync = clientsData.some(
+      (c) =>
+        (c.category === "dormant" && c.current_status !== "dormant") ||
+        (c.category === "inactive" && c.current_status !== "inactive")
+    );
+
+    if (clientsData.length > 0 && needsSync) {
+      syncStatuses();
     }
+  }, [clientsData]);
   }, [clientsData.length]);
 
   const handleActivateInactive = async (clientId: string, clientName: string) => {
