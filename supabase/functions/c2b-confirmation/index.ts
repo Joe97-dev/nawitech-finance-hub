@@ -215,7 +215,6 @@ Deno.serve(async (req) => {
           });
 
           console.log(`Excess ${remainingAmount} deposited to draw down account for client ${matchedClientId}`);
-          }
         }
 
         // Recalculate and update loan balance
