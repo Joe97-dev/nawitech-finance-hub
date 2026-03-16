@@ -36,12 +36,8 @@ const KYCReport = lazy(() => import("./pages/reports/KYC"));
 const IncomeReport = lazy(() => import("./pages/reports/Income"));
 const ArrearsReport = lazy(() => import("./pages/reports/Arrears"));
 const DormantReport = lazy(() => import("./pages/reports/Dormant"));
-const ForecastingReport = lazy(() => import("./pages/reports/Forecasting"));
 const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
-const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
-const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 const LoanAgeTrackerReport = lazy(() => import("./pages/reports/LoanAgeTracker"));
-const CohortCollectionReport = lazy(() => import("./pages/reports/CohortCollection"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -98,12 +94,8 @@ function App() {
             <Route path="/reports/income" element={<ProtectedRoute><IncomeReport /></ProtectedRoute>} />
             <Route path="/reports/arrears" element={<ProtectedRoute><ArrearsReport /></ProtectedRoute>} />
             <Route path="/reports/dormant" element={<ProtectedRoute><DormantReport /></ProtectedRoute>} />
-            <Route path="/reports/forecasting" element={<ProtectedRoute><ForecastingReport /></ProtectedRoute>} />
             <Route path="/reports/transactions" element={<ProtectedRoute><TransactionsReport /></ProtectedRoute>} />
-            <Route path="/reports/installment-bounds" element={<ProtectedRoute><InstallmentBoundsReport /></ProtectedRoute>} />
-            <Route path="/reports/dues-by-day" element={<ProtectedRoute><DuesByDayReport /></ProtectedRoute>} />
             <Route path="/reports/loan-age-tracker" element={<ProtectedRoute><LoanAgeTrackerReport /></ProtectedRoute>} />
-            <Route path="/reports/cohort-collection" element={<ProtectedRoute><CohortCollectionReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

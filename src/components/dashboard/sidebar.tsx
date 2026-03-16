@@ -13,7 +13,6 @@ import {
   Building,
   UserCheck,
   Database,
-  CalendarRange,
   Clock,
 } from "lucide-react";
 import {
@@ -113,12 +112,6 @@ const reportNavItems = [
     requiredRoles: ["admin", "loan_officer", "data_entry"],
   },
   {
-    title: "Forecasting Report",
-    href: "/reports/forecasting",
-    icon: FileText,
-    requiredRoles: ["admin", "loan_officer"],
-  },
-  {
     title: "Disbursal Report",
     href: "/reports/disbursal",
     icon: FileText,
@@ -131,27 +124,9 @@ const reportNavItems = [
     requiredRoles: ["admin", "loan_officer", "data_entry"],
   },
   {
-    title: "Installment Bounds",
-    href: "/reports/installment-bounds",
-    icon: CalendarRange,
-    requiredRoles: ["admin", "loan_officer", "data_entry"],
-  },
-  {
-    title: "Dues by Day (30-Day)",
-    href: "/reports/dues-by-day",
-    icon: CalendarDays,
-    requiredRoles: ["admin", "loan_officer"],
-  },
-  {
     title: "Loan Age Tracker",
     href: "/reports/loan-age-tracker",
     icon: Clock,
-    requiredRoles: ["admin", "loan_officer"],
-  },
-  {
-    title: "Cohort Collection",
-    href: "/reports/cohort-collection",
-    icon: PieChart,
     requiredRoles: ["admin", "loan_officer"],
   }
 ];
