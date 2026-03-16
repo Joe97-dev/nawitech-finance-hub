@@ -67,6 +67,28 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Log matching result for debugging
+    if (BillRefNumber && !matchedClientId) {
+      console.log(`No client found for BillRefNumber (ID): "${BillRefNumber.trim()}" — storing as unmatched`);
+    } else if (matchedClientId && !matchedLoanId) {
+      console.log(`Client found but no active loan for BillRefNumber: "${BillRefNumber}" — storing as unmatched`);
+    }
+
+    // Check for duplicate transaction ID
+    const { data: existingTx } = await supabase
+      .from("mpesa_transactions")
+      .select("id")
+      .eq("trans_id", TransID)
+      .maybeSingle();
+
+    if (existingTx) {
+      console.log(`Duplicate trans_id ${TransID} — skipping insert`);
+      return new Response(
+        JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Store the transaction
     const { data: mpesaTx, error: insertError } = await supabase
       .from("mpesa_transactions")
@@ -93,6 +115,14 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
+      // Handle unique constraint violation as duplicate
+      if (insertError.code === "23505") {
+        console.log(`Duplicate trans_id ${TransID} caught by constraint — skipping`);
+        return new Response(
+          JSON.stringify({ ResultCode: 0, ResultDesc: "Accepted" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       console.error("Error storing M-Pesa transaction:", insertError);
       throw insertError;
     }
