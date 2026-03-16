@@ -238,13 +238,14 @@ const CohortCollectionReport = () => {
   const totalLoans = cohortData.reduce((acc, c) => acc + c.loansCount, 0);
   const totalFullyPaid = cohortData.reduce((acc, c) => acc + c.fullyPaidCount, 0);
 
-  const hasActiveFilters = date !== undefined;
+  const hasActiveFilters = date !== undefined || selectedOfficer !== "all";
 
   const handleReset = () => {
     setDate({
       from: new Date(currentYear, 0, 1),
       to: new Date(currentYear, 11, 31),
     });
+    setSelectedOfficer("all");
   };
 
   const getRateColor = (rate: number) => {
