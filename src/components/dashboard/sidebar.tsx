@@ -269,6 +269,14 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/mpesa-payments" className={getNavClass}>
+                        <Smartphone className="h-4 w-4" />
+                        {!collapsed && <span>M-Pesa Payments</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>
