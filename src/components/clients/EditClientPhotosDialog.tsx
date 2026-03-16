@@ -84,7 +84,8 @@ export function EditClientPhotosDialog({
       for (const photo of photos) {
         if (!photo.file) continue;
         const timestamp = Date.now();
-        const fileName = `${timestamp}_${photo.file.name}`;
+        const sanitizedName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `${timestamp}_${sanitizedName}`;
 
         if (photo.key === "passport") {
           const filePath = `client_photos/${clientId}/${fileName}`;

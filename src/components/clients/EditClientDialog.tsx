@@ -208,26 +208,27 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
 
       // 2. Upload photos
       const ts = Date.now();
+      const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
       if (photoFiles.passport?.file) {
-        const path = `client_photos/${client.id}/${ts}_${photoFiles.passport.file.name}`;
+        const path = `client_photos/${client.id}/${ts}_${sanitize(photoFiles.passport.file.name)}`;
         const { error } = await supabase.storage.from("client_photos").upload(path, photoFiles.passport.file);
         if (error) throw error;
         clientUpdates.photo_url = path;
       }
       if (photoFiles.id_front?.file) {
-        const path = `id_photos/${client.id}/${ts}_${photoFiles.id_front.file.name}`;
+        const path = `id_photos/${client.id}/${ts}_${sanitize(photoFiles.id_front.file.name)}`;
         const { error } = await supabase.storage.from("client-id-photos").upload(path, photoFiles.id_front.file);
         if (error) throw error;
         clientUpdates.id_photo_front_url = path;
       }
       if (photoFiles.id_back?.file) {
-        const path = `id_photos/${client.id}/${ts}_${photoFiles.id_back.file.name}`;
+        const path = `id_photos/${client.id}/${ts}_${sanitize(photoFiles.id_back.file.name)}`;
         const { error } = await supabase.storage.from("client-id-photos").upload(path, photoFiles.id_back.file);
         if (error) throw error;
         clientUpdates.id_photo_back_url = path;
       }
       if (photoFiles.business?.file) {
-        const path = `business_photos/${client.id}/${ts}_${photoFiles.business.file.name}`;
+        const path = `business_photos/${client.id}/${ts}_${sanitize(photoFiles.business.file.name)}`;
         const { error } = await supabase.storage.from("client-business-photos").upload(path, photoFiles.business.file);
         if (error) throw error;
         clientUpdates.business_photo_url = path;
