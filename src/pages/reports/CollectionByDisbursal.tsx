@@ -43,31 +43,6 @@ const columns = [
   { key: "status", header: "Status" },
 ];
 
-/** Fetch all rows from a table, bypassing the 1000-row default limit */
-async function fetchAllRows<T>(
-  table: string,
-  selectCols: string,
-  filters?: Record<string, unknown>
-): Promise<T[]> {
-  const pageSize = 1000;
-  const all: T[] = [];
-  let from = 0;
-  while (true) {
-    let query = supabase.from(table).select(selectCols).range(from, from + pageSize - 1);
-    if (filters) {
-      for (const [key, val] of Object.entries(filters)) {
-        query = query.eq(key, val);
-      }
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    if (data) all.push(...(data as T[]));
-    if (!data || data.length < pageSize) break;
-    from += pageSize;
-  }
-  return all;
-}
-
 const CollectionByDisbursalReport = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
