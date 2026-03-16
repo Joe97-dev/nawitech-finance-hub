@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { useSandbox = true } = body;
+    const { useSandbox = false } = body;
 
     const baseUrl = useSandbox
       ? "https://sandbox.safaricom.co.ke"
@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // Step 2: Register C2B URLs
+    // Step 2: Register C2B URLs (v2 for production, v1 for sandbox)
     const supabaseProjectId = Deno.env.get("SUPABASE_URL")?.match(/https:\/\/(.+?)\.supabase/)?.[1];
     const functionsBaseUrl = `https://${supabaseProjectId}.supabase.co/functions/v1`;
 
@@ -55,10 +55,11 @@ Deno.serve(async (req) => {
       ValidationURL: `${functionsBaseUrl}/c2b-validation`,
     };
 
-    console.log("Registering URLs:", JSON.stringify(registerPayload));
+    const registerVersion = useSandbox ? "v1" : "v2";
+    console.log(`Registering URLs (${registerVersion}, ${useSandbox ? 'sandbox' : 'production'}):`, JSON.stringify(registerPayload));
 
     const registerResponse = await fetch(
-      `${baseUrl}/mpesa/c2b/v1/registerurl`,
+      `${baseUrl}/mpesa/c2b/${registerVersion}/registerurl`,
       {
         method: "POST",
         headers: {

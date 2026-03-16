@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2, LinkIcon } from "lucide-react";
+import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
 interface MpesaTransaction {
@@ -51,6 +52,7 @@ export default function MpesaPayments() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [useSandbox, setUseSandbox] = useState(false);
   const [simForm, setSimForm] = useState({ amount: "", phoneNumber: "254708374149", billRefNumber: "" });
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
@@ -72,7 +74,7 @@ export default function MpesaPayments() {
     setRegistering(true);
     try {
       const { data, error } = await supabase.functions.invoke("mpesa-register-urls", {
-        body: { useSandbox: true },
+        body: { useSandbox },
       });
       if (error) throw error;
       if (data?.success) {
@@ -115,12 +117,22 @@ export default function MpesaPayments() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Smartphone className="h-6 w-6" /> M-Pesa Payments
             </h1>
-            <p className="text-muted-foreground">Manage C2B M-Pesa payment integration (Sandbox)</p>
+            <p className="text-muted-foreground">
+              Manage C2B M-Pesa payment integration ({useSandbox ? "Sandbox" : "Production"})
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <FlaskConical className={`h-4 w-4 ${useSandbox ? "text-amber-500" : "text-muted-foreground"}`} />
+            <Switch checked={!useSandbox} onCheckedChange={(checked) => setUseSandbox(!checked)} />
+            <Globe className={`h-4 w-4 ${!useSandbox ? "text-green-600" : "text-muted-foreground"}`} />
+            <Badge variant={useSandbox ? "outline" : "default"} className={!useSandbox ? "bg-green-600" : ""}>
+              {useSandbox ? "Sandbox" : "Live"}
+            </Badge>
           </div>
         </div>
 
