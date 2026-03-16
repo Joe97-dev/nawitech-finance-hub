@@ -120,6 +120,7 @@ export default function LoanAgeTracker() {
           id: loan.id,
           loan_number: loan.loan_number,
           client: loan.client,
+          phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
           amount: loan.amount,
           balance: loan.balance,
           status: loan.status,
