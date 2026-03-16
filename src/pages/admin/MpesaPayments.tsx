@@ -69,49 +69,6 @@ export default function MpesaPayments() {
     setLoading(false);
   };
 
-  const registerUrls = async () => {
-    setRegistering(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("mpesa-register-urls", {
-        body: { useSandbox },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast({ title: "URLs Registered", description: `Validation: ${data.registeredUrls?.validation}\nConfirmation: ${data.registeredUrls?.confirmation}` });
-      } else {
-        toast({ variant: "destructive", title: "Registration Failed", description: JSON.stringify(data?.data || data?.error) });
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const simulatePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSimulating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("mpesa-simulate-c2b", {
-        body: {
-          amount: parseInt(simForm.amount),
-          phoneNumber: simForm.phoneNumber,
-          billRefNumber: simForm.billRefNumber,
-        },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Simulation Sent", description: "C2B payment simulation dispatched. Check transactions below." });
-        setTimeout(fetchTransactions, 3000);
-      } else {
-        toast({ variant: "destructive", title: "Simulation Failed", description: JSON.stringify(data?.data || data?.error) });
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setSimulating(false);
-    }
-  };
 
   return (
     <DashboardLayout>
