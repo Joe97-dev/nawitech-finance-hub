@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
@@ -13,69 +11,77 @@ import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, isWithinInterval } from "date-fns";
+import { format } from "date-fns";
 
-interface CohortData {
-  weekLabel: string;
-  weekStart: Date;
-  loanCount: number;
-  totalDisbursed: number;
-  totalDue: number;
-  totalPaid: number;
-  collectionRate: number;
+interface LoanCollectionRow {
+  loan_number: string;
+  client_name: string;
+  loan_officer: string;
+  loan_officer_id: string | null;
+  disbursement_date: string;
+  amount_disbursed: number;
+  total_due: number;
+  total_paid: number;
+  outstanding: number;
+  collection_rate: number;
+  status: string;
 }
 
 const columns = [
-  { key: "weekLabel", header: "Disbursal Week" },
-  { key: "loanCount", header: "Loans" },
-  { key: "totalDisbursed", header: "Disbursed (KES)" },
-  { key: "totalDue", header: "Total Due (KES)" },
-  { key: "totalPaid", header: "Total Paid (KES)" },
-  { key: "collectionRate", header: "Collection Rate (%)" },
+  { key: "loan_number", header: "Loan #" },
+  { key: "client_name", header: "Client" },
+  { key: "loan_officer", header: "Loan Officer" },
+  { key: "disbursement_date", header: "Disbursal Date" },
+  { key: "amount_disbursed", header: "Disbursed (KES)" },
+  { key: "total_due", header: "Total Due (KES)" },
+  { key: "total_paid", header: "Total Paid (KES)" },
+  { key: "outstanding", header: "Outstanding (KES)" },
+  { key: "collection_rate", header: "Collection Rate (%)" },
+  { key: "status", header: "Status" },
 ];
 
 const CollectionByDisbursalReport = () => {
   const { toast } = useToast();
-  const currentYear = new Date().getFullYear();
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(currentYear, 0, 1),
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
   });
-  const [cohorts, setCohorts] = useState<CohortData[]>([]);
+  const [rows, setRows] = useState<LoanCollectionRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState("chart");
   const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [selectedOfficer, setSelectedOfficer] = useState("all");
 
   useEffect(() => {
     fetchData();
-  }, [date, selectedOfficer]);
+  }, [date]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const startDate = date?.from || new Date(currentYear, 0, 1);
+      const startDate = date?.from || new Date(new Date().getFullYear(), 0, 1);
       const endDate = date?.to || new Date();
+      const fromStr = format(startDate, "yyyy-MM-dd");
+      const toStr = format(endDate, "yyyy-MM-dd");
 
-      const formatLocal = (d: Date) => format(d, "yyyy-MM-dd");
-      const fromStr = formatLocal(startDate);
-      const toStr = formatLocal(endDate);
-
-      // Fetch loans disbursed in the selected period + profiles for officer names
-      const [loansResult, profilesResult] = await Promise.all([
+      // Fetch loans, clients, and profiles in parallel
+      const [loansResult, clientsResult, profilesResult] = await Promise.all([
         supabase
           .from("loans")
-          .select("id, amount, date, loan_officer_id")
+          .select("id, loan_number, client, amount, date, loan_officer_id, status")
           .gte("date", fromStr)
           .lte("date", toStr)
           .in("status", ["active", "closed", "in arrears", "disbursed", "approved"]),
+        supabase.from("clients").select("id, first_name, last_name"),
         supabase.from("profiles").select("id, first_name, last_name"),
       ]);
 
       if (loansResult.error) throw loansResult.error;
 
       const loans = loansResult.data || [];
+      const clients = clientsResult.data || [];
       const profiles = profilesResult.data || [];
+
+      const clientMap = new Map(clients.map((c) => [c.id, `${c.first_name} ${c.last_name}`]));
       const profileMap = new Map(
         profiles.map((p) => [p.id, `${p.first_name || ""} ${p.last_name || ""}`.trim()])
       );
@@ -93,21 +99,14 @@ const CollectionByDisbursalReport = () => {
           .sort((a, b) => a.name.localeCompare(b.name))
       );
 
-      // Filter by officer
-      const filteredLoans =
-        selectedOfficer === "all"
-          ? loans
-          : loans.filter((l) => l.loan_officer_id === selectedOfficer);
-
-      if (filteredLoans.length === 0) {
-        setCohorts([]);
+      if (loans.length === 0) {
+        setRows([]);
         setLoading(false);
         return;
       }
 
-      // Fetch all schedules for these loans
-      const loanIds = filteredLoans.map((l) => l.id);
-      // Batch fetch in chunks of 50
+      // Fetch all schedules for these loans in batches of 50
+      const loanIds = loans.map((l) => l.id);
       const allSchedules: { loan_id: string; total_due: number; amount_paid: number }[] = [];
       for (let i = 0; i < loanIds.length; i += 50) {
         const chunk = loanIds.slice(i, i + 50);
@@ -119,7 +118,7 @@ const CollectionByDisbursalReport = () => {
         allSchedules.push(...(data || []));
       }
 
-      // Group schedules by loan_id
+      // Aggregate schedules by loan
       const schedulesByLoan = new Map<string, { totalDue: number; totalPaid: number }>();
       for (const s of allSchedules) {
         const existing = schedulesByLoan.get(s.loan_id) || { totalDue: 0, totalPaid: 0 };
@@ -128,94 +127,74 @@ const CollectionByDisbursalReport = () => {
         schedulesByLoan.set(s.loan_id, existing);
       }
 
-      // Generate weekly cohorts
-      const weeks = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
-
-      const cohortData: CohortData[] = weeks.map((weekStart) => {
-        const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-        const weekLabel = `${format(weekStart, "dd MMM")} – ${format(weekEnd, "dd MMM yyyy")}`;
-
-        // Find loans disbursed in this week
-        const weekLoans = filteredLoans.filter((l) => {
-          const loanDate = new Date(l.date);
-          return isWithinInterval(loanDate, { start: weekStart, end: weekEnd });
-        });
-
-        let totalDisbursed = 0;
-        let totalDue = 0;
-        let totalPaid = 0;
-
-        for (const loan of weekLoans) {
-          totalDisbursed += Number(loan.amount);
-          const schedule = schedulesByLoan.get(loan.id);
-          if (schedule) {
-            totalDue += schedule.totalDue;
-            totalPaid += schedule.totalPaid;
-          }
-        }
-
-        const collectionRate = totalDue > 0 ? Math.round((totalPaid / totalDue) * 10000) / 100 : 0;
+      // Build rows
+      const result: LoanCollectionRow[] = loans.map((loan) => {
+        const schedule = schedulesByLoan.get(loan.id) || { totalDue: 0, totalPaid: 0 };
+        const outstanding = schedule.totalDue - schedule.totalPaid;
+        const rate = schedule.totalDue > 0 ? Math.round((schedule.totalPaid / schedule.totalDue) * 10000) / 100 : 0;
+        const clientName = clientMap.get(loan.client) || loan.client;
+        const officerName = loan.loan_officer_id ? (profileMap.get(loan.loan_officer_id) || "Unknown") : "Unassigned";
 
         return {
-          weekLabel,
-          weekStart,
-          loanCount: weekLoans.length,
-          totalDisbursed,
-          totalDue,
-          totalPaid,
-          collectionRate,
+          loan_number: loan.loan_number || loan.id.slice(0, 8),
+          client_name: clientName,
+          loan_officer: officerName,
+          loan_officer_id: loan.loan_officer_id,
+          disbursement_date: loan.date,
+          amount_disbursed: Number(loan.amount),
+          total_due: schedule.totalDue,
+          total_paid: schedule.totalPaid,
+          outstanding: Math.max(0, outstanding),
+          collection_rate: rate,
+          status: loan.status,
         };
       });
 
-      // Filter out empty weeks
-      setCohorts(cohortData.filter((c) => c.loanCount > 0));
+      // Sort by date descending
+      result.sort((a, b) => b.disbursement_date.localeCompare(a.disbursement_date));
+      setRows(result);
     } catch (error: any) {
-      console.error("Error fetching cohort data:", error);
+      console.error("Error fetching data:", error);
       toast({
         variant: "destructive",
         title: "Data fetch error",
-        description: error.message || "Failed to load collection data.",
+        description: error.message || "Failed to load data.",
       });
-      setCohorts([]);
+      setRows([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const totalDisbursed = cohorts.reduce((s, c) => s + c.totalDisbursed, 0);
-  const totalDue = cohorts.reduce((s, c) => s + c.totalDue, 0);
-  const totalPaid = cohorts.reduce((s, c) => s + c.totalPaid, 0);
+  const filteredRows =
+    selectedOfficer === "all" ? rows : rows.filter((r) => r.loan_officer_id === selectedOfficer);
+
+  const totalDisbursed = filteredRows.reduce((s, r) => s + r.amount_disbursed, 0);
+  const totalDue = filteredRows.reduce((s, r) => s + r.total_due, 0);
+  const totalPaid = filteredRows.reduce((s, r) => s + r.total_paid, 0);
   const overallRate = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
-  const totalLoans = cohorts.reduce((s, c) => s + c.loanCount, 0);
 
   const hasActiveFilters = selectedOfficer !== "all" || date !== undefined;
 
   const handleReset = () => {
     setSelectedOfficer("all");
     setDate({
-      from: new Date(currentYear, 0, 1),
+      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
       to: new Date(),
     });
   };
 
-  const exportData = cohorts.map((c) => ({
-    weekLabel: c.weekLabel,
-    loanCount: c.loanCount,
-    totalDisbursed: c.totalDisbursed.toLocaleString(),
-    totalDue: c.totalDue.toLocaleString(),
-    totalPaid: c.totalPaid.toLocaleString(),
-    collectionRate: c.collectionRate,
-  }));
-
-  const chartData = cohorts.map((c) => ({
-    week: format(c.weekStart, "dd MMM"),
-    "Total Due": c.totalDue,
-    "Total Paid": c.totalPaid,
+  const exportData = filteredRows.map((r) => ({
+    ...r,
+    amount_disbursed: r.amount_disbursed.toLocaleString(),
+    total_due: r.total_due.toLocaleString(),
+    total_paid: r.total_paid.toLocaleString(),
+    outstanding: r.outstanding.toLocaleString(),
   }));
 
   const filters = (
     <ReportFilters
-      title="Disbursal Cohort Filters"
+      title="Disbursal Period Filters"
       hasActiveFilters={hasActiveFilters}
       onReset={handleReset}
     >
@@ -238,22 +217,31 @@ const CollectionByDisbursalReport = () => {
     </ReportFilters>
   );
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active": return "bg-green-100 text-green-800";
+      case "closed": return "bg-muted text-muted-foreground";
+      case "in arrears": return "bg-red-100 text-red-800";
+      default: return "bg-yellow-100 text-yellow-800";
+    }
+  };
+
   return (
     <ReportPage
       title="Collection by Disbursal Period"
-      description="Collection rate grouped by the week loans were disbursed. Tracks lifetime repayment for each cohort."
+      description="Detailed loan-level collection rates for loans disbursed within a selected date range."
       actions={<ExportButton data={exportData} filename="collection-by-disbursal" columns={columns} />}
       filters={filters}
     >
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin mr-2" />
-          <p>Loading cohort data...</p>
+          <p>Loading data...</p>
         </div>
       ) : (
         <div className="space-y-6">
           <ReportStats>
-            <ReportStat label="Total Loans" value={totalLoans.toLocaleString()} />
+            <ReportStat label="Loans" value={filteredRows.length.toLocaleString()} />
             <ReportStat label="Total Disbursed" value={`KES ${totalDisbursed.toLocaleString()}`} />
             <ReportStat
               label="Overall Collection Rate"
@@ -273,85 +261,79 @@ const CollectionByDisbursalReport = () => {
 
           <Card className="shadow-sm">
             <CardContent className="pt-6">
-              <Tabs defaultValue="chart" value={activeView} onValueChange={setActiveView} className="mb-4">
-                <TabsList>
-                  <TabsTrigger value="chart">Chart View</TabsTrigger>
-                  <TabsTrigger value="table">Table View</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="chart" className="pt-4">
-                  {cohorts.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No disbursals found for the selected period
-                    </div>
-                  ) : (
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="week" />
-                          <YAxis />
-                          <Tooltip formatter={(value: number) => `KES ${value.toLocaleString()}`} />
-                          <Legend />
-                          <Bar dataKey="Total Due" fill="#8884d8" />
-                          <Bar dataKey="Total Paid" fill="#22c55e" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="table" className="pt-4">
-                  {cohorts.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No disbursals found for the selected period
-                    </div>
-                  ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Disbursal Week</TableHead>
-                            <TableHead className="text-right">Loans</TableHead>
-                            <TableHead className="text-right">Disbursed</TableHead>
-                            <TableHead className="text-right">Total Due</TableHead>
-                            <TableHead className="text-right">Total Paid</TableHead>
-                            <TableHead className="text-right">Collection Rate</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cohorts.map((c, i) => (
-                            <TableRow key={i}>
-                              <TableCell className="font-medium">{c.weekLabel}</TableCell>
-                              <TableCell className="text-right">{c.loanCount}</TableCell>
-                              <TableCell className="text-right">KES {c.totalDisbursed.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">KES {c.totalDue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">KES {c.totalPaid.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <span>{c.collectionRate}%</span>
-                                  <div className="w-16 bg-muted rounded-full h-1.5">
-                                    <div
-                                      className={`h-1.5 rounded-full ${
-                                        c.collectionRate >= 95
-                                          ? "bg-green-600"
-                                          : c.collectionRate >= 80
-                                          ? "bg-yellow-400"
-                                          : "bg-destructive"
-                                      }`}
-                                      style={{ width: `${Math.min(c.collectionRate, 100)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+              <h3 className="text-sm font-medium text-muted-foreground mb-4">
+                Loan Details ({filteredRows.length} loans)
+              </h3>
+              {filteredRows.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No loans found for the selected period
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan #</TableHead>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Loan Officer</TableHead>
+                        <TableHead>Disbursal Date</TableHead>
+                        <TableHead className="text-right">Disbursed</TableHead>
+                        <TableHead className="text-right">Total Due</TableHead>
+                        <TableHead className="text-right">Total Paid</TableHead>
+                        <TableHead className="text-right">Outstanding</TableHead>
+                        <TableHead className="text-right">Collection Rate</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRows.map((r, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{r.loan_number}</TableCell>
+                          <TableCell>{r.client_name}</TableCell>
+                          <TableCell>{r.loan_officer}</TableCell>
+                          <TableCell>{r.disbursement_date}</TableCell>
+                          <TableCell className="text-right">KES {r.amount_disbursed.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">KES {r.total_due.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">KES {r.total_paid.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">KES {r.outstanding.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{r.collection_rate}%</span>
+                              <div className="w-12 bg-muted rounded-full h-1.5">
+                                <div
+                                  className={`h-1.5 rounded-full ${
+                                    r.collection_rate >= 95
+                                      ? "bg-green-600"
+                                      : r.collection_rate >= 80
+                                      ? "bg-yellow-400"
+                                      : "bg-destructive"
+                                  }`}
+                                  style={{ width: `${Math.min(r.collection_rate, 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(r.status)}`}>
+                              {r.status}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Totals row */}
+                      <TableRow className="bg-muted/50 font-semibold">
+                        <TableCell colSpan={4}>Totals</TableCell>
+                        <TableCell className="text-right">KES {totalDisbursed.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">KES {totalDue.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">KES {totalPaid.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">KES {(totalDue - totalPaid).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{overallRate}%</TableCell>
+                        <TableCell />
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
