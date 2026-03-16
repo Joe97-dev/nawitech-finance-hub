@@ -193,7 +193,8 @@ const DisbursalReport = () => {
             amount: loan.amount.toLocaleString(),
             disbursed_date: new Date(loan.disbursed_date).toLocaleDateString(),
             term_months: loan.term_months,
-            interest_rate: loan.interest_rate
+            interest_rate: loan.interest_rate,
+            loan_officer: loan.loan_officer
           }))} 
           filename={`disbursal-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
