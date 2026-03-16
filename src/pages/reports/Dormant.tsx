@@ -293,7 +293,7 @@ const DormantClientsReport = () => {
       syncStatuses();
     }
   }, [clientsData]);
-  }, [clientsData.length]);
+  
 
   const handleActivateInactive = async (clientId: string, clientName: string) => {
     setActivatingId(clientId);
