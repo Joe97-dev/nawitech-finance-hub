@@ -14,7 +14,6 @@ import {
   UserCheck,
   Database,
   Clock,
-  Clock,
 } from "lucide-react";
 import {
   Sidebar,
