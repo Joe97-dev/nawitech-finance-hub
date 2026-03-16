@@ -70,16 +70,20 @@ export default function LoanAgeTracker() {
         return;
       }
 
-      // Fetch client phone numbers
+      // Fetch clients for name and phone resolution
       const { data: clientsData } = await supabase
         .from("clients")
-        .select("first_name, last_name, phone")
+        .select("id, first_name, last_name, phone")
         .eq("organization_id", organizationId);
 
-      const clientPhoneMap = new Map<string, string>();
+      // Build lookup maps: by UUID and by full name (for legacy string-based client fields)
+      const clientByIdMap = new Map<string, { name: string; phone: string }>();
+      const clientByNameMap = new Map<string, { name: string; phone: string }>();
       (clientsData || []).forEach(c => {
         const fullName = `${c.first_name} ${c.last_name}`;
-        clientPhoneMap.set(fullName.toLowerCase(), c.phone);
+        const entry = { name: fullName, phone: c.phone };
+        clientByIdMap.set(c.id, entry);
+        clientByNameMap.set(fullName.toLowerCase(), entry);
       });
 
       // Fetch loan officer profiles
