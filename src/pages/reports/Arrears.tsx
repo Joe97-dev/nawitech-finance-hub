@@ -435,6 +435,7 @@ const ArrearsReport = () => {
                         <TableCell className="font-medium text-destructive">
                           KES {item.amountOverdue.toLocaleString()}
                         </TableCell>
+                        <TableCell>{item.loanOfficer}</TableCell>
                         <TableCell>
                           <Badge variant={getRiskBadgeVariant(item.riskCategory)}>
                             {item.riskCategory.charAt(0).toUpperCase() + item.riskCategory.slice(1)}
