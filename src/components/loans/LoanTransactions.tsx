@@ -100,11 +100,13 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       }
     };
 
-    if (loanId && clientId) {
+    if (loanId) {
       fetchTransactions();
-      fetchDrawDownBalance();
+      if (clientId) {
+        fetchDrawDownBalance();
+      }
     }
-  }, [loanId, toast]);
+  }, [loanId, clientId, toast]);
 
   const fetchDrawDownBalance = async () => {
     if (!clientId) return;
