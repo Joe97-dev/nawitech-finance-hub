@@ -82,7 +82,7 @@ const DormantClientsReport = () => {
         const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
         const clientLoans = loansByClient.get(fullName) || [];
         const hasActiveLoan = clientLoans.some(
-          (l) => l.status === "active" || l.status === "disbursed" || l.status === "pending"
+          (l) => l.status !== "closed" && l.status !== "rejected" && l.status !== "written_off"
         );
         if (!hasActiveLoan) {
           clientsWithNoActiveLoans.push(client);
