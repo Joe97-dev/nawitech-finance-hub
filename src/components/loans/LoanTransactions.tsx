@@ -261,6 +261,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           loan_id: loanId,
           amount: paymentAmount,
           transaction_type: 'repayment',
+          transaction_date: paymentForm.transaction_date,
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
