@@ -399,6 +399,7 @@ const ArrearsReport = () => {
                       <TableHead>Outstanding</TableHead>
                       <TableHead>Days Overdue</TableHead>
                       <TableHead>Amount Overdue</TableHead>
+                      <TableHead>Loan Officer</TableHead>
                       <TableHead>Risk Level</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
