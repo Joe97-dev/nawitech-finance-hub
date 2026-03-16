@@ -134,11 +134,18 @@ export default function LoanAgeTracker() {
         const sched = schedByLoan.get(loan.id) || { totalDue: 0, totalPaid: 0 };
         const collectionRate = sched.totalDue > 0 ? Math.round((sched.totalPaid / sched.totalDue) * 100) : 0;
 
+        // Resolve client: try UUID lookup first, then name lookup, then raw value
+        const clientById = clientByIdMap.get(loan.client);
+        const clientByName = clientByNameMap.get(loan.client.toLowerCase());
+        const resolvedClient = clientById || clientByName;
+        const clientName = resolvedClient?.name || loan.client;
+        const clientPhone = resolvedClient?.phone || "-";
+
         return {
           id: loan.id,
           loan_number: loan.loan_number,
-          client: loan.client,
-          phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
+          client: clientName,
+          phone: clientPhone,
           loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
           amount: loan.amount,
           balance: loan.balance,
