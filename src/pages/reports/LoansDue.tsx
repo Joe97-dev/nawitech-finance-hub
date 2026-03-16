@@ -28,6 +28,7 @@ interface DueInstallment {
   installmentStatus: string;
   loanStatus: string;
   branchName: string;
+  loanOfficer: string;
 }
 
 const formatCurrency = (amount: number) =>
@@ -116,7 +117,7 @@ const LoansDueReport = () => {
       // Fetch loans
       const { data: loans, error: loansError } = await supabase
         .from("loans")
-        .select("id, loan_number, client, amount, status")
+        .select("id, loan_number, client, amount, status, loan_officer_id")
         .in("id", loanIds)
         .not("status", "eq", "rejected");
       if (loansError) throw loansError;
@@ -155,6 +156,19 @@ const LoansDueReport = () => {
         (branchData || []).forEach((b) => branchNameMap.set(b.id, b.name));
       }
 
+      // Fetch loan officer profiles
+      const officerIds = [...new Set((loans || []).map(l => l.loan_officer_id).filter(Boolean))] as string[];
+      const officerMap = new Map<string, string>();
+      if (officerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', officerIds);
+        (profiles || []).forEach(p => {
+          officerMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+        });
+      }
+
       const resolveClientName = (ref: string) => {
         const n = (ref || "").trim();
         if (!n) return "Unknown";
@@ -185,6 +199,7 @@ const LoansDueReport = () => {
           installmentStatus: s.status,
           loanStatus: loan.status,
           branchName: resolveClientBranch(loan.client),
+          loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
         });
       });
 
@@ -228,6 +243,7 @@ const LoansDueReport = () => {
     Outstanding: i.outstanding,
     Status: i.installmentStatus,
     Branch: i.branchName,
+    "Loan Officer": i.loanOfficer,
   }));
 
   const filters = (
@@ -291,13 +307,14 @@ const LoansDueReport = () => {
                 <TableHead>Paid</TableHead>
                 <TableHead>Outstanding</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Loan Officer</TableHead>
                 <TableHead>Branch</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     <div className="flex justify-center items-center">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                     </div>
@@ -305,7 +322,7 @@ const LoansDueReport = () => {
                 </TableRow>
               ) : filteredInstallments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No installments due in the selected date range
                   </TableCell>
                 </TableRow>
@@ -325,6 +342,7 @@ const LoansDueReport = () => {
                       {formatCurrency(inst.outstanding)}
                     </TableCell>
                     <TableCell>{getInstallmentStatusBadge(inst.installmentStatus)}</TableCell>
+                    <TableCell>{inst.loanOfficer}</TableCell>
                     <TableCell>{inst.branchName}</TableCell>
                   </TableRow>
                 ))

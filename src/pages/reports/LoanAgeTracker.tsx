@@ -21,14 +21,15 @@ interface LoanWithAge {
   loan_number: string | null;
   client: string;
   phone: string;
+  loanOfficer: string;
   amount: number;
   balance: number;
   status: string;
-  date: string; // disbursement date
+  date: string;
   frequency: string | null;
   term_months: number | null;
   interest_rate: number | null;
-  dayAge: number; // days since disbursement
+  dayAge: number;
   daysRemaining: number;
   totalDays: number;
   progressPercent: number;
@@ -57,7 +58,7 @@ export default function LoanAgeTracker() {
       // Fetch 30-day loans (term_months <= 1) that are active or in arrears
       const { data: loansData, error: loansError } = await supabase
         .from("loans")
-        .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate")
+        .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate, loan_officer_id")
         .eq("organization_id", organizationId)
         .lte("term_months", 1)
         .in("status", ["active", "in arrears", "pending"]);
@@ -80,6 +81,19 @@ export default function LoanAgeTracker() {
         const fullName = `${c.first_name} ${c.last_name}`;
         clientPhoneMap.set(fullName.toLowerCase(), c.phone);
       });
+
+      // Fetch loan officer profiles
+      const officerIds = [...new Set(loansData.map(l => l.loan_officer_id).filter(Boolean))] as string[];
+      const officerMap = new Map<string, string>();
+      if (officerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', officerIds);
+        (profiles || []).forEach(p => {
+          officerMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+        });
+      }
 
       // Fetch schedules for these loans in batches
       const loanIds = loansData.map(l => l.id);
@@ -121,6 +135,7 @@ export default function LoanAgeTracker() {
           loan_number: loan.loan_number,
           client: loan.client,
           phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
+          loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
           amount: loan.amount,
           balance: loan.balance,
           status: loan.status,
@@ -208,6 +223,7 @@ export default function LoanAgeTracker() {
             "Loan Number": l.loan_number || "-",
             "Client": l.client,
             "Phone": l.phone,
+            "Loan Officer": l.loanOfficer,
             "Amount": l.amount,
             "Balance": l.balance,
             "Status": l.status,
@@ -315,6 +331,7 @@ export default function LoanAgeTracker() {
                         <TableHead>Loan #</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Phone</TableHead>
+                        <TableHead>Loan Officer</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                         <TableHead className="text-right">Balance</TableHead>
                         <TableHead className="text-center">Day</TableHead>
@@ -336,6 +353,7 @@ export default function LoanAgeTracker() {
                           <TableCell className="font-medium">{loan.loan_number || "-"}</TableCell>
                           <TableCell>{loan.client}</TableCell>
                           <TableCell className="text-muted-foreground">{loan.phone}</TableCell>
+                          <TableCell>{loan.loanOfficer}</TableCell>
                           <TableCell className="text-right">{formatCurrency(loan.amount)}</TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(loan.balance)}</TableCell>
                           <TableCell className="text-center">

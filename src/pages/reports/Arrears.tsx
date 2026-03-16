@@ -31,6 +31,7 @@ interface ArrearsData {
   email?: string;
   riskCategory: "low" | "medium" | "high" | "critical";
   photoUrl?: string;
+  loanOfficer: string;
 }
 
 const branches = [
@@ -59,7 +60,8 @@ const columns = [
   { key: "amountOverdue", header: "Amount Overdue" },
   { key: "lastPaymentDate", header: "Last Payment" },
   { key: "contactInfo", header: "Contact" },
-  { key: "riskCategory", header: "Risk Category" }
+  { key: "riskCategory", header: "Risk Category" },
+  { key: "loanOfficer", header: "Loan Officer" }
 ];
 
 const ArrearsReport = () => {
@@ -89,7 +91,8 @@ const ArrearsReport = () => {
               id,
               client,
               loan_number,
-              amount
+              amount,
+              loan_officer_id
             )
           `)
           .lt('due_date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })())
@@ -103,6 +106,23 @@ const ArrearsReport = () => {
           .select('first_name, last_name, phone, email');
 
         if (clientsError) throw clientsError;
+
+        // Fetch loan officer profiles
+        const officerIds = [...new Set(
+          (overdueScheduleData || [])
+            .map(item => (item.loans as any)?.loan_officer_id)
+            .filter(Boolean)
+        )] as string[];
+        const profileMap = new Map<string, string>();
+        if (officerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', officerIds);
+          (profiles || []).forEach(p => {
+            profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+          });
+        }
 
         // Group by loan and calculate arrears data
         const loanArrearsMap = new Map();
@@ -139,14 +159,15 @@ const ArrearsReport = () => {
                 clientName: loan.client,
                 loanId: loan.loan_number || loanId,
                 principalAmount: loan.amount,
-                outstandingBalance: loan.amount, // This would need to be calculated properly
+                outstandingBalance: loan.amount,
                 daysOverdue,
                 amountOverdue: outstandingAmount,
-                lastPaymentDate: "N/A", // This would need to be fetched from transactions
+                lastPaymentDate: "N/A",
                 contactInfo: client ? `${client.phone || 'N/A'} | ${client.email || 'N/A'}` : 'N/A',
                 phone: client?.phone,
                 email: client?.email,
-                riskCategory
+                riskCategory,
+                loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
               });
             }
           }
@@ -235,7 +256,8 @@ const ArrearsReport = () => {
             amountOverdue: item.amountOverdue,
             lastPaymentDate: item.lastPaymentDate,
             contactInfo: item.contactInfo,
-            riskCategory: item.riskCategory
+            riskCategory: item.riskCategory,
+            loanOfficer: item.loanOfficer
           }))} 
           filename={`arrears-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
@@ -377,6 +399,7 @@ const ArrearsReport = () => {
                       <TableHead>Outstanding</TableHead>
                       <TableHead>Days Overdue</TableHead>
                       <TableHead>Amount Overdue</TableHead>
+                      <TableHead>Loan Officer</TableHead>
                       <TableHead>Risk Level</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -412,6 +435,7 @@ const ArrearsReport = () => {
                         <TableCell className="font-medium text-destructive">
                           KES {item.amountOverdue.toLocaleString()}
                         </TableCell>
+                        <TableCell>{item.loanOfficer}</TableCell>
                         <TableCell>
                           <Badge variant={getRiskBadgeVariant(item.riskCategory)}>
                             {item.riskCategory.charAt(0).toUpperCase() + item.riskCategory.slice(1)}

@@ -25,6 +25,7 @@ interface DisbursalData {
   disbursed_date: string;
   term_months: number;
   interest_rate: number;
+  loan_officer: string;
 }
 
 const branches = [
@@ -42,7 +43,8 @@ const columns = [
   { key: "amount", header: "Amount (KES)" },
   { key: "disbursed_date", header: "Disbursed Date" },
   { key: "term_months", header: "Loan Term (Months)" },
-  { key: "interest_rate", header: "Interest Rate (%)" }
+  { key: "interest_rate", header: "Interest Rate (%)" },
+  { key: "loan_officer", header: "Loan Officer" }
 ];
 
 const DisbursalReport = () => {
@@ -61,7 +63,7 @@ const DisbursalReport = () => {
         // Fetch loans with status 'approved' or 'disbursed' that have been disbursed
         let query = supabase
           .from('loans')
-          .select('id, client, loan_number, amount, date, term_months, interest_rate')
+          .select('id, client, loan_number, amount, date, term_months, interest_rate, loan_officer_id')
           .in('status', ['approved', 'disbursed', 'active', 'closed', 'in arrears'])
           .order('date', { ascending: false });
 
@@ -83,6 +85,19 @@ const DisbursalReport = () => {
         const { data, error } = await query;
         
         if (error) throw error;
+
+        // Fetch loan officer profiles
+        const officerIds = [...new Set((data || []).map(l => l.loan_officer_id).filter(Boolean))] as string[];
+        const profileMap = new Map<string, string>();
+        if (officerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', officerIds);
+          (profiles || []).forEach(p => {
+            profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+          });
+        }
         
         const transformedData: DisbursalData[] = (data || []).map(loan => ({
           id: loan.id,
@@ -91,7 +106,8 @@ const DisbursalReport = () => {
           amount: loan.amount,
           disbursed_date: loan.date,
           term_months: loan.term_months || 12,
-          interest_rate: loan.interest_rate || 15
+          interest_rate: loan.interest_rate || 15,
+          loan_officer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
         }));
 
         setDisbursalData(transformedData);
@@ -177,7 +193,8 @@ const DisbursalReport = () => {
             amount: loan.amount.toLocaleString(),
             disbursed_date: new Date(loan.disbursed_date).toLocaleDateString(),
             term_months: loan.term_months,
-            interest_rate: loan.interest_rate
+            interest_rate: loan.interest_rate,
+            loan_officer: loan.loan_officer
           }))} 
           filename={`disbursal-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
@@ -210,12 +227,13 @@ const DisbursalReport = () => {
                   <TableHead>Disbursed Date</TableHead>
                   <TableHead>Loan Term</TableHead>
                   <TableHead>Interest Rate</TableHead>
+                  <TableHead>Loan Officer</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredDisbursals.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                       No disbursals found for the selected criteria
                     </TableCell>
                   </TableRow>
@@ -228,6 +246,7 @@ const DisbursalReport = () => {
                       <TableCell>{new Date(loan.disbursed_date).toLocaleDateString()}</TableCell>
                       <TableCell>{loan.term_months} months</TableCell>
                       <TableCell>{loan.interest_rate}%</TableCell>
+                      <TableCell>{loan.loan_officer}</TableCell>
                     </TableRow>
                   ))
                 )}
