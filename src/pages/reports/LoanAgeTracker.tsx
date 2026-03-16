@@ -58,7 +58,7 @@ export default function LoanAgeTracker() {
       // Fetch 30-day loans (term_months <= 1) that are active or in arrears
       const { data: loansData, error: loansError } = await supabase
         .from("loans")
-        .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate")
+        .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate, loan_officer_id")
         .eq("organization_id", organizationId)
         .lte("term_months", 1)
         .in("status", ["active", "in arrears", "pending"]);

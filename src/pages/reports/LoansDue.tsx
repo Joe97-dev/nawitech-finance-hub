@@ -342,6 +342,7 @@ const LoansDueReport = () => {
                       {formatCurrency(inst.outstanding)}
                     </TableCell>
                     <TableCell>{getInstallmentStatusBadge(inst.installmentStatus)}</TableCell>
+                    <TableCell>{inst.loanOfficer}</TableCell>
                     <TableCell>{inst.branchName}</TableCell>
                   </TableRow>
                 ))
