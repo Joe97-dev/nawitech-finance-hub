@@ -192,47 +192,6 @@ export default function MpesaPayments() {
           );
         })()}
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Register URLs */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Link2 className="h-5 w-5" /> Register C2B URLs</CardTitle>
-              <CardDescription>Register validation and confirmation URLs with Safaricom sandbox</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={registerUrls} disabled={registering} className="w-full">
-                {registering ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Registering...</> : "Register URLs"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Simulate Payment */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Play className="h-5 w-5" /> Simulate C2B Payment</CardTitle>
-              <CardDescription>Test a C2B payment using the sandbox simulator</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={simulatePayment} className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="sim_amount">Amount (KES)</Label>
-                  <Input id="sim_amount" type="number" placeholder="1000" value={simForm.amount} onChange={e => setSimForm(p => ({ ...p, amount: e.target.value }))} required />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="sim_phone">Phone Number</Label>
-                  <Input id="sim_phone" placeholder="254708374149" value={simForm.phoneNumber} onChange={e => setSimForm(p => ({ ...p, phoneNumber: e.target.value }))} required />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="sim_ref">Bill Ref (Client National ID)</Label>
-                  <Input id="sim_ref" placeholder="Enter client's national ID" value={simForm.billRefNumber} onChange={e => setSimForm(p => ({ ...p, billRefNumber: e.target.value }))} required />
-                </div>
-                <Button type="submit" disabled={simulating} className="w-full">
-                  {simulating ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Simulating...</> : "Simulate Payment"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Transactions Table */}
         <Card>
