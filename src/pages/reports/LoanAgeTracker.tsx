@@ -20,6 +20,7 @@ interface LoanWithAge {
   id: string;
   loan_number: string | null;
   client: string;
+  phone: string;
   amount: number;
   balance: number;
   status: string;
