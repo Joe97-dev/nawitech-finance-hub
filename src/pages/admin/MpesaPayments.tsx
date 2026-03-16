@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Smartphone, RefreshCw, LinkIcon, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
+import { ExportButton } from "@/components/ui/export-button";
 
 interface MpesaTransaction {
   id: string;
@@ -152,6 +153,27 @@ export default function MpesaPayments() {
                   <SelectItem value="error">Error</SelectItem>
                 </SelectContent>
               </Select>
+              <ExportButton
+                data={(statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter)).map(tx => ({
+                  date: new Date(tx.created_at).toLocaleString(),
+                  trans_id: tx.trans_id,
+                  sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
+                  phone: tx.msisdn,
+                  bill_ref: tx.bill_ref_number || "",
+                  amount: tx.trans_amount,
+                  status: tx.status,
+                }))}
+                filename={`mpesa-transactions-${new Date().toISOString().slice(0, 10)}`}
+                columns={[
+                  { key: "date", header: "Date" },
+                  { key: "trans_id", header: "Transaction ID" },
+                  { key: "sender", header: "Sender" },
+                  { key: "phone", header: "Phone" },
+                  { key: "bill_ref", header: "Bill Ref (ID No.)" },
+                  { key: "amount", header: "Amount (KES)" },
+                  { key: "status", header: "Status" },
+                ]}
+              />
               <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
               </Button>
