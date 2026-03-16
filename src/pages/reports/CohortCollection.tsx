@@ -58,10 +58,47 @@ const CohortCollectionReport = () => {
   const [activeView, setActiveView] = useState("chart");
   const [cohortData, setCohortData] = useState<CohortData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+
+  useEffect(() => {
+    fetchLoanOfficers();
+  }, []);
 
   useEffect(() => {
     fetchCohortData();
-  }, [date]);
+  }, [date, selectedOfficer]);
+
+  const fetchLoanOfficers = async () => {
+    try {
+      const orgId = await getOrganizationId();
+      // Get loan officers from user_roles + profiles
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("organization_id", orgId)
+        .in("role", ["loan_officer", "admin"]);
+
+      if (!roles || roles.length === 0) return;
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", userIds);
+
+      if (profiles) {
+        setLoanOfficers(
+          profiles.map((p) => ({
+            id: p.id,
+            name: [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unknown",
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching loan officers:", error);
+    }
+  };
 
   const fetchCohortData = async () => {
     try {
