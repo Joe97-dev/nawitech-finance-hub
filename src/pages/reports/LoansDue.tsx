@@ -117,7 +117,7 @@ const LoansDueReport = () => {
       // Fetch loans
       const { data: loans, error: loansError } = await supabase
         .from("loans")
-        .select("id, loan_number, client, amount, status")
+        .select("id, loan_number, client, amount, status, loan_officer_id")
         .in("id", loanIds)
         .not("status", "eq", "rejected");
       if (loansError) throw loansError;
