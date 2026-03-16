@@ -91,7 +91,8 @@ const ArrearsReport = () => {
               id,
               client,
               loan_number,
-              amount
+              amount,
+              loan_officer_id
             )
           `)
           .lt('due_date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })())
