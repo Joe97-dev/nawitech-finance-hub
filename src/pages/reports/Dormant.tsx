@@ -63,7 +63,7 @@ const DormantClientsReport = () => {
 
       if (clientsError) throw clientsError;
 
-      // Fetch all loans per client name (excluding fee accounts)
+      // Fetch all loans per client name/ID (excluding fee accounts)
       const { data: loans, error: loansError } = await supabase
         .from("loans")
         .select("id, client, status")
