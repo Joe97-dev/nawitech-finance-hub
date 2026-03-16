@@ -27,3 +27,7 @@ verify_jwt = true
 [functions.mpesa-simulate-c2b]
 verify_jwt = true
 
+[functions.apply-mpesa-payment]
+verify_jwt = false
+
+
