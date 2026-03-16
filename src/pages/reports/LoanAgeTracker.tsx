@@ -82,6 +82,19 @@ export default function LoanAgeTracker() {
         clientPhoneMap.set(fullName.toLowerCase(), c.phone);
       });
 
+      // Fetch loan officer profiles
+      const officerIds = [...new Set(loansData.map(l => l.loan_officer_id).filter(Boolean))] as string[];
+      const officerMap = new Map<string, string>();
+      if (officerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', officerIds);
+        (profiles || []).forEach(p => {
+          officerMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+        });
+      }
+
       // Fetch schedules for these loans in batches
       const loanIds = loansData.map(l => l.id);
       const allSchedules: any[] = [];
@@ -122,6 +135,7 @@ export default function LoanAgeTracker() {
           loan_number: loan.loan_number,
           client: loan.client,
           phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
+          loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
           amount: loan.amount,
           balance: loan.balance,
           status: loan.status,
