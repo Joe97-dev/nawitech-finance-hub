@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
           .from("loan_transactions")
           .insert({
             loan_id: matchedLoanId,
-            transaction_type: "payment",
+            transaction_type: "repayment",
             amount: amount,
             payment_method: "mobile_money",
             notes: `M-Pesa C2B Payment - ${TransID} from ${MSISDN}`,
