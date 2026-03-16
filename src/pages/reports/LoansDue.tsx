@@ -243,6 +243,7 @@ const LoansDueReport = () => {
     Outstanding: i.outstanding,
     Status: i.installmentStatus,
     Branch: i.branchName,
+    "Loan Officer": i.loanOfficer,
   }));
 
   const filters = (
