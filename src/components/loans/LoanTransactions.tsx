@@ -60,6 +60,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     receipt_number: "",
     payment_method: "",
     notes: "",
+    transaction_date: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
