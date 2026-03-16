@@ -25,20 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { useRole } from "@/context/RoleContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { toast } from "sonner";
 import { Users, ShieldCheck, BookText } from "lucide-react";
 import { LoanProductsManager } from "@/components/admin/LoanProductsManager";
@@ -60,32 +52,32 @@ const Settings = () => {
     if (mins <= 480) return "8h";
     return "24h";
   });
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
-  const [loading, setLoading] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user: authUser, isAuthenticated } = useAuth();
   const { isAdmin, hasPermission } = useRole();
 
   const fetchUsers = async () => {
     try {
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, username, created_at');
+      const organizationId = await getOrganizationId();
+
+      const [{ data: usersData, error: usersError }, { data: rolesData, error: rolesError }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, username, first_name, last_name, created_at')
+          .eq('organization_id', organizationId),
+        supabase
+          .from('user_roles')
+          .select('user_id, role'),
+      ]);
       
       if (usersError) throw usersError;
-      
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-        
       if (rolesError) throw rolesError;
       
-      const combinedData = usersData.map(u => {
-        const roleInfo = rolesData.find(r => r.user_id === u.id);
+      const combinedData = (usersData || []).map(u => {
+        const roleInfo = rolesData?.find(r => r.user_id === u.id);
+        const displayName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.username || 'Unknown';
         return {
           id: u.id,
-          email: u.username || 'Unknown',
+          email: displayName,
           created_at: u.created_at,
           role: roleInfo?.role || "data_entry"
         };
@@ -103,67 +95,41 @@ const Settings = () => {
     }
   }, [isAuthenticated]);
 
-  const inviteUser = async () => {
-    // SECURITY FIX: Only admins can invite users
-    if (!isAdmin) {
-      toast.error("Access denied: Only administrators can invite users");
-      return;
-    }
-
-    if (!newUserEmail) {
-      toast.error("Please enter an email address");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      // In a real implementation, you would use Supabase's invite user functionality
-      // Since that's not available in the free tier, we'll simulate it
-      toast.success(`Invitation sent to ${newUserEmail} as ${newUserRole}`);
-      setDialogOpen(false);
-      setNewUserEmail("");
-      setNewUserRole("data_entry");
-      
-      // Log the invitation for audit purposes
-      console.log(`User invitation sent: ${newUserEmail} with role ${newUserRole} by admin ${user?.id}`);
-    } catch (error: any) {
-      toast.error("Failed to invite user: " + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const updateUserRole = async (userId: string, newRole: "admin" | "loan_officer" | "data_entry") => {
-    // CRITICAL SECURITY FIX: Only admins can change user roles
     if (!isAdmin) {
       toast.error("Access denied: Only administrators can change user roles");
       return;
     }
 
-    // Prevent users from modifying their own roles (security best practice)
-    if (userId === user?.id) {
+    if (userId === authUser?.id) {
       toast.error("Security restriction: You cannot modify your own role");
       return;
     }
 
     try {
-      const { error } = await supabase
+      // Use update targeting the specific user's role row
+      const { data: existing } = await supabase
         .from('user_roles')
-        .upsert({ 
-          user_id: userId,
-          role: newRole,
-          updated_at: new Date().toISOString()
-        });
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role: newRole, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        if (error) throw error;
+      } else {
+        const organizationId = await getOrganizationId();
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: newRole, organization_id: organizationId });
+        if (error) throw error;
+      }
       
-      if (error) throw error;
-      
-      // Update local state
       setUsers(users.map(u => u.id === userId ? {...u, role: newRole} : u));
-      
       toast.success("User role updated successfully");
-      
-      // Log the role change for audit purposes
-      console.log(`Role changed: User ${userId} role changed to ${newRole} by admin ${user?.id}`);
     } catch (error: any) {
       toast.error("Failed to update role: " + error.message);
     }
@@ -195,62 +161,11 @@ const Settings = () => {
             
             <TabsContent value="users" className="space-y-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Users & Roles</CardTitle>
-                    <CardDescription>
-                      Manage user permissions and access levels
-                    </CardDescription>
-                  </div>
-                  <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button disabled={!isAdmin}>Invite User</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Invite New User</DialogTitle>
-                        <DialogDescription>
-                          Send an invitation email to add a new user to the system
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="email">Email</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="user@example.com"
-                            value={newUserEmail}
-                            onChange={(e) => setNewUserEmail(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="role">Role</Label>
-                          <Select
-                            value={newUserRole}
-                            onValueChange={(value: any) => setNewUserRole(value)}
-                          >
-                            <SelectTrigger id="role">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
-                              <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                              <SelectItem value="data_entry">Data Entry</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={inviteUser} disabled={loading}>
-                          {loading ? "Sending..." : "Send Invitation"}
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
+                <CardHeader>
+                  <CardTitle>Users & Roles</CardTitle>
+                  <CardDescription>
+                    Manage user permissions and access levels. New users register via the sign-up page and are approved in User Approvals.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -259,39 +174,43 @@ const Settings = () => {
                         <TableHead>User</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Joined</TableHead>
-                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={user.role}
-                              onValueChange={(value: any) => updateUserRole(user.id, value)}
-                              disabled={!isAdmin || user.id === user?.id}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                                <SelectItem value="data_entry">Data Entry</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="sm">
-                              Reset Password
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {users.map((staffUser) => {
+                        const isSelf = staffUser.id === authUser?.id;
+                        return (
+                          <TableRow key={staffUser.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {staffUser.email}
+                                {isSelf && (
+                                  <span className="text-xs text-muted-foreground">(you)</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={staffUser.role}
+                                onValueChange={(value: any) => updateUserRole(staffUser.id, value)}
+                                disabled={!isAdmin || isSelf}
+                              >
+                                <SelectTrigger className="w-36">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                                  <SelectItem value="data_entry">Data Entry</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              {staffUser.created_at ? new Date(staffUser.created_at).toLocaleDateString() : '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -301,7 +220,6 @@ const Settings = () => {
             <TabsContent value="loanProducts" className="space-y-4">
               <LoanProductsManager />
             </TabsContent>
-            
 
             <TabsContent value="security" className="space-y-4">
               <Card>
@@ -312,20 +230,6 @@ const Settings = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="password-policy">Password Policy</Label>
-                    <Select defaultValue="strong">
-                      <SelectTrigger id="password-policy">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="basic">Basic (min. 8 characters)</SelectItem>
-                        <SelectItem value="strong">Strong (min. 10 chars with numbers and symbols)</SelectItem>
-                        <SelectItem value="very-strong">Very Strong (min. 12 chars with mixed case, numbers and symbols)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
                   <div className="space-y-2">
                     <Label htmlFor="session-timeout">Session Timeout (auto-logout after inactivity)</Label>
                     <Select 
