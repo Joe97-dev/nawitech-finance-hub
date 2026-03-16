@@ -322,7 +322,7 @@ const LoansDueReport = () => {
                 </TableRow>
               ) : filteredInstallments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No installments due in the selected date range
                   </TableCell>
                 </TableRow>
