@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
 import { ClientAccount } from "@/components/clients/ClientAccount";
+import { clientHasOpenLoans } from "@/lib/client-status";
 
 interface Loan {
   id: string;
