@@ -120,14 +120,17 @@ const DormantClientsReport = () => {
         return [...byId, ...byName];
       };
 
-      // Find clients with NO active loans (all loans must be closed/completed)
+      // Split clients into those with active loans vs no active loans
+      const clientsWithActiveLoans: typeof clients = [];
       const clientsWithNoActiveLoans: typeof clients = [];
       (clients || []).forEach((client) => {
         const clientLoans = getClientLoans(client.id, client.first_name, client.last_name);
         const hasActiveLoan = clientLoans.some(
           (l) => l.status !== "closed" && l.status !== "rejected" && l.status !== "written_off"
         );
-        if (!hasActiveLoan) {
+        if (hasActiveLoan) {
+          clientsWithActiveLoans.push(client);
+        } else {
           clientsWithNoActiveLoans.push(client);
         }
       });
@@ -169,6 +172,13 @@ const DormantClientsReport = () => {
       today.setHours(0, 0, 0, 0);
 
       const results: InactiveClientData[] = [];
+      const activeIdsToUpdate = new Set(
+        clientsWithActiveLoans
+          .filter((client) => client.status !== "active")
+          .map((client) => client.id)
+      );
+      const inactiveIdsToUpdate: string[] = [];
+      const dormantIdsToUpdate: string[] = [];
 
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`;
@@ -179,20 +189,58 @@ const DormantClientsReport = () => {
         refDate.setHours(0, 0, 0, 0);
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-        if (daysWithoutLoan >= 7) {
-          const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
-          results.push({
-            id: client.id,
-            client_name: fullName,
-            phone_number: client.phone || "N/A",
-            last_loan_date: lastDueDate || "No loans",
-            days_without_loan: daysWithoutLoan,
-            current_status: client.status || "active",
-            category,
-            loan_officer: client.loan_officer_id ? profileMap.get(client.loan_officer_id) || "—" : "—",
-          });
+        if (daysWithoutLoan < 7) {
+          if (client.status !== "active") {
+            activeIdsToUpdate.add(client.id);
+          }
+          return;
         }
+
+        const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
+
+        if (category === "dormant" && client.status !== "dormant") {
+          dormantIdsToUpdate.push(client.id);
+        }
+        if (category === "inactive" && client.status !== "inactive") {
+          inactiveIdsToUpdate.push(client.id);
+        }
+
+        results.push({
+          id: client.id,
+          client_name: fullName,
+          phone_number: client.phone || "N/A",
+          last_loan_date: lastDueDate || "No loans",
+          days_without_loan: daysWithoutLoan,
+          current_status: category,
+          category,
+          loan_officer: client.loan_officer_id ? profileMap.get(client.loan_officer_id) || "—" : "—",
+        });
       });
+
+      const activeIds = Array.from(activeIdsToUpdate);
+      if (activeIds.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "active" })
+          .in("id", activeIds)
+          .eq("organization_id", orgId);
+      }
+
+      if (inactiveIdsToUpdate.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "inactive" })
+          .in("id", inactiveIdsToUpdate)
+          .eq("organization_id", orgId);
+      }
+
+      if (dormantIdsToUpdate.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "dormant" })
+          .in("id", dormantIdsToUpdate)
+          .eq("organization_id", orgId);
+      }
 
       results.sort((a, b) => b.days_without_loan - a.days_without_loan);
       setClientsData(results);
@@ -212,88 +260,6 @@ const DormantClientsReport = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-  // Update client statuses in DB based on calculated categories
-  const syncStatuses = async () => {
-    const orgId = await getOrganizationId();
-
-    const dormantClients = clientsData.filter(
-      (c) => c.category === "dormant" && c.current_status !== "dormant"
-    );
-    const inactiveClients = clientsData.filter(
-      (c) => c.category === "inactive" && c.current_status !== "inactive"
-    );
-
-    // Restore clients with open loans back to active
-    const { data: openLoanClients } = await supabase
-      .from("clients")
-      .select("id, first_name, last_name")
-      .eq("organization_id", orgId)
-      .in("status", ["inactive", "dormant"]);
-
-    const { data: openLoans } = await supabase
-      .from("loans")
-      .select("client, status")
-      .eq("organization_id", orgId)
-      .neq("type", "client_fee_account")
-      .not("status", "in", '("closed","rejected","written_off")');
-
-    const activeClientIds = new Set<string>();
-    (openLoanClients || []).forEach((client) => {
-      const fullName = `${client.first_name} ${client.last_name}`.toLowerCase().trim();
-      const hasOpenLoan = (openLoans || []).some(
-        (loan) => loan.client === client.id || loan.client.toLowerCase().trim() === fullName
-      );
-      if (hasOpenLoan) activeClientIds.add(client.id);
-    });
-
-    if (activeClientIds.size > 0) {
-      await supabase
-        .from("clients")
-        .update({ status: "active" })
-        .in("id", Array.from(activeClientIds))
-        .eq("organization_id", orgId);
-    }
-
-    if (dormantClients.length > 0) {
-      const dormantIds = dormantClients.map((c) => c.id).filter((id) => !activeClientIds.has(id));
-      if (dormantIds.length > 0) {
-        await supabase
-          .from("clients")
-          .update({ status: "dormant" })
-          .in("id", dormantIds)
-          .eq("organization_id", orgId);
-      }
-    }
-
-    if (inactiveClients.length > 0) {
-      const inactiveIds = inactiveClients.map((c) => c.id).filter((id) => !activeClientIds.has(id));
-      if (inactiveIds.length > 0) {
-        await supabase
-          .from("clients")
-          .update({ status: "inactive" })
-          .in("id", inactiveIds)
-          .eq("organization_id", orgId);
-      }
-    }
-
-    if (activeClientIds.size > 0 || dormantClients.length > 0 || inactiveClients.length > 0) {
-      fetchData();
-    }
-  };
-
-  useEffect(() => {
-    const needsSync = clientsData.some(
-      (c) =>
-        (c.category === "dormant" && c.current_status !== "dormant") ||
-        (c.category === "inactive" && c.current_status !== "inactive")
-    );
-
-    if (clientsData.length > 0 && needsSync) {
-      syncStatuses();
-    }
-  }, [clientsData]);
-  
 
   const handleActivateInactive = async (clientId: string, clientName: string) => {
     setActivatingId(clientId);
