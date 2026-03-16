@@ -232,16 +232,14 @@ export default function MpesaPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(() => {
-                    const filtered = statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter);
-                    return filtered.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        {loading ? "Loading..." : statusFilter === "all" ? "No M-Pesa transactions yet" : `No ${statusFilter} transactions`}
+                        {loading ? "Loading..." : "No transactions match your filters"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map(tx => (
+                    filteredTransactions.map(tx => (
                       <TableRow key={tx.id}>
                         <TableCell className="whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-mono text-sm">{tx.trans_id}</TableCell>
