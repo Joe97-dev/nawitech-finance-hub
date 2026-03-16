@@ -42,19 +42,20 @@ Deno.serve(async (req) => {
     if (BillRefNumber) {
       const { data: client } = await supabase
         .from("clients")
-        .select("id, organization_id")
+        .select("id, first_name, last_name, organization_id")
         .eq("id_number", BillRefNumber.trim())
         .maybeSingle();
 
       if (client) {
         matchedClientId = client.id;
         organizationId = client.organization_id;
+        const clientFullName = `${client.first_name} ${client.last_name}`;
 
         // Find the client's active or in-arrears loan (oldest first)
         const { data: loan } = await supabase
           .from("loans")
           .select("id")
-          .eq("client", matchedClientId)
+          .eq("client", clientFullName)
           .in("status", ["active", "in arrears"])
           .order("date", { ascending: true })
           .limit(1)
