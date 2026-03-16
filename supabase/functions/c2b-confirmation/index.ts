@@ -181,6 +181,42 @@ Deno.serve(async (req) => {
           }
         }
 
+        // If there's excess amount, deposit to Draw Down Account
+        if (remainingAmount > 0 && matchedClientId) {
+          // Find or create client account
+          let { data: clientAccount } = await supabase
+            .from("client_accounts")
+            .select("id, balance")
+            .eq("client_id", matchedClientId)
+            .maybeSingle();
+
+          if (!clientAccount) {
+            const { data: newAccount, error: createErr } = await supabase
+              .from("client_accounts")
+              .insert({ client_id: matchedClientId, balance: 0, organization_id: organizationId })
+              .select("id, balance")
+              .single();
+            if (createErr) throw createErr;
+            clientAccount = newAccount;
+          }
+
+          const previousBalance = clientAccount.balance || 0;
+          const newBalance = previousBalance + remainingAmount;
+
+          await supabase.from("client_account_transactions").insert({
+            client_account_id: clientAccount.id,
+            transaction_type: "deposit",
+            amount: remainingAmount,
+            previous_balance: previousBalance,
+            new_balance: newBalance,
+            organization_id: organizationId,
+            related_loan_id: matchedLoanId,
+            notes: `Excess M-Pesa payment - ${TransID} (${remainingAmount} surplus)`,
+          });
+
+          console.log(`Excess ${remainingAmount} deposited to draw down account for client ${matchedClientId}`);
+        }
+
         // Recalculate and update loan balance
         const { data: balanceResult } = await supabase
           .rpc("calculate_outstanding_balance", { p_loan_id: matchedLoanId });
