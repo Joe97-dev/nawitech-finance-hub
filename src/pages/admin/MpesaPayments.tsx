@@ -1,19 +1,15 @@
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { Smartphone, RefreshCw, LinkIcon, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useMemo } from "react";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
 interface MpesaTransaction {
@@ -52,10 +48,6 @@ export default function MpesaPayments() {
   const { toast } = useToast();
   const [transactions, setTransactions] = useState<MpesaTransaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [registering, setRegistering] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const [useSandbox, setUseSandbox] = useState(false);
-  const [simForm, setSimForm] = useState({ amount: "", phoneNumber: "254708374149", billRefNumber: "" });
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
@@ -73,49 +65,6 @@ export default function MpesaPayments() {
     setLoading(false);
   };
 
-  const registerUrls = async () => {
-    setRegistering(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("mpesa-register-urls", {
-        body: { useSandbox },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast({ title: "URLs Registered", description: `Validation: ${data.registeredUrls?.validation}\nConfirmation: ${data.registeredUrls?.confirmation}` });
-      } else {
-        toast({ variant: "destructive", title: "Registration Failed", description: JSON.stringify(data?.data || data?.error) });
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setRegistering(false);
-    }
-  };
-
-  const simulatePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSimulating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("mpesa-simulate-c2b", {
-        body: {
-          amount: parseInt(simForm.amount),
-          phoneNumber: simForm.phoneNumber,
-          billRefNumber: simForm.billRefNumber,
-        },
-      });
-      if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Simulation Sent", description: "C2B payment simulation dispatched. Check transactions below." });
-        setTimeout(fetchTransactions, 3000);
-      } else {
-        toast({ variant: "destructive", title: "Simulation Failed", description: JSON.stringify(data?.data || data?.error) });
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
-    } finally {
-      setSimulating(false);
-    }
-  };
 
   return (
     <DashboardLayout>
@@ -126,16 +75,8 @@ export default function MpesaPayments() {
               <Smartphone className="h-6 w-6" /> M-Pesa Payments
             </h1>
             <p className="text-muted-foreground">
-              Manage C2B M-Pesa payment integration ({useSandbox ? "Sandbox" : "Production"})
+              Manage C2B M-Pesa payment collections
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <FlaskConical className={`h-4 w-4 ${useSandbox ? "text-amber-500" : "text-muted-foreground"}`} />
-            <Switch checked={!useSandbox} onCheckedChange={(checked) => setUseSandbox(!checked)} />
-            <Globe className={`h-4 w-4 ${!useSandbox ? "text-green-600" : "text-muted-foreground"}`} />
-            <Badge variant={useSandbox ? "outline" : "default"} className={!useSandbox ? "bg-green-600" : ""}>
-              {useSandbox ? "Sandbox" : "Live"}
-            </Badge>
           </div>
         </div>
 
@@ -192,47 +133,6 @@ export default function MpesaPayments() {
           );
         })()}
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Register URLs */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Link2 className="h-5 w-5" /> Register C2B URLs</CardTitle>
-              <CardDescription>Register validation and confirmation URLs with Safaricom sandbox</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={registerUrls} disabled={registering} className="w-full">
-                {registering ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Registering...</> : "Register URLs"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Simulate Payment */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Play className="h-5 w-5" /> Simulate C2B Payment</CardTitle>
-              <CardDescription>Test a C2B payment using the sandbox simulator</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={simulatePayment} className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="sim_amount">Amount (KES)</Label>
-                  <Input id="sim_amount" type="number" placeholder="1000" value={simForm.amount} onChange={e => setSimForm(p => ({ ...p, amount: e.target.value }))} required />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="sim_phone">Phone Number</Label>
-                  <Input id="sim_phone" placeholder="254708374149" value={simForm.phoneNumber} onChange={e => setSimForm(p => ({ ...p, phoneNumber: e.target.value }))} required />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="sim_ref">Bill Ref (Client National ID)</Label>
-                  <Input id="sim_ref" placeholder="Enter client's national ID" value={simForm.billRefNumber} onChange={e => setSimForm(p => ({ ...p, billRefNumber: e.target.value }))} required />
-                </div>
-                <Button type="submit" disabled={simulating} className="w-full">
-                  {simulating ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Simulating...</> : "Simulate Payment"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Transactions Table */}
         <Card>
