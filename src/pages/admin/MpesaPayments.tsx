@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { Smartphone, RefreshCw, LinkIcon, Globe, FlaskConical, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useMemo } from "react";
