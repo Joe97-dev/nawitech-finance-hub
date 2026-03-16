@@ -68,6 +68,7 @@ const CashFlowReport = () => {
           .from('loan_transactions')
           .select('amount, transaction_date')
           .eq('transaction_type', 'repayment')
+          .eq('is_reverted', false)
           .gte('transaction_date', fromStr)
           .lte('transaction_date', toEndOfDay);
 
