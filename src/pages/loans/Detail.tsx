@@ -310,6 +310,13 @@ const LoanDetailPage = () => {
                       <p className="font-medium mt-1">{loan.business_address}</p>
                     </div>
                   )}
+
+                  {loan.status === 'abandoned' && (loan as any).abandon_reason && (
+                    <div className="pt-2 border-t">
+                      <span className="text-sm text-destructive font-medium">Abandon Reason</span>
+                      <p className="font-medium mt-1 text-muted-foreground">{(loan as any).abandon_reason}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>

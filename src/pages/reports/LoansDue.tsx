@@ -119,7 +119,8 @@ const LoansDueReport = () => {
         .from("loans")
         .select("id, loan_number, client, amount, status, loan_officer_id")
         .in("id", loanIds)
-        .not("status", "eq", "rejected");
+        .not("status", "eq", "rejected")
+        .neq("status", "abandoned");
       if (loansError) throw loansError;
 
       const loanMap = new Map((loans || []).map((l) => [l.id, l]));
