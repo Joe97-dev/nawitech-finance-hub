@@ -228,6 +228,12 @@ const LoanDetailPage = () => {
               </p>
             </div>
           </div>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Loan
+            </Button>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
