@@ -159,15 +159,17 @@ const LoanPerformanceReport = () => {
 
         // Convert to component format
         const performanceData: LoanPerformanceData[] = Object.entries(performanceByType).map(([type, data], index) => {
-          const defaultRate = data.loanCount > 0 ? (data.defaultedLoans / data.loanCount) * 100 : 0;
-          const onTimeRate = Math.max(0, 100 - defaultRate); // Simplified calculation
+          const defaultRate = data.loanCount > 0 ? (data.arrearsLoans / data.loanCount) * 100 : 0;
+          const onTimeRate = data.totalScheduleEntries > 0
+            ? (data.onTimeEntries / data.totalScheduleEntries) * 100
+            : 100;
           
           return {
             product: type,
             disbursed: data.disbursed,
             outstanding: data.outstanding,
             collected: data.collected,
-            interest: data.interest,
+            interest: Math.round(data.interest * 100) / 100,
             onTime: Math.round(onTimeRate),
             defaultRate: Number(defaultRate.toFixed(2)),
             color: colors[index % colors.length]
