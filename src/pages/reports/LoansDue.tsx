@@ -28,6 +28,7 @@ interface DueInstallment {
   installmentStatus: string;
   loanStatus: string;
   branchName: string;
+  loanOfficer: string;
 }
 
 const formatCurrency = (amount: number) =>
