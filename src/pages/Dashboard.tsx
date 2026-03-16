@@ -68,27 +68,51 @@ const Dashboard = () => {
       const todayLoans = todayLoansResult.data || [];
       const disbursedToday = todayLoans.reduce((sum, loan) => sum + Number(loan.amount), 0);
 
-      // 2. Fetch 6-month loan disbursals and collection schedule data (parallel, paginated)
-      const [allLoans, allSchedules, activeLoansData] = await Promise.all([
-        // Loans for chart (6 months)
-        fetchAllPages('loans', 'amount, date', (q: any) =>
-          q.eq('organization_id', orgId)
-            .neq('type', 'client_fee_account')
-            .in('status', ['active', 'in arrears', 'closed', 'disbursed', 'approved'])
-            .gte('date', sixMonthsAgoStr).lte('date', todayStr)
-        ),
-        // Schedules for collection rate + chart (6 months)
-        fetchAllPages('loan_schedule', 'total_due, due_date, amount_paid', (q: any) =>
-          q.eq('organization_id', orgId)
-            .gte('due_date', sixMonthsAgoStr).lte('due_date', todayStr)
-        ),
-        // All active/in-arrears loans for PAR calculation
-        fetchAllPages('loans', 'id, balance, status', (q: any) =>
-          q.eq('organization_id', orgId)
-            .neq('type', 'client_fee_account')
-            .in('status', ['active', 'in arrears'])
-        ),
-      ]);
+      // 2. Paginated fetches for chart and PAR data
+      const pageSize = 1000;
+
+      // Fetch 6-month loans for chart
+      const allLoans: any[] = [];
+      let lFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('amount, date')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears', 'closed', 'disbursed', 'approved'])
+          .gte('date', sixMonthsAgoStr).lte('date', todayStr)
+          .range(lFrom, lFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) allLoans.push(...data);
+        if (!data || data.length < pageSize) break;
+        lFrom += pageSize;
+      }
+
+      // Fetch 6-month schedules for collection rate + chart
+      const allSchedules: any[] = [];
+      let sFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loan_schedule').select('total_due, due_date, amount_paid')
+          .eq('organization_id', orgId)
+          .gte('due_date', sixMonthsAgoStr).lte('due_date', todayStr)
+          .range(sFrom, sFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) allSchedules.push(...data);
+        if (!data || data.length < pageSize) break;
+        sFrom += pageSize;
+      }
+
+      // Fetch active/in-arrears loans for PAR
+      const activeLoansData: any[] = [];
+      let aFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('id, balance, status')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears'])
+          .range(aFrom, aFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) activeLoansData.push(...data);
+        if (!data || data.length < pageSize) break;
+        aFrom += pageSize;
+      }
 
       // 3. Build monthly chart data using disbursals from loans, collections from schedule
       const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
@@ -96,11 +120,11 @@ const Dashboard = () => {
         const monthStr = format(month, 'yyyy-MM');
 
         const disbursed = allLoans
-          .filter(l => l.date?.startsWith(monthStr))
+          .filter((l: any) => l.date?.startsWith(monthStr))
           .reduce((sum: number, l: any) => sum + Number(l.amount), 0);
 
         const collected = allSchedules
-          .filter(s => s.due_date?.startsWith(monthStr))
+          .filter((s: any) => s.due_date?.startsWith(monthStr))
           .reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
 
         return {
@@ -115,32 +139,20 @@ const Dashboard = () => {
       const totalSchedulePaid = allSchedules.reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
       const collectionRate = totalScheduleDue > 0 ? Math.round((totalSchedulePaid / totalScheduleDue) * 100) : 0;
 
-      // 5. Real PAR calculation from active/in-arrears loans
-      // Fetch overdue schedules for these loans
-      const activeLoanIds = activeLoansData.map((l: any) => l.id);
-      const balanceMap = new Map(activeLoansData.map((l: any) => [l.id, Number(l.balance)]));
+      // 5. Real PAR calculation — fetch overdue (pending) schedules for active loans
+      const activeLoanIds = activeLoansData.map((l: any) => l.id as string);
+      const balanceMap = new Map<string, number>(activeLoansData.map((l: any) => [l.id as string, Number(l.balance)]));
 
-      let allOverdueSchedules: any[] = [];
-      if (activeLoanIds.length > 0) {
-        for (let i = 0; i < activeLoanIds.length; i += 50) {
-          const batch = activeLoanIds.slice(i, i + 50);
-          const { data } = await supabase
-            .from('loan_schedule')
-            .select('loan_id, due_date, total_due, amount_paid')
-            .in('loan_id', batch)
-            .lt('due_date', todayStr)
-            .lt('amount_paid', supabase.rpc as any); // We need unpaid ones
-
-          // Simpler approach: fetch all schedules for active loans that are past due
-          const { data: overdueData } = await supabase
-            .from('loan_schedule')
-            .select('loan_id, due_date')
-            .in('loan_id', batch)
-            .lt('due_date', todayStr)
-            .eq('status', 'pending');
-
-          if (overdueData) allOverdueSchedules.push(...overdueData);
-        }
+      const allOverdueSchedules: { loan_id: string; due_date: string }[] = [];
+      for (let i = 0; i < activeLoanIds.length; i += 50) {
+        const batch = activeLoanIds.slice(i, i + 50);
+        const { data: overdueData } = await supabase
+          .from('loan_schedule')
+          .select('loan_id, due_date')
+          .in('loan_id', batch)
+          .lt('due_date', todayStr)
+          .eq('status', 'pending');
+        if (overdueData) allOverdueSchedules.push(...overdueData);
       }
 
       // Find earliest overdue date per loan
