@@ -575,6 +575,16 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label htmlFor="transaction_date">Payment Date *</Label>
+                <Input
+                  id="transaction_date"
+                  type="date"
+                  value={paymentForm.transaction_date}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, transaction_date: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Input
                   id="notes"
