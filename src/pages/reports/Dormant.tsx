@@ -380,8 +380,8 @@ const DormantClientsReport = () => {
                       <TableRow>
                         <TableHead>Client Name</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Last Loan Date</TableHead>
-                        <TableHead>Days Without Loan</TableHead>
+                        <TableHead>Last Due Date</TableHead>
+                        <TableHead>Days Since</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
