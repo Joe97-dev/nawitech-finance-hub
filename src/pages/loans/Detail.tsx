@@ -401,16 +401,26 @@ const LoanDetailPage = () => {
       </div>
 
       {loanId && (
-        <EditLoanDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          loanId={loanId}
-          onLoanUpdated={() => {
-            setRefreshKey(prev => prev + 1);
-            // Refetch loan data
-            window.location.reload();
-          }}
-        />
+        <>
+          <EditLoanDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            loanId={loanId}
+            onLoanUpdated={() => {
+              setRefreshKey(prev => prev + 1);
+              window.location.reload();
+            }}
+          />
+          <AbandonLoanDialog
+            open={abandonDialogOpen}
+            onOpenChange={setAbandonDialogOpen}
+            loanId={loanId}
+            loanNumber={loan?.loan_number || `#${loanId.substring(0, 8)}`}
+            onLoanAbandoned={() => {
+              window.location.reload();
+            }}
+          />
+        </>
       )}
     </DashboardLayout>
   );
