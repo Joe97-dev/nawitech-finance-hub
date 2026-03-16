@@ -109,14 +109,20 @@ const CohortCollectionReport = () => {
       const endDate = date?.to || new Date(currentYear, 11, 31);
 
       // Fetch loans disbursed in the period
-      const { data: loans, error: loansError } = await supabase
+      let query = supabase
         .from("loans")
-        .select("id, amount, date, status, balance")
+        .select("id, amount, date, status, balance, loan_officer_id")
         .eq("organization_id", orgId)
         .in("status", ["active", "closed", "in arrears", "disbursed", "approved"])
         .neq("type", "client_fee_account")
         .gte("date", formatLocal(startDate))
         .lte("date", formatLocal(endDate));
+
+      if (selectedOfficer !== "all") {
+        query = query.eq("loan_officer_id", selectedOfficer);
+      }
+
+      const { data: loans, error: loansError } = await query;
 
       if (loansError) throw loansError;
 
