@@ -74,7 +74,7 @@ export default function MpesaPayments() {
     setRegistering(true);
     try {
       const { data, error } = await supabase.functions.invoke("mpesa-register-urls", {
-        body: { useSandbox: true },
+        body: { useSandbox },
       });
       if (error) throw error;
       if (data?.success) {
