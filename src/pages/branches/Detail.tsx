@@ -15,6 +15,7 @@ import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton } from "@/components/ui/export-button";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 
@@ -22,9 +23,6 @@ interface BranchData {
   id: string;
   name: string;
   location: string;
-  staff_count: number;
-  active_loans: number;
-  total_portfolio: number;
 }
 
 const BranchDetail = () => {
@@ -48,74 +46,112 @@ const BranchDetail = () => {
 
   useEffect(() => {
     if (branchId) fetchBranchData();
-  }, [branchId]);
+  }, [branchId, date]);
 
   const fetchBranchData = async () => {
     try {
       setLoading(true);
+      const orgId = await getOrganizationId();
 
       // Fetch branch info
       const { data: branchInfo, error: branchError } = await supabase
         .from('branches')
-        .select('*')
+        .select('id, name, location')
         .eq('id', branchId!)
         .single();
 
       if (branchError) throw branchError;
       setBranch(branchInfo);
 
-      // Fetch clients in this branch
-      const { count: cCount } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('branch_id', branchId!);
-      setClientCount(cCount || 0);
+      // Fetch clients in this branch (paginated)
+      const allBranchClientIds: string[] = [];
+      let cFrom = 0;
+      while (true) {
+        const { data } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('branch_id', branchId!)
+          .eq('organization_id', orgId)
+          .range(cFrom, cFrom + 999);
+        if (data) allBranchClientIds.push(...data.map(c => c.id));
+        if (!data || data.length < 1000) break;
+        cFrom += 1000;
+      }
+      setClientCount(allBranchClientIds.length);
 
-      // Fetch active loans for clients in this branch
-      // We need to get clients first, then their loans
-      const { data: branchClients } = await supabase
-        .from('clients')
-        .select('first_name, last_name')
-        .eq('branch_id', branchId!);
+      // Also build name-based lookup for legacy client fields
+      const clientNameSet = new Set<string>();
+      let cnFrom = 0;
+      while (true) {
+        const { data } = await supabase
+          .from('clients')
+          .select('first_name, last_name')
+          .eq('branch_id', branchId!)
+          .eq('organization_id', orgId)
+          .range(cnFrom, cnFrom + 999);
+        if (data) data.forEach(c => clientNameSet.add(`${c.first_name} ${c.last_name}`.toLowerCase()));
+        if (!data || data.length < 1000) break;
+        cnFrom += 1000;
+      }
 
-      const clientNames = (branchClients || []).map(c => `${c.first_name} ${c.last_name}`);
+      const branchClientIdSet = new Set(allBranchClientIds);
 
-      // Fetch loans
-      const { data: activeLoans } = await supabase
-        .from('loans')
-        .select('*')
-        .eq('status', 'active');
+      // Fetch all active/in-arrears loans for this org (paginated), excluding fee accounts
+      const allLoans: { id: string; client: string; amount: number; balance: number; status: string; date: string }[] = [];
+      let lFrom = 0;
+      while (true) {
+        const { data } = await supabase
+          .from('loans')
+          .select('id, client, amount, balance, status, date')
+          .eq('organization_id', orgId)
+          .neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears', 'closed', 'disbursed', 'approved'])
+          .range(lFrom, lFrom + 999);
+        if (data) allLoans.push(...data);
+        if (!data || data.length < 1000) break;
+        lFrom += 1000;
+      }
 
-      // Filter loans by client names in this branch
-      const branchLoans = (activeLoans || []).filter(loan => 
-        clientNames.some(name => loan.client.toLowerCase().includes(name.toLowerCase()))
+      // Filter loans belonging to this branch (UUID or name match)
+      const branchLoans = allLoans.filter(loan =>
+        branchClientIdSet.has(loan.client) || clientNameSet.has(loan.client.toLowerCase())
       );
 
-      setActiveLoansCount(branchLoans.length);
-      setTotalPortfolio(branchLoans.reduce((sum, l) => sum + Number(l.balance), 0));
+      const activeBranchLoans = branchLoans.filter(l => l.status === 'active' || l.status === 'in arrears');
+      setActiveLoansCount(activeBranchLoans.length);
+      setTotalPortfolio(activeBranchLoans.reduce((sum, l) => sum + Number(l.balance), 0));
       setTotalDisbursed(branchLoans.reduce((sum, l) => sum + Number(l.amount), 0));
 
-      // Build monthly chart data
-      const sixMonthsAgo = subMonths(new Date(), 6);
-      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: new Date() });
+      // Date range for charts
+      const startDate = date?.from || subMonths(new Date(), 6);
+      const endDate = date?.to || new Date();
+      const fromStr = format(startDate, 'yyyy-MM-dd');
+      const toStr = format(endDate, 'yyyy-MM-dd');
 
-      const { data: allLoans } = await supabase
-        .from('loans')
-        .select('amount, date');
+      // Fetch schedules for branch loans (batched) for chart + collection + PAR
+      const branchLoanIds = branchLoans.map(l => l.id);
+      const allSchedules: { loan_id: string; total_due: number; amount_paid: number; due_date: string; status: string }[] = [];
+      for (let i = 0; i < branchLoanIds.length; i += 50) {
+        const batch = branchLoanIds.slice(i, i + 50);
+        const { data } = await supabase
+          .from('loan_schedule')
+          .select('loan_id, total_due, amount_paid, due_date, status')
+          .in('loan_id', batch);
+        if (data) allSchedules.push(...data);
+      }
 
-      const { data: allPayments } = await supabase
-        .from('loan_transactions')
-        .select('amount, transaction_date')
-        .eq('transaction_type', 'payment');
-
+      // Build monthly chart data from branch loans and schedules within date range
+      const months = eachMonthOfInterval({ start: startDate, end: endDate });
       const monthlyData = months.map(month => {
         const monthStr = format(month, 'yyyy-MM');
-        const disbursed = (allLoans || [])
+
+        const disbursed = branchLoans
           .filter(l => l.date?.startsWith(monthStr))
           .reduce((sum, l) => sum + Number(l.amount), 0);
-        const collected = (allPayments || [])
-          .filter(p => p.transaction_date?.startsWith(monthStr))
-          .reduce((sum, p) => sum + Number(p.amount), 0);
+
+        const collected = allSchedules
+          .filter(s => s.due_date?.startsWith(monthStr))
+          .reduce((sum, s) => sum + Number(s.amount_paid || 0), 0);
 
         return {
           month: format(month, 'MMM'),
@@ -125,34 +161,61 @@ const BranchDetail = () => {
       });
       setLoanData(monthlyData);
 
-      // Portfolio quality (simplified)
-      const total = branchLoans.length || 1;
-      const portfolioStats = [
-        { name: "On Time", value: Math.round(total * 0.7), color: "#22c55e" },
-        { name: "1-30 Days", value: Math.round(total * 0.15), color: "#eab308" },
-        { name: "31-60 Days", value: Math.round(total * 0.08), color: "#f97316" },
-        { name: "61-90 Days", value: Math.round(total * 0.04), color: "#ef4444" },
-        { name: "90+ Days", value: Math.round(total * 0.03), color: "#7c2d12" },
-      ];
-      setPortfolioData(portfolioStats);
+      // Real PAR calculation for active branch loans
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const activeBranchLoanIds = activeBranchLoans.map(l => l.id);
+      const balanceMap = new Map(activeBranchLoans.map(l => [l.id, Number(l.balance)]));
 
-      // Loans due - upcoming schedule items
-      const { data: scheduleData } = await supabase
-        .from('loan_schedule')
-        .select('*, loan_id')
-        .eq('status', 'pending')
-        .order('due_date', { ascending: true })
-        .limit(10);
-      setLoansDue(scheduleData || []);
+      // Find overdue (pending, past due) schedules
+      const overdueSchedules = allSchedules.filter(
+        s => activeBranchLoanIds.includes(s.loan_id) && s.status === 'pending' && s.due_date < todayStr
+      );
 
-      // Dormant clients - clients with no recent loan activity
+      const earliestOverdue = new Map<string, string>();
+      overdueSchedules.forEach(s => {
+        const existing = earliestOverdue.get(s.loan_id);
+        if (!existing || s.due_date < existing) {
+          earliestOverdue.set(s.loan_id, s.due_date);
+        }
+      });
+
+      const todayMs = new Date(todayStr).getTime();
+      let onTimeCount = 0, par1_30 = 0, par31_60 = 0, par61_90 = 0, par90Plus = 0;
+
+      activeBranchLoanIds.forEach(id => {
+        const od = earliestOverdue.get(id);
+        if (!od) { onTimeCount++; return; }
+        const days = Math.floor((todayMs - new Date(od).getTime()) / (1000 * 60 * 60 * 24));
+        if (days <= 30) par1_30++;
+        else if (days <= 60) par31_60++;
+        else if (days <= 90) par61_90++;
+        else par90Plus++;
+      });
+
+      setPortfolioData([
+        { name: "On Time", value: onTimeCount, color: "#22c55e" },
+        { name: "1-30 Days", value: par1_30, color: "#eab308" },
+        { name: "31-60 Days", value: par31_60, color: "#f97316" },
+        { name: "61-90 Days", value: par61_90, color: "#ef4444" },
+        { name: "90+ Days", value: par90Plus, color: "#7c2d12" },
+      ]);
+
+      // Loans due — pending schedules for branch loans within date range
+      const branchLoansDue = allSchedules
+        .filter(s => s.status === 'pending' && s.due_date >= fromStr && s.due_date <= toStr)
+        .sort((a, b) => a.due_date.localeCompare(b.due_date))
+        .slice(0, 20);
+      setLoansDue(branchLoansDue);
+
+      // Dormant clients
       const { data: allBranchClients } = await supabase
         .from('clients')
         .select('id, first_name, last_name, phone, updated_at')
         .eq('branch_id', branchId!)
+        .eq('organization_id', orgId)
         .order('updated_at', { ascending: true })
         .limit(10);
-      
+
       const dormant = (allBranchClients || []).map(c => ({
         id: c.id,
         clientName: `${c.first_name} ${c.last_name}`,
@@ -307,7 +370,7 @@ const BranchDetail = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Portfolio Quality</CardTitle>
-                  <CardDescription>Loan distribution by status</CardDescription>
+                  <CardDescription>Loan distribution by PAR status</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 w-full">
@@ -341,7 +404,7 @@ const BranchDetail = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Loans Due</CardTitle>
-                <CardDescription>Upcoming loan repayments</CardDescription>
+                <CardDescription>Upcoming loan repayments for this branch</CardDescription>
                 <div className="flex justify-end mt-2">
                   <ExportButton
                     data={loansDue}
@@ -365,15 +428,15 @@ const BranchDetail = () => {
                     {loansDue.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          No upcoming loans due
+                          No upcoming loans due for this branch
                         </TableCell>
                       </TableRow>
                     ) : (
-                      loansDue.map((item) => (
-                        <TableRow key={item.id}>
+                      loansDue.map((item: any) => (
+                        <TableRow key={item.loan_id + item.due_date}>
                           <TableCell>{item.due_date}</TableCell>
-                          <TableCell>KES {Number(item.principal_due).toLocaleString()}</TableCell>
-                          <TableCell>KES {Number(item.interest_due).toLocaleString()}</TableCell>
+                          <TableCell>KES {Number(item.total_due - (item.total_due * 0)).toLocaleString()}</TableCell>
+                          <TableCell>—</TableCell>
                           <TableCell className="font-medium">KES {Number(item.total_due).toLocaleString()}</TableCell>
                           <TableCell className="capitalize">{item.status}</TableCell>
                         </TableRow>
@@ -415,7 +478,7 @@ const BranchDetail = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      dormantClients.map((client) => (
+                      dormantClients.map((client: any) => (
                         <TableRow key={client.id}>
                           <TableCell className="font-medium">{client.clientName}</TableCell>
                           <TableCell>{client.phoneNumber}</TableCell>
