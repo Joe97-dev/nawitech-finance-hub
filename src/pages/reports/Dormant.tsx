@@ -137,7 +137,7 @@ const DormantClientsReport = () => {
       const loanIdToClient = new Map<string, string>();
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
-        const clientLoans = loansByClient.get(fullName) || [];
+        const clientLoans = getClientLoans(client.id, client.first_name, client.last_name);
         clientLoans.forEach((l) => {
           closedLoanIds.push(l.id);
           loanIdToClient.set(l.id, fullName);
