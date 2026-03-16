@@ -82,6 +82,12 @@ const reportNavItems = [
     requiredRoles: ["admin", "loan_officer"],
   },
   {
+    title: "Collection by Disbursal",
+    href: "/reports/collection-by-disbursal",
+    icon: CalendarDays,
+    requiredRoles: ["admin", "loan_officer"],
+  },
+  {
     title: "Loans Due",
     href: "/reports/loans-due",
     icon: FileText,
