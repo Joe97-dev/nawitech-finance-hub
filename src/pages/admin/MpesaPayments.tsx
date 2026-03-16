@@ -52,6 +52,8 @@ export default function MpesaPayments() {
   const [registering, setRegistering] = useState(false);
   const [simulating, setSimulating] = useState(false);
   const [simForm, setSimForm] = useState({ amount: "", phoneNumber: "254708374149", billRefNumber: "" });
+  const [matchDialogOpen, setMatchDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
 
   useEffect(() => { fetchTransactions(); }, []);
 
