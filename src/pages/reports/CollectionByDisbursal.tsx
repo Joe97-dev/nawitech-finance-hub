@@ -88,21 +88,40 @@ const CollectionByDisbursalReport = () => {
         from += pageSize;
       }
 
-      // Fetch clients and profiles scoped to organization, with pagination
-      const [clients, profiles] = await Promise.all([
-        fetchAllRows<{ id: string; first_name: string; last_name: string }>(
-          "clients", "id, first_name, last_name", { organization_id: organizationId }
-        ),
-        fetchAllRows<{ id: string; first_name: string | null; last_name: string | null; username: string | null }>(
-          "profiles", "id, first_name, last_name, username", { organization_id: organizationId }
-        ),
-      ]);
+      // Fetch clients scoped to organization, with pagination
+      const allClients: { id: string; first_name: string; last_name: string }[] = [];
+      let clientFrom = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("clients")
+          .select("id, first_name, last_name")
+          .eq("organization_id", organizationId)
+          .range(clientFrom, clientFrom + 999);
+        if (error) throw error;
+        if (data) allClients.push(...data);
+        if (!data || data.length < 1000) break;
+        clientFrom += 1000;
+      }
 
-      const clientMap = new Map(clients.map((c) => [c.id, `${c.first_name} ${c.last_name}`]));
-      // Also build a name-based lookup for legacy string client fields
-      const clientByNameMap = new Map(clients.map((c) => [`${c.first_name} ${c.last_name}`.toLowerCase(), `${c.first_name} ${c.last_name}`]));
+      // Fetch profiles scoped to organization, with pagination
+      const allProfiles: { id: string; first_name: string | null; last_name: string | null; username: string | null }[] = [];
+      let profFrom = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, username")
+          .eq("organization_id", organizationId)
+          .range(profFrom, profFrom + 999);
+        if (error) throw error;
+        if (data) allProfiles.push(...data);
+        if (!data || data.length < 1000) break;
+        profFrom += 1000;
+      }
 
-      const profileMap = new Map(
+      const clientMap = new Map(allClients.map((c) => [c.id, `${c.first_name} ${c.last_name}`]));
+      const clientByNameMap = new Map(allClients.map((c) => [`${c.first_name} ${c.last_name}`.toLowerCase(), `${c.first_name} ${c.last_name}`]));
+
+      const profileMap = new Map<string, string>(
         allProfiles.map((p) => {
           const name = `${p.first_name || ""} ${p.last_name || ""}`.trim();
           return [p.id, name || p.username || p.id.slice(0, 8)];
