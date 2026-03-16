@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DashboardCard } from "@/components/ui/dashboard-card";
@@ -77,72 +78,86 @@ export function LoanOfficerPerformance() {
   const fetchOfficerData = async (officerId: string) => {
     setLoading(true);
     try {
+      const orgId = await getOrganizationId();
+
       // Clients assigned to officer
       const { count: clientCount } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
-        .eq('loan_officer_id', officerId);
+        .eq('loan_officer_id', officerId)
+        .eq('organization_id', orgId);
 
-      // Loans managed by officer
-      const { data: officerLoans } = await supabase
-        .from('loans')
-        .select('*')
-        .eq('loan_officer_id', officerId);
+      // Loans managed by officer (paginated, exclude fee accounts)
+      const allLoans: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('loans')
+          .select('id, amount, balance, status, date')
+          .eq('loan_officer_id', officerId)
+          .eq('organization_id', orgId)
+          .neq('type', 'client_fee_account')
+          .range(from, from + 999);
+        if (error) throw error;
+        if (data) allLoans.push(...data);
+        if (!data || data.length < 1000) break;
+        from += 1000;
+      }
 
-      const loans = officerLoans || [];
-      const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'in arrears');
-      const arrearsLoans = loans.filter(l => l.status === 'in arrears');
+      const activeLoans = allLoans.filter(l => l.status === 'active' || l.status === 'in arrears');
+      const arrearsLoans = allLoans.filter(l => l.status === 'in arrears');
       const totalPortfolio = activeLoans.reduce((sum, l) => sum + Number(l.balance), 0);
 
       // Loan status distribution
       const statusCounts: Record<string, number> = {};
-      loans.forEach(l => {
+      allLoans.forEach(l => {
         statusCounts[l.status] = (statusCounts[l.status] || 0) + 1;
       });
       const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-      // Monthly disbursals & collections for last 6 months
-      const loanIds = loans.map(l => l.id);
+      // Fetch schedules for all officer's loans for collection rate
+      const loanIds = allLoans.map(l => l.id);
       const sixMonthsAgo = subMonths(new Date(), 6);
+      const sixMonthsAgoStr = format(sixMonthsAgo, 'yyyy-MM-01');
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+      // Fetch schedules in batches for collection rate + monthly chart
+      const allSchedules: any[] = [];
+      for (let i = 0; i < loanIds.length; i += 50) {
+        const batch = loanIds.slice(i, i + 50);
+        const { data } = await supabase
+          .from('loan_schedule')
+          .select('loan_id, total_due, amount_paid, due_date')
+          .in('loan_id', batch)
+          .gte('due_date', sixMonthsAgoStr)
+          .lte('due_date', todayStr);
+        if (data) allSchedules.push(...data);
+      }
+
+      // Collection rate from schedules
+      const totalDue = allSchedules.reduce((sum, s) => sum + Number(s.total_due), 0);
+      const totalCollected = allSchedules.reduce((sum, s) => sum + Number(s.amount_paid || 0), 0);
+      const collectionRate = totalDue > 0 ? Math.round((totalCollected / totalDue) * 100) : 0;
+
+      // Monthly chart data from loans (disbursals) and schedules (collections)
       const months = eachMonthOfInterval({ start: sixMonthsAgo, end: new Date() });
+      const monthly = months.map((month) => {
+        const monthStr = format(month, 'yyyy-MM');
 
-      let totalCollected = 0;
-      let totalDisbursed = 0;
+        const disbursed = allLoans
+          .filter(l => l.date?.startsWith(monthStr))
+          .reduce((sum: number, l: any) => sum + Number(l.amount), 0);
 
-      const monthly = await Promise.all(
-        months.map(async (month) => {
-          const monthStart = format(month, 'yyyy-MM-01');
-          const nextMonth = format(new Date(month.getFullYear(), month.getMonth() + 1, 1), 'yyyy-MM-dd');
+        const collected = allSchedules
+          .filter((s: any) => s.due_date?.startsWith(monthStr))
+          .reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
 
-          // Disbursals
-          const monthLoans = loans.filter(l => l.date >= monthStart && l.date < nextMonth);
-          const disbursed = monthLoans.reduce((sum, l) => sum + Number(l.amount), 0);
-          totalDisbursed += disbursed;
-
-          // Collections
-          let collected = 0;
-          if (loanIds.length > 0) {
-            const { data: txns } = await supabase
-              .from('loan_transactions')
-              .select('amount')
-              .eq('transaction_type', 'payment')
-              .eq('is_reverted', false)
-              .in('loan_id', loanIds)
-              .gte('transaction_date', monthStart)
-              .lt('transaction_date', nextMonth);
-            collected = txns?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-          }
-          totalCollected += collected;
-
-          return {
-            month: format(month, 'MMM'),
-            disbursed: Math.round(disbursed / 1000),
-            collected: Math.round(collected / 1000),
-          };
-        })
-      );
-
-      const collectionRate = totalDisbursed > 0 ? Math.round((totalCollected / totalDisbursed) * 100) : 0;
+        return {
+          month: format(month, 'MMM'),
+          disbursed: Math.round(disbursed / 1000),
+          collected: Math.round(collected / 1000),
+        };
+      });
 
       setStats({
         totalClients: clientCount || 0,

@@ -5,23 +5,24 @@ import { DashboardCard } from "@/components/ui/dashboard-card";
 import { DashboardSearch } from "@/components/dashboard/DashboardSearch";
 import { LoanOfficerPerformance } from "@/components/dashboard/LoanOfficerPerformance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
   Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from "recharts";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { format, subMonths, eachMonthOfInterval } from "date-fns";
 
 const Dashboard = () => {
@@ -44,38 +45,87 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      const orgId = await getOrganizationId();
 
       const today = new Date();
       const sixMonthsAgo = subMonths(today, 6);
       const sixMonthsAgoStr = format(sixMonthsAgo, 'yyyy-MM-01');
       const todayStr = format(today, 'yyyy-MM-dd');
 
-      // Run all independent queries in parallel (5 queries instead of 14+)
-      const [clientResult, activeLoansResult, todayLoansResult, allLoansResult, allTransactionsResult] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('loans').select('*', { count: 'exact' }).eq('status', 'active'),
-        supabase.from('loans').select('amount').eq('date', todayStr),
-        supabase.from('loans').select('amount, date').gte('date', sixMonthsAgoStr).lte('date', todayStr),
-        supabase.from('loan_transactions').select('amount, transaction_date').eq('transaction_type', 'payment').eq('is_reverted', false).gte('transaction_date', sixMonthsAgoStr).lte('transaction_date', todayStr),
+      // 1. Basic counts + today's disbursals (parallel)
+      const [clientResult, activeLoansResult, todayLoansResult] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('organization_id', orgId),
+        supabase.from('loans').select('*', { count: 'exact', head: true })
+          .eq('organization_id', orgId).eq('status', 'active').neq('type', 'client_fee_account'),
+        supabase.from('loans').select('amount')
+          .eq('organization_id', orgId).eq('date', todayStr)
+          .neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears', 'closed', 'disbursed']),
       ]);
 
       const clientCount = clientResult.count || 0;
       const activeLoanCount = activeLoansResult.count || 0;
-      const todayLoans = todayLoansResult.data;
-      const disbursedToday = todayLoans?.reduce((sum, loan) => sum + Number(loan.amount), 0) || 0;
+      const todayLoans = todayLoansResult.data || [];
+      const disbursedToday = todayLoans.reduce((sum, loan) => sum + Number(loan.amount), 0);
 
-      // Group loans and transactions by month client-side
+      // 2. Paginated fetches for chart and PAR data
+      const pageSize = 1000;
+
+      // Fetch 6-month loans for chart
+      const allLoans: any[] = [];
+      let lFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('amount, date')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears', 'closed', 'disbursed', 'approved'])
+          .gte('date', sixMonthsAgoStr).lte('date', todayStr)
+          .range(lFrom, lFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) allLoans.push(...data);
+        if (!data || data.length < pageSize) break;
+        lFrom += pageSize;
+      }
+
+      // Fetch 6-month schedules for collection rate + chart
+      const allSchedules: any[] = [];
+      let sFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loan_schedule').select('total_due, due_date, amount_paid')
+          .eq('organization_id', orgId)
+          .gte('due_date', sixMonthsAgoStr).lte('due_date', todayStr)
+          .range(sFrom, sFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) allSchedules.push(...data);
+        if (!data || data.length < pageSize) break;
+        sFrom += pageSize;
+      }
+
+      // Fetch active/in-arrears loans for PAR
+      const activeLoansData: any[] = [];
+      let aFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('id, balance, status')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears'])
+          .range(aFrom, aFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) activeLoansData.push(...data);
+        if (!data || data.length < pageSize) break;
+        aFrom += pageSize;
+      }
+
+      // 3. Build monthly chart data using disbursals from loans, collections from schedule
       const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
       const monthlyData = months.map((month) => {
         const monthStr = format(month, 'yyyy-MM');
-        
-        const disbursed = (allLoansResult.data || [])
-          .filter(l => l.date?.startsWith(monthStr))
-          .reduce((sum, l) => sum + Number(l.amount), 0);
 
-        const collected = (allTransactionsResult.data || [])
-          .filter(t => t.transaction_date?.startsWith(monthStr))
-          .reduce((sum, t) => sum + Number(t.amount), 0);
+        const disbursed = allLoans
+          .filter((l: any) => l.date?.startsWith(monthStr))
+          .reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+
+        const collected = allSchedules
+          .filter((s: any) => s.due_date?.startsWith(monthStr))
+          .reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
 
         return {
           month: format(month, 'MMM'),
@@ -84,41 +134,97 @@ const Dashboard = () => {
         };
       });
 
-      // Calculate portfolio quality (simplified)
-      const totalActiveLoans = activeLoanCount || 0;
-      const onTimeLoans = Math.round(totalActiveLoans * 0.7);
-      const par1_30 = Math.round(totalActiveLoans * 0.15);
-      const par31_60 = Math.round(totalActiveLoans * 0.08);
-      const par61_90 = Math.round(totalActiveLoans * 0.04);
-      const par90Plus = Math.round(totalActiveLoans * 0.03);
+      // 4. Collection rate from loan_schedule (total paid / total due)
+      const totalScheduleDue = allSchedules.reduce((sum: number, s: any) => sum + Number(s.total_due), 0);
+      const totalSchedulePaid = allSchedules.reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
+      const collectionRate = totalScheduleDue > 0 ? Math.round((totalSchedulePaid / totalScheduleDue) * 100) : 0;
+
+      // 5. Real PAR calculation — fetch overdue (pending) schedules for active loans
+      const activeLoanIds = activeLoansData.map((l: any) => l.id as string);
+      const balanceMap = new Map<string, number>(activeLoansData.map((l: any) => [l.id as string, Number(l.balance)]));
+
+      const allOverdueSchedules: { loan_id: string; due_date: string }[] = [];
+      for (let i = 0; i < activeLoanIds.length; i += 50) {
+        const batch = activeLoanIds.slice(i, i + 50);
+        const { data: overdueData } = await supabase
+          .from('loan_schedule')
+          .select('loan_id, due_date')
+          .in('loan_id', batch)
+          .lt('due_date', todayStr)
+          .eq('status', 'pending');
+        if (overdueData) allOverdueSchedules.push(...overdueData);
+      }
+
+      // Find earliest overdue date per loan
+      const earliestOverdue = new Map<string, string>();
+      allOverdueSchedules.forEach((s: any) => {
+        const existing = earliestOverdue.get(s.loan_id);
+        if (!existing || s.due_date < existing) {
+          earliestOverdue.set(s.loan_id, s.due_date);
+        }
+      });
+
+      // Classify into PAR buckets based on days overdue
+      const todayMs = new Date(todayStr).getTime();
+      let onTimeBalance = 0;
+      let par1_30Balance = 0;
+      let par31_60Balance = 0;
+      let par61_90Balance = 0;
+      let par90PlusBalance = 0;
+      let onTimeCount = 0;
+      let par1_30Count = 0;
+      let par31_60Count = 0;
+      let par61_90Count = 0;
+      let par90PlusCount = 0;
+
+      activeLoanIds.forEach((loanId: string) => {
+        const balance = balanceMap.get(loanId) || 0;
+        const overdueDate = earliestOverdue.get(loanId);
+
+        if (!overdueDate) {
+          onTimeBalance += balance;
+          onTimeCount++;
+          return;
+        }
+
+        const daysOverdue = Math.floor((todayMs - new Date(overdueDate).getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysOverdue <= 30) {
+          par1_30Balance += balance;
+          par1_30Count++;
+        } else if (daysOverdue <= 60) {
+          par31_60Balance += balance;
+          par31_60Count++;
+        } else if (daysOverdue <= 90) {
+          par61_90Balance += balance;
+          par61_90Count++;
+        } else {
+          par90PlusBalance += balance;
+          par90PlusCount++;
+        }
+      });
 
       const portfolioStats = [
-        { name: "On Time", value: onTimeLoans, color: "#22c55e" },
-        { name: "1-30 Days", value: par1_30, color: "#eab308" },
-        { name: "31-60 Days", value: par31_60, color: "#f97316" },
-        { name: "61-90 Days", value: par61_90, color: "#ef4444" },
-        { name: "90+ Days", value: par90Plus, color: "#7c2d12" },
+        { name: "On Time", value: onTimeCount, balance: onTimeBalance, color: "#22c55e" },
+        { name: "1-30 Days", value: par1_30Count, balance: par1_30Balance, color: "#eab308" },
+        { name: "31-60 Days", value: par31_60Count, balance: par31_60Balance, color: "#f97316" },
+        { name: "61-90 Days", value: par61_90Count, balance: par61_90Balance, color: "#ef4444" },
+        { name: "90+ Days", value: par90PlusCount, balance: par90PlusBalance, color: "#7c2d12" },
       ];
 
-      // Arrears data (simplified calculation)
       const arrearsStats = [
-        { category: "1-30 Days", value: par1_30 },
-        { category: "31-60 Days", value: par31_60 },
-        { category: "61-90 Days", value: par61_90 },
-        { category: "90+ Days", value: par90Plus },
+        { category: "1-30 Days", value: par1_30Count, balance: par1_30Balance },
+        { category: "31-60 Days", value: par31_60Count, balance: par31_60Balance },
+        { category: "61-90 Days", value: par61_90Count, balance: par61_90Balance },
+        { category: "90+ Days", value: par90PlusCount, balance: par90PlusBalance },
       ];
-
-      // Calculate collection rate (simplified)
-      const totalCollections = monthlyData.reduce((sum, month) => sum + month.collected, 0);
-      const totalDisbursals = monthlyData.reduce((sum, month) => sum + month.disbursed, 0);
-      const collectionRate = totalDisbursals > 0 ? Math.round((totalCollections / totalDisbursals) * 100) : 0;
 
       setStats({
-        totalClients: clientCount || 0,
-        activeLoans: activeLoanCount || 0,
+        totalClients: clientCount,
+        activeLoans: activeLoanCount,
         disbursedToday,
         collectionRate,
-        newLoansToday: todayLoans?.length || 0
+        newLoansToday: todayLoans.length
       });
 
       setLoanData(monthlyData);
@@ -156,7 +262,7 @@ const Dashboard = () => {
           </div>
           <DashboardSearch />
         </div>
-        
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <DashboardCard
             title="Total Clients"
@@ -180,7 +286,7 @@ const Dashboard = () => {
             icon={<BarChartHorizontal className="h-4 w-4 text-primary" />}
           />
         </div>
-        
+
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -211,11 +317,11 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Portfolio Quality</CardTitle>
-              <CardDescription>Loan distribution by status</CardDescription>
+              <CardDescription>Loan distribution by PAR status</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64 sm:h-80 w-full">
@@ -243,7 +349,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Loans in Arrears by Category</CardTitle>
