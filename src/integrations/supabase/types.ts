@@ -790,6 +790,113 @@ export type Database = {
           },
         ]
       }
+      mpesa_transactions: {
+        Row: {
+          bill_ref_number: string | null
+          business_short_code: string
+          created_at: string
+          error_message: string | null
+          first_name: string | null
+          id: string
+          invoice_number: string | null
+          last_name: string | null
+          loan_transaction_id: string | null
+          matched_client_id: string | null
+          matched_loan_id: string | null
+          middle_name: string | null
+          msisdn: string
+          org_account_balance: number | null
+          organization_id: string | null
+          payment_applied: boolean
+          status: string
+          third_party_trans_id: string | null
+          trans_amount: number
+          trans_id: string
+          trans_time: string
+          transaction_type: string
+          updated_at: string
+        }
+        Insert: {
+          bill_ref_number?: string | null
+          business_short_code: string
+          created_at?: string
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          invoice_number?: string | null
+          last_name?: string | null
+          loan_transaction_id?: string | null
+          matched_client_id?: string | null
+          matched_loan_id?: string | null
+          middle_name?: string | null
+          msisdn: string
+          org_account_balance?: number | null
+          organization_id?: string | null
+          payment_applied?: boolean
+          status?: string
+          third_party_trans_id?: string | null
+          trans_amount: number
+          trans_id: string
+          trans_time: string
+          transaction_type: string
+          updated_at?: string
+        }
+        Update: {
+          bill_ref_number?: string | null
+          business_short_code?: string
+          created_at?: string
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          invoice_number?: string | null
+          last_name?: string | null
+          loan_transaction_id?: string | null
+          matched_client_id?: string | null
+          matched_loan_id?: string | null
+          middle_name?: string | null
+          msisdn?: string
+          org_account_balance?: number | null
+          organization_id?: string | null
+          payment_applied?: boolean
+          status?: string
+          third_party_trans_id?: string | null
+          trans_amount?: number
+          trans_id?: string
+          trans_time?: string
+          transaction_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mpesa_transactions_loan_transaction_id_fkey"
+            columns: ["loan_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "loan_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mpesa_transactions_matched_client_id_fkey"
+            columns: ["matched_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mpesa_transactions_matched_loan_id_fkey"
+            columns: ["matched_loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mpesa_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
