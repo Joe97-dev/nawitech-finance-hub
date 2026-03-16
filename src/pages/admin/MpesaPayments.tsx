@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical } from "lucide-react";
+import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
@@ -54,6 +55,7 @@ export default function MpesaPayments() {
   const [simulating, setSimulating] = useState(false);
   const [useSandbox, setUseSandbox] = useState(false);
   const [simForm, setSimForm] = useState({ amount: "", phoneNumber: "254708374149", billRefNumber: "" });
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
 
@@ -180,11 +182,26 @@ export default function MpesaPayments() {
 
         {/* Transactions Table */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle>M-Pesa Transactions</CardTitle>
-            <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <Filter className="h-4 w-4 mr-1" />
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="applied">Applied</SelectItem>
+                  <SelectItem value="matched">Matched</SelectItem>
+                  <SelectItem value="unmatched">Unmatched</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-auto">
@@ -202,14 +219,16 @@ export default function MpesaPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.length === 0 ? (
+                  {(() => {
+                    const filtered = statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter);
+                    return filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        {loading ? "Loading..." : "No M-Pesa transactions yet"}
+                        {loading ? "Loading..." : statusFilter === "all" ? "No M-Pesa transactions yet" : `No ${statusFilter} transactions`}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    transactions.map(tx => (
+                    filtered.map(tx => (
                       <TableRow key={tx.id}>
                         <TableCell className="whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-mono text-sm">{tx.trans_id}</TableCell>
@@ -231,7 +250,8 @@ export default function MpesaPayments() {
                         </TableCell>
                       </TableRow>
                     ))
-                  )}
+                  );
+                  })()}
                 </TableBody>
               </Table>
             </div>
