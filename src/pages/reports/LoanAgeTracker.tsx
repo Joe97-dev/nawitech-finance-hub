@@ -20,6 +20,7 @@ interface LoanWithAge {
   id: string;
   loan_number: string | null;
   client: string;
+  phone: string;
   amount: number;
   balance: number;
   status: string;
@@ -68,6 +69,18 @@ export default function LoanAgeTracker() {
         return;
       }
 
+      // Fetch client phone numbers
+      const { data: clientsData } = await supabase
+        .from("clients")
+        .select("first_name, last_name, phone")
+        .eq("organization_id", organizationId);
+
+      const clientPhoneMap = new Map<string, string>();
+      (clientsData || []).forEach(c => {
+        const fullName = `${c.first_name} ${c.last_name}`;
+        clientPhoneMap.set(fullName.toLowerCase(), c.phone);
+      });
+
       // Fetch schedules for these loans in batches
       const loanIds = loansData.map(l => l.id);
       const allSchedules: any[] = [];
@@ -107,6 +120,7 @@ export default function LoanAgeTracker() {
           id: loan.id,
           loan_number: loan.loan_number,
           client: loan.client,
+          phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
           amount: loan.amount,
           balance: loan.balance,
           status: loan.status,
@@ -193,6 +207,7 @@ export default function LoanAgeTracker() {
           data={filteredLoans.map(l => ({
             "Loan Number": l.loan_number || "-",
             "Client": l.client,
+            "Phone": l.phone,
             "Amount": l.amount,
             "Balance": l.balance,
             "Status": l.status,
@@ -299,7 +314,9 @@ export default function LoanAgeTracker() {
                       <TableRow>
                         <TableHead>Loan #</TableHead>
                         <TableHead>Client</TableHead>
+                        <TableHead>Phone</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
                         <TableHead className="text-center">Day</TableHead>
                         <TableHead className="text-center">Remaining</TableHead>
                         <TableHead className="w-32">Progress</TableHead>
@@ -318,7 +335,9 @@ export default function LoanAgeTracker() {
                         >
                           <TableCell className="font-medium">{loan.loan_number || "-"}</TableCell>
                           <TableCell>{loan.client}</TableCell>
+                          <TableCell className="text-muted-foreground">{loan.phone}</TableCell>
                           <TableCell className="text-right">{formatCurrency(loan.amount)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(loan.balance)}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className="font-mono">{loan.dayAge}</Badge>
                           </TableCell>
