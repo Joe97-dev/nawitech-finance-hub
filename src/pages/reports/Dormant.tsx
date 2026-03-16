@@ -224,25 +224,60 @@ const DormantClientsReport = () => {
       (c) => c.category === "inactive" && c.current_status !== "inactive"
     );
 
-    if (dormantClients.length > 0) {
-      const dormantIds = dormantClients.map((c) => c.id);
+    // Restore clients with open loans back to active
+    const { data: openLoanClients } = await supabase
+      .from("clients")
+      .select("id, first_name, last_name")
+      .eq("organization_id", orgId)
+      .in("status", ["inactive", "dormant"]);
+
+    const { data: openLoans } = await supabase
+      .from("loans")
+      .select("client, status")
+      .eq("organization_id", orgId)
+      .neq("type", "client_fee_account")
+      .not("status", "in", '("closed","rejected","written_off")');
+
+    const activeClientIds = new Set<string>();
+    (openLoanClients || []).forEach((client) => {
+      const fullName = `${client.first_name} ${client.last_name}`.toLowerCase().trim();
+      const hasOpenLoan = (openLoans || []).some(
+        (loan) => loan.client === client.id || loan.client.toLowerCase().trim() === fullName
+      );
+      if (hasOpenLoan) activeClientIds.add(client.id);
+    });
+
+    if (activeClientIds.size > 0) {
       await supabase
         .from("clients")
-        .update({ status: "dormant" })
-        .in("id", dormantIds)
+        .update({ status: "active" })
+        .in("id", Array.from(activeClientIds))
         .eq("organization_id", orgId);
+    }
+
+    if (dormantClients.length > 0) {
+      const dormantIds = dormantClients.map((c) => c.id).filter((id) => !activeClientIds.has(id));
+      if (dormantIds.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "dormant" })
+          .in("id", dormantIds)
+          .eq("organization_id", orgId);
+      }
     }
 
     if (inactiveClients.length > 0) {
-      const inactiveIds = inactiveClients.map((c) => c.id);
-      await supabase
-        .from("clients")
-        .update({ status: "inactive" })
-        .in("id", inactiveIds)
-        .eq("organization_id", orgId);
+      const inactiveIds = inactiveClients.map((c) => c.id).filter((id) => !activeClientIds.has(id));
+      if (inactiveIds.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "inactive" })
+          .in("id", inactiveIds)
+          .eq("organization_id", orgId);
+      }
     }
 
-    if (dormantClients.length > 0 || inactiveClients.length > 0) {
+    if (activeClientIds.size > 0 || dormantClients.length > 0 || inactiveClients.length > 0) {
       fetchData();
     }
   };
