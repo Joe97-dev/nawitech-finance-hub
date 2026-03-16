@@ -335,7 +335,9 @@ export default function LoanAgeTracker() {
                         >
                           <TableCell className="font-medium">{loan.loan_number || "-"}</TableCell>
                           <TableCell>{loan.client}</TableCell>
+                          <TableCell className="text-muted-foreground">{loan.phone}</TableCell>
                           <TableCell className="text-right">{formatCurrency(loan.amount)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(loan.balance)}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="outline" className="font-mono">{loan.dayAge}</Badge>
                           </TableCell>
