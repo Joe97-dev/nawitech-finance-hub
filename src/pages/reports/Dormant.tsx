@@ -120,14 +120,17 @@ const DormantClientsReport = () => {
         return [...byId, ...byName];
       };
 
-      // Find clients with NO active loans (all loans must be closed/completed)
+      // Split clients into those with active loans vs no active loans
+      const clientsWithActiveLoans: typeof clients = [];
       const clientsWithNoActiveLoans: typeof clients = [];
       (clients || []).forEach((client) => {
         const clientLoans = getClientLoans(client.id, client.first_name, client.last_name);
         const hasActiveLoan = clientLoans.some(
           (l) => l.status !== "closed" && l.status !== "rejected" && l.status !== "written_off"
         );
-        if (!hasActiveLoan) {
+        if (hasActiveLoan) {
+          clientsWithActiveLoans.push(client);
+        } else {
           clientsWithNoActiveLoans.push(client);
         }
       });
