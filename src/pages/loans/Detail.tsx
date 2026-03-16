@@ -387,6 +387,19 @@ const LoanDetailPage = () => {
           </Card>
         </div>
       </div>
+
+      {loanId && (
+        <EditLoanDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          loanId={loanId}
+          onLoanUpdated={() => {
+            setRefreshKey(prev => prev + 1);
+            // Refetch loan data
+            window.location.reload();
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 };
