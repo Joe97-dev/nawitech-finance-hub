@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2 } from "lucide-react";
+import { Smartphone, RefreshCw, Play, Link2, LinkIcon } from "lucide-react";
+import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
 interface MpesaTransaction {
   id: string;
