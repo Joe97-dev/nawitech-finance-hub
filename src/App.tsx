@@ -18,6 +18,7 @@ const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const Rejected = lazy(() => import("./pages/Rejected"));
 const UserApprovals = lazy(() => import("./pages/admin/UserApprovals"));
 const DataMigration = lazy(() => import("./pages/admin/DataMigration"));
+const MpesaPayments = lazy(() => import("./pages/admin/MpesaPayments"));
 const ClientsIndex = lazy(() => import("./pages/clients/Index"));
 const ClientNew = lazy(() => import("./pages/clients/New"));
 const ClientDetail = lazy(() => import("./pages/clients/Detail"));
