@@ -69,8 +69,25 @@ export default function MpesaPayments() {
     setLoading(false);
   };
 
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(tx => tx.status === statusFilter);
+    }
+    if (dateRange?.from) {
+      const from = new Date(dateRange.from);
+      from.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(tx => new Date(tx.created_at) >= from);
+    }
+    if (dateRange?.to) {
+      const to = new Date(dateRange.to);
+      to.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(tx => new Date(tx.created_at) <= to);
+    }
+    return filtered;
+  }, [transactions, statusFilter, dateRange]);
 
-  return (
+
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
