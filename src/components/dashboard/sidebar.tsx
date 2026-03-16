@@ -14,6 +14,7 @@ import {
   UserCheck,
   Database,
   Clock,
+  Smartphone,
 } from "lucide-react";
 import {
   Sidebar,
@@ -265,6 +266,14 @@ export function AppSidebar() {
                       <NavLink to="/admin/data-migration" className={getNavClass}>
                         <Database className="h-4 w-4" />
                         {!collapsed && <span>Data Migration</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/mpesa-payments" className={getNavClass}>
+                        <Smartphone className="h-4 w-4" />
+                        {!collapsed && <span>M-Pesa Payments</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
