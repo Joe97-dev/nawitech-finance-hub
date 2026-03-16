@@ -274,6 +274,24 @@ const CohortCollectionReport = () => {
           onDateRangeChange={setDate}
           className="col-span-2"
         />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Loan Officer
+          </label>
+          <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="All Officers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Officers</SelectItem>
+              {loanOfficers.map((officer) => (
+                <SelectItem key={officer.id} value={officer.id}>
+                  {officer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </ReportFilters>
   );
