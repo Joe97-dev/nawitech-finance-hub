@@ -186,12 +186,13 @@ export default function MpesaPayments() {
                     <TableHead>Ref (ID No.)</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         {loading ? "Loading..." : "No M-Pesa transactions yet"}
                       </TableCell>
                     </TableRow>
@@ -205,6 +206,17 @@ export default function MpesaPayments() {
                         <TableCell>{tx.bill_ref_number || "—"}</TableCell>
                         <TableCell className="font-semibold text-green-600">{formatCurrency(tx.trans_amount)}</TableCell>
                         <TableCell>{getStatusBadge(tx.status)}</TableCell>
+                        <TableCell>
+                          {(tx.status === "unmatched" || tx.status === "matched") && !tx.payment_applied && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => { setSelectedTransaction(tx); setMatchDialogOpen(true); }}
+                            >
+                              <LinkIcon className="h-3 w-3 mr-1" /> Match
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -213,6 +225,13 @@ export default function MpesaPayments() {
             </div>
           </CardContent>
         </Card>
+
+        <ManualMatchDialog
+          open={matchDialogOpen}
+          onOpenChange={setMatchDialogOpen}
+          transaction={selectedTransaction}
+          onMatched={fetchTransactions}
+        />
       </div>
     </DashboardLayout>
   );
