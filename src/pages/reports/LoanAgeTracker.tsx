@@ -314,7 +314,9 @@ export default function LoanAgeTracker() {
                       <TableRow>
                         <TableHead>Loan #</TableHead>
                         <TableHead>Client</TableHead>
+                        <TableHead>Phone</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Balance</TableHead>
                         <TableHead className="text-center">Day</TableHead>
                         <TableHead className="text-center">Remaining</TableHead>
                         <TableHead className="w-32">Progress</TableHead>
