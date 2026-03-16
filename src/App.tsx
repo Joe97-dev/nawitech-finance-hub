@@ -97,6 +97,7 @@ function App() {
             <Route path="/reports/dormant" element={<ProtectedRoute><DormantReport /></ProtectedRoute>} />
             <Route path="/reports/transactions" element={<ProtectedRoute><TransactionsReport /></ProtectedRoute>} />
             <Route path="/reports/loan-age-tracker" element={<ProtectedRoute><LoanAgeTrackerReport /></ProtectedRoute>} />
+            <Route path="/reports/collection-by-disbursal" element={<ProtectedRoute><CollectionByDisbursalReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
