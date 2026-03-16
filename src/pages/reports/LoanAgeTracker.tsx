@@ -207,6 +207,7 @@ export default function LoanAgeTracker() {
           data={filteredLoans.map(l => ({
             "Loan Number": l.loan_number || "-",
             "Client": l.client,
+            "Phone": l.phone,
             "Amount": l.amount,
             "Balance": l.balance,
             "Status": l.status,
