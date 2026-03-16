@@ -36,12 +36,8 @@ const KYCReport = lazy(() => import("./pages/reports/KYC"));
 const IncomeReport = lazy(() => import("./pages/reports/Income"));
 const ArrearsReport = lazy(() => import("./pages/reports/Arrears"));
 const DormantReport = lazy(() => import("./pages/reports/Dormant"));
-const ForecastingReport = lazy(() => import("./pages/reports/Forecasting"));
 const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
-const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
-const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 const LoanAgeTrackerReport = lazy(() => import("./pages/reports/LoanAgeTracker"));
-const CohortCollectionReport = lazy(() => import("./pages/reports/CohortCollection"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
