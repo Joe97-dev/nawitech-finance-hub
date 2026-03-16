@@ -3,7 +3,6 @@ import { ReportPage } from "./Base";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
 import { DateRange } from "react-day-picker";
-import { DateRange } from "react-day-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "@/components/reports/ReportFilters";
