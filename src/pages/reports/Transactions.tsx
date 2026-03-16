@@ -259,7 +259,7 @@ const TransactionsReport = () => {
         // 2) Fetch disbursements from loans (exclude rejected/pending/postponed/fee accounts)
         const shouldFetchDisbursements = selectedType === "all" || selectedType === "disbursement";
         if (shouldFetchDisbursements && selectedPaymentMethod === "all") {
-          const validStatuses = ["approved", "disbursed", "active", "closed", "in arrears"];
+          const validStatuses = ["approved", "disbursed", "active", "closed", "in arrears"]; // excludes abandoned
           const filteredLoans = (allLoans || []).filter((loan) => {
             if (!validStatuses.includes(loan.status)) return false;
             if (fromDate && loan.date < fromDate) return false;

@@ -55,7 +55,7 @@ const LoanPerformanceReport = () => {
         let loansQuery = supabase
           .from('loans')
           .select('id, amount, balance, type, date, status')
-          .not('status', 'in', '("rejected","pending","postponed")');
+          .not('status', 'in', '("rejected","pending","postponed","abandoned")');
 
         const formatLocal = (d: Date) => {
           const y = d.getFullYear();

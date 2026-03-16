@@ -641,6 +641,7 @@ export type Database = {
       }
       loans: {
         Row: {
+          abandon_reason: string | null
           amount: number
           balance: number
           business_address: string | null
@@ -660,6 +661,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          abandon_reason?: string | null
           amount: number
           balance: number
           business_address?: string | null
@@ -679,6 +681,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          abandon_reason?: string | null
           amount?: number
           balance?: number
           business_address?: string | null

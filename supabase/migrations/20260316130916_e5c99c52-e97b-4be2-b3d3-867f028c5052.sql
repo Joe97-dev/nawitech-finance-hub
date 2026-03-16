@@ -1,0 +1,1 @@
+ALTER TABLE public.loans ADD COLUMN IF NOT EXISTS abandon_reason text;

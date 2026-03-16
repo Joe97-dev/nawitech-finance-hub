@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, CreditCard, FileText, Calendar, Edit } from "lucide-react";
+import { ArrowLeft, CreditCard, FileText, Calendar, Edit, Ban } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
 import { EditLoanDialog } from "@/components/loans/EditLoanDialog";
+import { AbandonLoanDialog } from "@/components/loans/AbandonLoanDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
@@ -55,6 +56,8 @@ const getStatusClass = (status: string) => {
       return "bg-blue-100 text-blue-800";
     case "closed":
       return "bg-gray-100 text-gray-800";
+    case "abandoned":
+      return "bg-orange-100 text-orange-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -71,6 +74,7 @@ const LoanDetailPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [abandonDialogOpen, setAbandonDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchLoanDetails = async () => {
@@ -229,10 +233,18 @@ const LoanDetailPage = () => {
             </div>
           </div>
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Loan
-            </Button>
+            <div className="flex gap-2">
+              {['active', 'in arrears', 'rejected'].includes(loan.status) && (
+                <Button variant="destructive" size="sm" onClick={() => setAbandonDialogOpen(true)}>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Abandon Loan
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Loan
+              </Button>
+            </div>
           )}
         </div>
         
@@ -296,6 +308,13 @@ const LoanDetailPage = () => {
                     <div className="pt-2">
                       <span className="text-sm text-muted-foreground">Business Address</span>
                       <p className="font-medium mt-1">{loan.business_address}</p>
+                    </div>
+                  )}
+
+                  {loan.status === 'abandoned' && (loan as any).abandon_reason && (
+                    <div className="pt-2 border-t">
+                      <span className="text-sm text-destructive font-medium">Abandon Reason</span>
+                      <p className="font-medium mt-1 text-muted-foreground">{(loan as any).abandon_reason}</p>
                     </div>
                   )}
                 </div>
@@ -389,16 +408,26 @@ const LoanDetailPage = () => {
       </div>
 
       {loanId && (
-        <EditLoanDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          loanId={loanId}
-          onLoanUpdated={() => {
-            setRefreshKey(prev => prev + 1);
-            // Refetch loan data
-            window.location.reload();
-          }}
-        />
+        <>
+          <EditLoanDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            loanId={loanId}
+            onLoanUpdated={() => {
+              setRefreshKey(prev => prev + 1);
+              window.location.reload();
+            }}
+          />
+          <AbandonLoanDialog
+            open={abandonDialogOpen}
+            onOpenChange={setAbandonDialogOpen}
+            loanId={loanId}
+            loanNumber={loan?.loan_number || `#${loanId.substring(0, 8)}`}
+            onLoanAbandoned={() => {
+              window.location.reload();
+            }}
+          />
+        </>
       )}
     </DashboardLayout>
   );
