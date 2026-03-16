@@ -103,6 +103,7 @@ function App() {
             <Route path="/reports/installment-bounds" element={<ProtectedRoute><InstallmentBoundsReport /></ProtectedRoute>} />
             <Route path="/reports/dues-by-day" element={<ProtectedRoute><DuesByDayReport /></ProtectedRoute>} />
             <Route path="/reports/loan-age-tracker" element={<ProtectedRoute><LoanAgeTrackerReport /></ProtectedRoute>} />
+            <Route path="/reports/cohort-collection" element={<ProtectedRoute><CohortCollectionReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
