@@ -230,6 +230,61 @@ const ClientDetailPage = () => {
     
     fetchClientData();
   }, [clientId, toast, refreshKey]);
+
+  useEffect(() => {
+    if (!clientId) return;
+
+    let pollInterval = 2000;
+    let lastSync: string | null = null;
+    let isActive = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const channel = supabase
+      .channel(`client:${clientId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "clients",
+          filter: `id=eq.${clientId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") return;
+          lastSync = (payload.new as { updated_at?: string }).updated_at || null;
+          refreshClientData();
+          pollInterval = 2000;
+        }
+      )
+      .subscribe();
+
+    const poll = async () => {
+      const { data } = await supabase
+        .from("clients")
+        .select("updated_at")
+        .eq("id", clientId)
+        .gt("updated_at", lastSync || "1970-01-01")
+        .maybeSingle();
+
+      if (data?.updated_at) {
+        lastSync = data.updated_at;
+        refreshClientData();
+        pollInterval = 2000;
+      } else {
+        pollInterval = Math.min(pollInterval * 1.5, 30000);
+      }
+
+      if (isActive) timeoutId = setTimeout(poll, pollInterval);
+    };
+
+    timeoutId = setTimeout(poll, pollInterval);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      supabase.removeChannel(channel);
+    };
+  }, [clientId, refreshClientData]);
   
   if (loading) {
     return (
