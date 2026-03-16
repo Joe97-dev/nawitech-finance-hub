@@ -41,6 +41,7 @@ const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
 const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
 const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 const LoanAgeTrackerReport = lazy(() => import("./pages/reports/LoanAgeTracker"));
+const CohortCollectionReport = lazy(() => import("./pages/reports/CohortCollection"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
