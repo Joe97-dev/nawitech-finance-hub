@@ -21,14 +21,15 @@ interface LoanWithAge {
   loan_number: string | null;
   client: string;
   phone: string;
+  loanOfficer: string;
   amount: number;
   balance: number;
   status: string;
-  date: string; // disbursement date
+  date: string;
   frequency: string | null;
   term_months: number | null;
   interest_rate: number | null;
-  dayAge: number; // days since disbursement
+  dayAge: number;
   daysRemaining: number;
   totalDays: number;
   progressPercent: number;
