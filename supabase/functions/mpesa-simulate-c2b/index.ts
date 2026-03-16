@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       ShortCode: shortCode,
       CommandID: "CustomerPayBillOnline",
       Amount: amount,
-      Msisdn: phoneNumber,
+      Msisdn: formattedPhone,
       BillRefNumber: billRefNumber,
     };
 
