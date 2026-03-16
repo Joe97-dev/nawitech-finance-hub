@@ -188,25 +188,45 @@ const NewLoanPage = () => {
     fetchOfficers();
   }, []);
   
+  const getNormalizedMonths = () => {
+    const termValue = parseFloat(loanTerm) || 1;
+    const termUnit = selectedProduct?.term_unit || 'months';
+    if (termUnit === 'days') return termValue / 30;
+    if (termUnit === 'weeks') return termValue / 4;
+    return termValue;
+  };
+
+  const getInstallmentCount = () => {
+    const months = getNormalizedMonths();
+    const totalDays = Math.round(months * 30);
+
+    switch (repaymentFrequency) {
+      case 'daily': return totalDays;
+      case 'weekly': return Math.max(1, Math.round(totalDays / 7));
+      case 'bi-weekly': return Math.max(1, Math.round(totalDays / 14));
+      case 'quarterly': return Math.max(1, Math.ceil(months / 3));
+      default: return Math.max(1, Math.round(months)); // monthly
+    }
+  };
+
   const calculateTotal = () => {
     const amount = parseFloat(loanAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
-    const months = parseFloat(loanTerm) || 1;
+    const months = getNormalizedMonths();
+    const installments = getInstallmentCount();
     
     if (interestMethod === "reducing") {
-      // For reducing balance, total = sum of all installments
-      const monthlyRate = rate / 100;
+      const ratePerInstallment = (rate / 100) * months / installments;
       let remaining = amount;
-      const principalPerInstallment = amount / months;
+      const principalPerInstallment = amount / installments;
       let total = 0;
-      for (let i = 0; i < months; i++) {
-        total += principalPerInstallment + (remaining * monthlyRate);
+      for (let i = 0; i < installments; i++) {
+        total += principalPerInstallment + (remaining * ratePerInstallment);
         remaining -= principalPerInstallment;
       }
       return total.toLocaleString('en-US');
     } else {
-      // Flat rate
-      const totalInterest = (amount * rate / 100) * months;
+      const totalInterest = amount * (rate / 100) * months;
       return (amount + totalInterest).toLocaleString('en-US');
     }
   };
@@ -214,22 +234,23 @@ const NewLoanPage = () => {
   const calculateMonthly = () => {
     const amount = parseFloat(loanAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
-    const months = parseFloat(loanTerm) || 1;
+    const months = getNormalizedMonths();
+    const installments = getInstallmentCount();
     
     if (interestMethod === "reducing") {
-      const monthlyRate = rate / 100;
+      const ratePerInstallment = (rate / 100) * months / installments;
       let remaining = amount;
-      const principalPerInstallment = amount / months;
+      const principalPerInstallment = amount / installments;
       let total = 0;
-      for (let i = 0; i < months; i++) {
-        total += principalPerInstallment + (remaining * monthlyRate);
+      for (let i = 0; i < installments; i++) {
+        total += principalPerInstallment + (remaining * ratePerInstallment);
         remaining -= principalPerInstallment;
       }
-      return (total / months).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return (total / installments).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     } else {
-      const totalInterest = (amount * rate / 100) * months;
+      const totalInterest = amount * (rate / 100) * months;
       const totalAmount = amount + totalInterest;
-      return (totalAmount / months).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return (totalAmount / installments).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
   };
   
