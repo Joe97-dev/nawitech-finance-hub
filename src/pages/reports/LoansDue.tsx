@@ -156,6 +156,19 @@ const LoansDueReport = () => {
         (branchData || []).forEach((b) => branchNameMap.set(b.id, b.name));
       }
 
+      // Fetch loan officer profiles
+      const officerIds = [...new Set((loans || []).map(l => l.loan_officer_id).filter(Boolean))] as string[];
+      const officerMap = new Map<string, string>();
+      if (officerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', officerIds);
+        (profiles || []).forEach(p => {
+          officerMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+        });
+      }
+
       const resolveClientName = (ref: string) => {
         const n = (ref || "").trim();
         if (!n) return "Unknown";
@@ -186,6 +199,7 @@ const LoansDueReport = () => {
           installmentStatus: s.status,
           loanStatus: loan.status,
           branchName: resolveClientBranch(loan.client),
+          loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
         });
       });
 
