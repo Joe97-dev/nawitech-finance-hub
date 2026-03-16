@@ -141,7 +141,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         .eq("id", clientId)
         .single();
 
-      if (clientData?.status === "pending") {
+      if (clientData?.status === "pending" || clientData?.status === "dormant") {
         const { error: updateError } = await supabase
           .from("clients")
           .update({ status: "active" })
@@ -152,9 +152,11 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         }
       }
 
+      const wasReactivated = clientData?.status === "pending" || clientData?.status === "dormant";
+
       toast({
         title: "Client fee posted successfully",
-        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded for ${clientName}.${clientData?.status === "pending" ? " Client is now active." : ""}`,
+        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded for ${clientName}.${wasReactivated ? " Client is now active." : ""}`,
       });
 
       form.reset();

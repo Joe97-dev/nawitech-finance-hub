@@ -1,289 +1,402 @@
 import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
-import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ExportButton } from "@/components/ui/export-button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReportFilters } from "@/components/reports/ReportFilters";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getOrganizationId } from "@/lib/get-organization-id";
+import { PostClientFeeDialog } from "@/components/clients/PostClientFeeDialog";
+import { UserCheck, AlertTriangle, Clock, Ban } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-interface DormantClientData {
+interface InactiveClientData {
   id: string;
   client_name: string;
   phone_number: string;
-  last_activity: string;
-  days_inactive: number;
+  last_loan_date: string;
+  days_without_loan: number;
+  current_status: string;
+  category: "inactive" | "dormant";
 }
-
-const inactivityRanges = [
-  { value: "all", label: "All" },
-  { value: "90-120", label: "90-120 days" },
-  { value: "121-150", label: "121-150 days" },
-  { value: "151-180", label: "151-180 days" },
-  { value: "180+", label: "180+ days" }
-];
 
 const columns = [
   { key: "client_name", header: "Client Name" },
   { key: "phone_number", header: "Phone Number" },
-  { key: "last_activity", header: "Last Activity" },
-  { key: "days_inactive", header: "Days Inactive" }
+  { key: "last_loan_date", header: "Last Loan Date" },
+  { key: "days_without_loan", header: "Days Without Loan" },
+  { key: "category", header: "Category" },
+  { key: "current_status", header: "Current Status" },
 ];
 
 const DormantClientsReport = () => {
   const { toast } = useToast();
-  const [selectedRange, setSelectedRange] = useState("all");
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [dormantData, setDormantData] = useState<DormantClientData[]>([]);
+  const [clientsData, setClientsData] = useState<InactiveClientData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const orgId = await getOrganizationId();
+
+      // Fetch all active/inactive/dormant clients
+      const { data: clients, error: clientsError } = await supabase
+        .from("clients")
+        .select("id, first_name, last_name, phone, status, created_at")
+        .eq("organization_id", orgId)
+        .in("status", ["active", "inactive", "dormant"]);
+
+      if (clientsError) throw clientsError;
+
+      // Fetch the most recent loan date per client name
+      const { data: loans, error: loansError } = await supabase
+        .from("loans")
+        .select("client, date")
+        .eq("organization_id", orgId)
+        .neq("type", "client_fee_account")
+        .order("date", { ascending: false });
+
+      if (loansError) throw loansError;
+
+      // Build map: client name -> most recent loan date
+      const lastLoanMap = new Map<string, string>();
+      (loans || []).forEach((loan) => {
+        const name = loan.client.toLowerCase();
+        if (!lastLoanMap.has(name)) {
+          lastLoanMap.set(name, loan.date);
+        }
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const results: InactiveClientData[] = [];
+
+      (clients || []).forEach((client) => {
+        const fullName = `${client.first_name} ${client.last_name}`;
+        const lastLoanDate = lastLoanMap.get(fullName.toLowerCase());
+        
+        // Use last loan date, or fall back to client creation date
+        const referenceDate = lastLoanDate || client.created_at;
+        const refDate = new Date(referenceDate);
+        refDate.setHours(0, 0, 0, 0);
+        const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+        // Classify: 7-29 days = inactive, 30+ days = dormant
+        if (daysWithoutLoan >= 7) {
+          const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
+          results.push({
+            id: client.id,
+            client_name: fullName,
+            phone_number: client.phone || "N/A",
+            last_loan_date: lastLoanDate || "No loans",
+            days_without_loan: daysWithoutLoan,
+            current_status: client.status || "active",
+            category,
+          });
+        }
+      });
+
+      // Sort by days descending
+      results.sort((a, b) => b.days_without_loan - a.days_without_loan);
+      setClientsData(results);
+    } catch (error: any) {
+      console.error("Error fetching data:", error);
+      toast({
+        variant: "destructive",
+        title: "Data fetch error",
+        description: "Failed to load client data.",
+      });
+      setClientsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDormantClients = async () => {
-      try {
-        setLoading(true);
-        
-        // Get clients who haven't had recent loan activity
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('id, first_name, last_name, phone, created_at');
-          
-        if (clientsError) throw clientsError;
+    fetchData();
+  }, []);
 
-        // Get recent loan activity for each client
-        const { data: recentLoans, error: loansError } = await supabase
-          .from('loans')
-          .select('client, date')
-          .neq('type', 'client_fee_account')
-          .gte('date', `${threeMonthsAgo.getFullYear()}-${String(threeMonthsAgo.getMonth() + 1).padStart(2, '0')}-${String(threeMonthsAgo.getDate()).padStart(2, '0')}`);
-          
-        if (loansError) throw loansError;
-
-        // Create a set of clients with recent activity
-        const activeClients = new Set(recentLoans?.map(loan => loan.client) || []);
-        
-        // Filter clients without recent activity
-        const dormantClients: DormantClientData[] = (clientsData || [])
-          .filter(client => {
-            const fullName = `${client.first_name} ${client.last_name}`;
-            return !activeClients.has(fullName);
-          })
-          .map(client => {
-            const lastActivity = client.created_at;
-            const daysInactive = Math.floor(
-              (new Date().getTime() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24)
-            );
-            
-            return {
-              id: client.id,
-              client_name: `${client.first_name} ${client.last_name}`,
-              phone_number: client.phone || 'N/A',
-              last_activity: lastActivity,
-              days_inactive: daysInactive
-            };
-          })
-          .filter(client => client.days_inactive >= 90); // Only show clients inactive for 90+ days
-
-        setDormantData(dormantClients);
-      } catch (error: any) {
-        console.error("Error fetching dormant clients data:", error);
-        toast({
-          variant: "destructive",
-          title: "Data fetch error",
-          description: "Failed to load dormant clients data."
-        });
-        setDormantData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDormantClients();
-  }, [toast]);
-
-  // Filter data based on selected range and search query
-  const filteredData = dormantData.filter(client => {
-    const matchesRange = selectedRange === "all" || (() => {
-      switch (selectedRange) {
-        case "90-120": return client.days_inactive >= 90 && client.days_inactive <= 120;
-        case "121-150": return client.days_inactive >= 121 && client.days_inactive <= 150;
-        case "151-180": return client.days_inactive >= 151 && client.days_inactive <= 180;
-        case "180+": return client.days_inactive > 180;
-        default: return true;
-      }
-    })();
+  // Update client statuses in DB based on calculated categories
+  const syncStatuses = async () => {
+    const orgId = await getOrganizationId();
     
-    const matchesSearch = searchQuery === "" || 
-                         client.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         client.phone_number.includes(searchQuery);
-    
-    return matchesRange && matchesSearch;
+    // Batch update clients who should be dormant but aren't marked as such
+    const dormantClients = clientsData.filter(
+      (c) => c.category === "dormant" && c.current_status !== "dormant"
+    );
+    const inactiveClients = clientsData.filter(
+      (c) => c.category === "inactive" && c.current_status !== "inactive"
+    );
+
+    if (dormantClients.length > 0) {
+      const dormantIds = dormantClients.map((c) => c.id);
+      await supabase
+        .from("clients")
+        .update({ status: "dormant" })
+        .in("id", dormantIds)
+        .eq("organization_id", orgId);
+    }
+
+    if (inactiveClients.length > 0) {
+      const inactiveIds = inactiveClients.map((c) => c.id);
+      await supabase
+        .from("clients")
+        .update({ status: "inactive" })
+        .in("id", inactiveIds)
+        .eq("organization_id", orgId);
+    }
+
+    if (dormantClients.length > 0 || inactiveClients.length > 0) {
+      fetchData();
+    }
+  };
+
+  useEffect(() => {
+    if (clientsData.length > 0) {
+      const needsSync = clientsData.some(
+        (c) =>
+          (c.category === "dormant" && c.current_status !== "dormant") ||
+          (c.category === "inactive" && c.current_status !== "inactive")
+      );
+      if (needsSync) {
+        syncStatuses();
+      }
+    }
+  }, [clientsData.length]);
+
+  const handleActivateInactive = async (clientId: string, clientName: string) => {
+    setActivatingId(clientId);
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ status: "active" })
+        .eq("id", clientId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Client activated",
+        description: `${clientName} has been set to active.`,
+      });
+      fetchData();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Activation failed",
+        description: error.message,
+      });
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
+  // Filter
+  const filteredData = clientsData.filter((client) => {
+    const matchesTab =
+      activeTab === "all" ||
+      (activeTab === "inactive" && client.category === "inactive") ||
+      (activeTab === "dormant" && client.category === "dormant");
+
+    const matchesSearch =
+      searchQuery === "" ||
+      client.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.phone_number.includes(searchQuery);
+
+    return matchesTab && matchesSearch;
   });
 
-  // Calculate statistics
-  const avgDaysInactive = filteredData.length > 0 
-    ? Math.round(filteredData.reduce((sum, client) => sum + client.days_inactive, 0) / filteredData.length)
-    : 0;
+  const inactiveCount = clientsData.filter((c) => c.category === "inactive").length;
+  const dormantCount = clientsData.filter((c) => c.category === "dormant").length;
+  const avgDays =
+    filteredData.length > 0
+      ? Math.round(filteredData.reduce((sum, c) => sum + c.days_without_loan, 0) / filteredData.length)
+      : 0;
 
-  const hasActiveFilters = selectedRange !== "all" || searchQuery !== "";
+  const hasActiveFilters = searchQuery !== "";
 
   const handleReset = () => {
-    setSelectedRange("all");
     setSearchQuery("");
   };
 
-  const filters = (
-    <ReportFilters 
-      title="Dormant Clients Filters" 
-      hasActiveFilters={hasActiveFilters}
-      onReset={handleReset}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Inactivity Range
-          </label>
-          <Select value={selectedRange} onValueChange={setSelectedRange}>
-            <SelectTrigger className="border-dashed">
-              <SelectValue placeholder="Select Range" />
-            </SelectTrigger>
-            <SelectContent>
-              {inactivityRanges.map((range) => (
-                <SelectItem key={range.value} value={range.value}>
-                  {range.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Search
-          </label>
-          <Input 
-            placeholder="Search by client name or phone number" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-dashed"
-          />
-        </div>
-      </div>
-      
-      <div className="bg-muted/50 p-3 rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div className="text-sm mb-2 sm:mb-0">
-          <span className="font-medium">{filteredData.length}</span> dormant clients
-        </div>
-        <div className="text-sm font-medium">
-          Average days inactive: <span className="text-primary">{avgDaysInactive} days</span>
-        </div>
-      </div>
-    </ReportFilters>
-  );
+  const getCategoryBadge = (client: InactiveClientData) => {
+    if (client.category === "dormant") {
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <Ban className="h-3 w-3" />
+          Dormant
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+        <Clock className="h-3 w-3" />
+        Inactive
+      </Badge>
+    );
+  };
 
   return (
     <ReportPage
-      title="Dormant Clients Report"
-      description="Clients who haven't been active for an extended period"
+      title="Dormant & Inactive Clients"
+      description="Clients without loan activity — Inactive (7-29 days) or Dormant (30+ days)"
       actions={
-        <ExportButton 
-          data={filteredData.map(client => ({
-            client_name: client.client_name,
-            phone_number: client.phone_number,
-            last_activity: new Date(client.last_activity).toLocaleDateString(),
-            days_inactive: client.days_inactive
-          }))} 
-          filename={`dormant-clients-report-${new Date().toISOString().slice(0, 10)}`} 
-          columns={columns} 
+        <ExportButton
+          data={filteredData.map((c) => ({
+            client_name: c.client_name,
+            phone_number: c.phone_number,
+            last_loan_date: c.last_loan_date === "No loans" ? "No loans" : new Date(c.last_loan_date).toLocaleDateString(),
+            days_without_loan: c.days_without_loan,
+            category: c.category,
+            current_status: c.current_status,
+          }))}
+          filename={`dormant-inactive-report-${new Date().toISOString().slice(0, 10)}`}
+          columns={columns}
         />
       }
-      filters={filters}
+      filters={
+        <ReportFilters
+          title="Client Activity Filters"
+          hasActiveFilters={hasActiveFilters}
+          onReset={handleReset}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Search
+              </label>
+              <Input
+                placeholder="Search by client name or phone number"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-dashed"
+              />
+            </div>
+          </div>
+        </ReportFilters>
+      }
     >
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       ) : (
         <div className="space-y-6">
           <ReportStats>
             <ReportStat
-              label="Total Dormant Clients"
-              value={filteredData.length.toString()}
-              subValue="90+ days inactive"
-              trend="down"
-              trendValue="12%"
+              label="Total Flagged"
+              value={clientsData.length.toString()}
+              subValue="7+ days without a loan"
+              icon={<AlertTriangle className="h-5 w-5" />}
             />
             <ReportStat
-              label="Average Days Inactive"
-              value={`${avgDaysInactive} days`}
-              subValue="Across all dormant clients"
-              trend="up"
-              trendValue="8%"
+              label="Inactive Clients"
+              value={inactiveCount.toString()}
+              subValue="7-29 days (can reactivate directly)"
+              icon={<Clock className="h-5 w-5" />}
             />
             <ReportStat
-              label="Longest Inactive"
-              value={filteredData.length > 0 ? `${Math.max(...filteredData.map(c => c.days_inactive))} days` : "0 days"}
-              subValue="Most inactive client"
-              trend="up"
-              trendValue="5%"
+              label="Dormant Clients"
+              value={dormantCount.toString()}
+              subValue="30+ days (fee required)"
+              icon={<Ban className="h-5 w-5" />}
             />
             <ReportStat
-              label="Recently Dormant"
-              value={filteredData.filter(c => c.days_inactive <= 120).length.toString()}
-              subValue="90-120 days inactive"
-              trend="down"
-              trendValue="3%"
+              label="Avg Days Without Loan"
+              value={`${avgDays} days`}
+              subValue="Across filtered clients"
+              icon={<UserCheck className="h-5 w-5" />}
             />
           </ReportStats>
 
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-medium mb-4">Dormant Clients</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client Name</TableHead>
-                    <TableHead>Phone Number</TableHead>
-                    <TableHead>Last Activity</TableHead>
-                    <TableHead>Days Inactive</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                        No dormant clients found for the selected criteria
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredData.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell className="font-medium">{client.client_name}</TableCell>
-                        <TableCell>{client.phone_number}</TableCell>
-                        <TableCell>{new Date(client.last_activity).toLocaleDateString()}</TableCell>
-                        <TableCell>{client.days_inactive} days</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={client.days_inactive > 180 ? "destructive" : "outline"}
-                          >
-                            {client.days_inactive > 180 ? "Critical" : "Dormant"}
-                          </Badge>
-                        </TableCell>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="all">All ({clientsData.length})</TabsTrigger>
+              <TabsTrigger value="inactive">Inactive ({inactiveCount})</TabsTrigger>
+              <TabsTrigger value="dormant">Dormant ({dormantCount})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab}>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Client Name</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Last Loan Date</TableHead>
+                        <TableHead>Days Without Loan</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Action</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredData.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No clients found for the selected criteria
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredData.map((client) => (
+                          <TableRow key={client.id}>
+                            <TableCell
+                              className="font-medium cursor-pointer hover:underline"
+                              onClick={() => navigate(`/clients/${client.id}`)}
+                            >
+                              {client.client_name}
+                            </TableCell>
+                            <TableCell>{client.phone_number}</TableCell>
+                            <TableCell>
+                              {client.last_loan_date === "No loans"
+                                ? "No loans"
+                                : new Date(client.last_loan_date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <span className={client.days_without_loan >= 30 ? "text-destructive font-semibold" : "text-amber-600 font-medium"}>
+                                {client.days_without_loan} days
+                              </span>
+                            </TableCell>
+                            <TableCell>{getCategoryBadge(client)}</TableCell>
+                            <TableCell>
+                              {client.category === "inactive" ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={activatingId === client.id}
+                                  onClick={() => handleActivateInactive(client.id, client.client_name)}
+                                >
+                                  <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                                  {activatingId === client.id ? "Activating..." : "Activate"}
+                                </Button>
+                              ) : (
+                                <PostClientFeeDialog
+                                  clientId={client.id}
+                                  clientName={client.client_name}
+                                  onFeePosted={fetchData}
+                                />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </ReportPage>
