@@ -25,10 +25,12 @@ interface InactiveClientData {
   days_without_loan: number;
   current_status: string;
   category: "inactive" | "dormant";
+  loan_officer: string;
 }
 
 const columns = [
   { key: "client_name", header: "Client Name" },
+  { key: "loan_officer", header: "Loan Officer" },
   { key: "phone_number", header: "Phone Number" },
   { key: "last_loan_date", header: "Last Due Date" },
   { key: "days_without_loan", header: "Days Since Last Due Date" },
@@ -44,6 +46,8 @@ const DormantClientsReport = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [loanOfficers, setLoanOfficers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
 
   const fetchData = async () => {
     try {
@@ -53,7 +57,7 @@ const DormantClientsReport = () => {
       // Fetch all clients (not just active — dormant/inactive too)
       const { data: clients, error: clientsError } = await supabase
         .from("clients")
-        .select("id, first_name, last_name, phone, status, created_at")
+        .select("id, first_name, last_name, phone, status, created_at, loan_officer_id")
         .eq("organization_id", orgId)
         .in("status", ["active", "inactive", "dormant"]);
 
@@ -67,6 +71,31 @@ const DormantClientsReport = () => {
         .neq("type", "client_fee_account");
 
       if (loansError) throw loansError;
+
+      // Resolve loan officer names
+      const officerIds = [...new Set((clients || []).map(c => c.loan_officer_id).filter(Boolean))] as string[];
+      const profileMap = new Map<string, string>();
+      if (officerIds.length > 0) {
+        const batchSize = 50;
+        for (let i = 0; i < officerIds.length; i += batchSize) {
+          const batch = officerIds.slice(i, i + batchSize);
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("id", batch);
+          (profiles || []).forEach((p) => {
+            profileMap.set(p.id, `${p.first_name || ""} ${p.last_name || ""}`.trim() || "—");
+          });
+        }
+      }
+
+      // Build loan officers list for filter
+      const officersList: { id: string; name: string }[] = [];
+      profileMap.forEach((name, id) => {
+        officersList.push({ id, name });
+      });
+      officersList.sort((a, b) => a.name.localeCompare(b.name));
+      setLoanOfficers(officersList);
 
       // Group loans by client name (lowercase)
       const loansByClient = new Map<string, typeof loans>();
@@ -103,9 +132,8 @@ const DormantClientsReport = () => {
 
       // Fetch last due dates from loan_schedule in batches
       const lastDueDateMap = new Map<string, string>();
-      const batchSize = 50;
-      for (let i = 0; i < closedLoanIds.length; i += batchSize) {
-        const batch = closedLoanIds.slice(i, i + batchSize);
+      for (let i = 0; i < closedLoanIds.length; i += 50) {
+        const batch = closedLoanIds.slice(i, i + 50);
         const { data: schedules } = await supabase
           .from("loan_schedule")
           .select("loan_id, due_date")
@@ -132,13 +160,11 @@ const DormantClientsReport = () => {
         const fullName = `${client.first_name} ${client.last_name}`;
         const lastDueDate = lastDueDateMap.get(fullName.toLowerCase());
 
-        // Use last due date from schedule, or fall back to client creation date
         const referenceDate = lastDueDate || client.created_at;
         const refDate = new Date(referenceDate);
         refDate.setHours(0, 0, 0, 0);
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-        // Classify: 7-29 days = inactive, 30+ days = dormant
         if (daysWithoutLoan >= 7) {
           const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
           results.push({
@@ -149,11 +175,11 @@ const DormantClientsReport = () => {
             days_without_loan: daysWithoutLoan,
             current_status: client.status || "active",
             category,
+            loan_officer: client.loan_officer_id ? profileMap.get(client.loan_officer_id) || "—" : "—",
           });
         }
       });
 
-      // Sort by days descending
       results.sort((a, b) => b.days_without_loan - a.days_without_loan);
       setClientsData(results);
     } catch (error: any) {
@@ -176,8 +202,7 @@ const DormantClientsReport = () => {
   // Update client statuses in DB based on calculated categories
   const syncStatuses = async () => {
     const orgId = await getOrganizationId();
-    
-    // Batch update clients who should be dormant but aren't marked as such
+
     const dormantClients = clientsData.filter(
       (c) => c.category === "dormant" && c.current_status !== "dormant"
     );
@@ -259,7 +284,10 @@ const DormantClientsReport = () => {
       client.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.phone_number.includes(searchQuery);
 
-    return matchesTab && matchesSearch;
+    const matchesOfficer =
+      selectedOfficer === "all" || client.loan_officer === selectedOfficer;
+
+    return matchesTab && matchesSearch && matchesOfficer;
   });
 
   const inactiveCount = clientsData.filter((c) => c.category === "inactive").length;
@@ -269,10 +297,11 @@ const DormantClientsReport = () => {
       ? Math.round(filteredData.reduce((sum, c) => sum + c.days_without_loan, 0) / filteredData.length)
       : 0;
 
-  const hasActiveFilters = searchQuery !== "";
+  const hasActiveFilters = searchQuery !== "" || selectedOfficer !== "all";
 
   const handleReset = () => {
     setSearchQuery("");
+    setSelectedOfficer("all");
   };
 
   const getCategoryBadge = (client: InactiveClientData) => {
@@ -285,7 +314,7 @@ const DormantClientsReport = () => {
       );
     }
     return (
-      <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+      <Badge variant="secondary" className="gap-1">
         <Clock className="h-3 w-3" />
         Inactive
       </Badge>
@@ -300,6 +329,7 @@ const DormantClientsReport = () => {
         <ExportButton
           data={filteredData.map((c) => ({
             client_name: c.client_name,
+            loan_officer: c.loan_officer,
             phone_number: c.phone_number,
             last_loan_date: c.last_loan_date === "No loans" ? "No loans" : new Date(c.last_loan_date).toLocaleDateString(),
             days_without_loan: c.days_without_loan,
@@ -327,6 +357,24 @@ const DormantClientsReport = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="border-dashed"
               />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                Loan Officer
+              </label>
+              <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+                <SelectTrigger className="border-dashed">
+                  <SelectValue placeholder="All Officers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Officers</SelectItem>
+                  {loanOfficers.map((officer) => (
+                    <SelectItem key={officer.id} value={officer.name}>
+                      {officer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </ReportFilters>
@@ -379,6 +427,7 @@ const DormantClientsReport = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Client Name</TableHead>
+                        <TableHead>Loan Officer</TableHead>
                         <TableHead>Phone</TableHead>
                         <TableHead>Last Due Date</TableHead>
                         <TableHead>Days Since</TableHead>
@@ -389,7 +438,7 @@ const DormantClientsReport = () => {
                     <TableBody>
                       {filteredData.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No clients found for the selected criteria
                           </TableCell>
                         </TableRow>
@@ -402,6 +451,7 @@ const DormantClientsReport = () => {
                             >
                               {client.client_name}
                             </TableCell>
+                            <TableCell>{client.loan_officer}</TableCell>
                             <TableCell>{client.phone_number}</TableCell>
                             <TableCell>
                               {client.last_loan_date === "No loans"
@@ -409,7 +459,7 @@ const DormantClientsReport = () => {
                                 : new Date(client.last_loan_date).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              <span className={client.days_without_loan >= 30 ? "text-destructive font-semibold" : "text-amber-600 font-medium"}>
+                              <span className={client.days_without_loan >= 30 ? "text-destructive font-semibold" : "font-medium"}>
                                 {client.days_without_loan} days
                               </span>
                             </TableCell>
