@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ReportPage } from "./Base";
 import { ExportButton } from "@/components/ui/export-button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
+import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface LoanCollectionRow {
+  id: string;
   loan_number: string;
   client_name: string;
   loan_officer: string;
@@ -40,8 +43,34 @@ const columns = [
   { key: "status", header: "Status" },
 ];
 
+/** Fetch all rows from a table, bypassing the 1000-row default limit */
+async function fetchAllRows<T>(
+  table: string,
+  selectCols: string,
+  filters?: Record<string, unknown>
+): Promise<T[]> {
+  const pageSize = 1000;
+  const all: T[] = [];
+  let from = 0;
+  while (true) {
+    let query = supabase.from(table).select(selectCols).range(from, from + pageSize - 1);
+    if (filters) {
+      for (const [key, val] of Object.entries(filters)) {
+        query = query.eq(key, val);
+      }
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (data) all.push(...(data as T[]));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 const CollectionByDisbursalReport = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
@@ -58,30 +87,46 @@ const CollectionByDisbursalReport = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const organizationId = await getOrganizationId();
       const startDate = date?.from || new Date(new Date().getFullYear(), 0, 1);
       const endDate = date?.to || new Date();
       const fromStr = format(startDate, "yyyy-MM-dd");
       const toStr = format(endDate, "yyyy-MM-dd");
 
-      // Fetch loans, clients, and profiles in parallel
-      const [loansResult, clientsResult, profilesResult] = await Promise.all([
-        supabase
+      // Fetch loans with pagination, excluding client_fee_account
+      const pageSize = 1000;
+      let allLoans: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
           .from("loans")
           .select("id, loan_number, client, amount, date, loan_officer_id, status")
+          .eq("organization_id", organizationId)
+          .neq("type", "client_fee_account")
           .gte("date", fromStr)
           .lte("date", toStr)
-          .in("status", ["active", "closed", "in arrears", "disbursed", "approved"]),
-        supabase.from("clients").select("id, first_name, last_name"),
-        supabase.from("profiles").select("id, first_name, last_name, username"),
+          .in("status", ["active", "closed", "in arrears", "disbursed", "approved"])
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (data) allLoans.push(...data);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      // Fetch clients and profiles scoped to organization, with pagination
+      const [clients, profiles] = await Promise.all([
+        fetchAllRows<{ id: string; first_name: string; last_name: string }>(
+          "clients", "id, first_name, last_name", { organization_id: organizationId }
+        ),
+        fetchAllRows<{ id: string; first_name: string | null; last_name: string | null; username: string | null }>(
+          "profiles", "id, first_name, last_name, username", { organization_id: organizationId }
+        ),
       ]);
 
-      if (loansResult.error) throw loansResult.error;
-
-      const loans = loansResult.data || [];
-      const clients = clientsResult.data || [];
-      const profiles = profilesResult.data || [];
-
       const clientMap = new Map(clients.map((c) => [c.id, `${c.first_name} ${c.last_name}`]));
+      // Also build a name-based lookup for legacy string client fields
+      const clientByNameMap = new Map(clients.map((c) => [`${c.first_name} ${c.last_name}`.toLowerCase(), `${c.first_name} ${c.last_name}`]));
+
       const profileMap = new Map(
         profiles.map((p) => {
           const name = `${p.first_name || ""} ${p.last_name || ""}`.trim();
@@ -91,7 +136,7 @@ const CollectionByDisbursalReport = () => {
 
       // Build officer list
       const officerSet = new Map<string, string>();
-      loans.forEach((l) => {
+      allLoans.forEach((l) => {
         if (l.loan_officer_id && !officerSet.has(l.loan_officer_id)) {
           officerSet.set(l.loan_officer_id, profileMap.get(l.loan_officer_id) || "Unknown");
         }
@@ -102,14 +147,14 @@ const CollectionByDisbursalReport = () => {
           .sort((a, b) => a.name.localeCompare(b.name))
       );
 
-      if (loans.length === 0) {
+      if (allLoans.length === 0) {
         setRows([]);
         setLoading(false);
         return;
       }
 
-      // Fetch all schedules for these loans in batches of 50
-      const loanIds = loans.map((l) => l.id);
+      // Fetch all schedules in batches of 50
+      const loanIds = allLoans.map((l) => l.id);
       const allSchedules: { loan_id: string; total_due: number; amount_paid: number }[] = [];
       for (let i = 0; i < loanIds.length; i += 50) {
         const chunk = loanIds.slice(i, i + 50);
@@ -131,14 +176,17 @@ const CollectionByDisbursalReport = () => {
       }
 
       // Build rows
-      const result: LoanCollectionRow[] = loans.map((loan) => {
+      const result: LoanCollectionRow[] = allLoans.map((loan) => {
         const schedule = schedulesByLoan.get(loan.id) || { totalDue: 0, totalPaid: 0 };
         const outstanding = schedule.totalDue - schedule.totalPaid;
         const rate = schedule.totalDue > 0 ? Math.round((schedule.totalPaid / schedule.totalDue) * 10000) / 100 : 0;
-        const clientName = clientMap.get(loan.client) || loan.client;
+
+        // Resolve client: UUID first, then name fallback
+        const clientName = clientMap.get(loan.client) || clientByNameMap.get(loan.client?.toLowerCase()) || loan.client;
         const officerName = loan.loan_officer_id ? (profileMap.get(loan.loan_officer_id) || "Unknown") : "Unassigned";
 
         return {
+          id: loan.id,
           loan_number: loan.loan_number || loan.id.slice(0, 8),
           client_name: clientName,
           loan_officer: officerName,
@@ -153,7 +201,6 @@ const CollectionByDisbursalReport = () => {
         };
       });
 
-      // Sort by date descending
       result.sort((a, b) => b.disbursement_date.localeCompare(a.disbursement_date));
       setRows(result);
     } catch (error: any) {
@@ -187,12 +234,18 @@ const CollectionByDisbursalReport = () => {
     });
   };
 
+  // Export raw numbers (no toLocaleString) so CSV stays numeric
   const exportData = filteredRows.map((r) => ({
-    ...r,
-    amount_disbursed: r.amount_disbursed.toLocaleString(),
-    total_due: r.total_due.toLocaleString(),
-    total_paid: r.total_paid.toLocaleString(),
-    outstanding: r.outstanding.toLocaleString(),
+    loan_number: r.loan_number,
+    client_name: r.client_name,
+    loan_officer: r.loan_officer,
+    disbursement_date: r.disbursement_date,
+    amount_disbursed: r.amount_disbursed,
+    total_due: r.total_due,
+    total_paid: r.total_paid,
+    outstanding: r.outstanding,
+    collection_rate: r.collection_rate,
+    status: r.status,
   }));
 
   const filters = (
@@ -289,8 +342,12 @@ const CollectionByDisbursalReport = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRows.map((r, i) => (
-                        <TableRow key={i}>
+                      {filteredRows.map((r) => (
+                        <TableRow
+                          key={r.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate(`/loans/${r.id}`)}
+                        >
                           <TableCell className="font-medium">{r.loan_number}</TableCell>
                           <TableCell>{r.client_name}</TableCell>
                           <TableCell>{r.loan_officer}</TableCell>
