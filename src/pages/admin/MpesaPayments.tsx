@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,12 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, LinkIcon, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { Smartphone, RefreshCw, LinkIcon, Filter, TrendingUp, Calendar, CalendarDays, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 import { ExportButton } from "@/components/ui/export-button";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 interface MpesaTransaction {
   id: string;
@@ -52,6 +54,7 @@ export default function MpesaPayments() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => { fetchTransactions(); }, []);
 
@@ -66,6 +69,23 @@ export default function MpesaPayments() {
     setLoading(false);
   };
 
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(tx => tx.status === statusFilter);
+    }
+    if (dateRange?.from) {
+      const from = new Date(dateRange.from);
+      from.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(tx => new Date(tx.created_at) >= from);
+    }
+    if (dateRange?.to) {
+      const to = new Date(dateRange.to);
+      to.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(tx => new Date(tx.created_at) <= to);
+    }
+    return filtered;
+  }, [transactions, statusFilter, dateRange]);
 
   return (
     <DashboardLayout>
@@ -136,47 +156,64 @@ export default function MpesaPayments() {
 
 
         {/* Transactions Table */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-            <CardTitle>M-Pesa Transactions</CardTitle>
-            <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-1" />
-                  <SelectValue placeholder="Filter status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="applied">Applied</SelectItem>
-                  <SelectItem value="matched">Matched</SelectItem>
-                  <SelectItem value="unmatched">Unmatched</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                </SelectContent>
-              </Select>
-              <ExportButton
-                data={(statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter)).map(tx => ({
-                  date: new Date(tx.created_at).toLocaleString(),
-                  trans_id: tx.trans_id,
-                  sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
-                  phone: tx.msisdn,
-                  bill_ref: tx.bill_ref_number || "",
-                  amount: tx.trans_amount,
-                  status: tx.status,
-                }))}
-                filename={`mpesa-transactions-${new Date().toISOString().slice(0, 10)}`}
-                columns={[
-                  { key: "date", header: "Date" },
-                  { key: "trans_id", header: "Transaction ID" },
-                  { key: "sender", header: "Sender" },
-                  { key: "phone", header: "Phone" },
-                  { key: "bill_ref", header: "Bill Ref (ID No.)" },
-                  { key: "amount", header: "Amount (KES)" },
-                  { key: "status", header: "Status" },
-                ]}
+         <Card>
+          <CardHeader className="flex flex-col gap-3">
+            <div className="flex flex-row items-center justify-between flex-wrap gap-2">
+              <CardTitle>M-Pesa Transactions</CardTitle>
+              <div className="flex items-center gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-1" />
+                    <SelectValue placeholder="Filter status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="applied">Applied</SelectItem>
+                    <SelectItem value="matched">Matched</SelectItem>
+                    <SelectItem value="unmatched">Unmatched</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
+                <ExportButton
+                  data={filteredTransactions.map(tx => ({
+                    date: new Date(tx.created_at).toLocaleString(),
+                    trans_id: tx.trans_id,
+                    sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
+                    phone: tx.msisdn,
+                    bill_ref: tx.bill_ref_number || "",
+                    amount: tx.trans_amount,
+                    status: tx.status,
+                  }))}
+                  filename={`mpesa-transactions-${new Date().toISOString().slice(0, 10)}`}
+                  columns={[
+                    { key: "date", header: "Date" },
+                    { key: "trans_id", header: "Transaction ID" },
+                    { key: "sender", header: "Sender" },
+                    { key: "phone", header: "Phone" },
+                    { key: "bill_ref", header: "Bill Ref (ID No.)" },
+                    { key: "amount", header: "Amount (KES)" },
+                    { key: "status", header: "Status" },
+                  ]}
+                />
+                <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                className="max-w-xs"
               />
-              <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-              </Button>
+              {dateRange?.from && (
+                <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)} className="text-muted-foreground">
+                  <X className="h-4 w-4 mr-1" /> Clear dates
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground ml-auto">
+                Showing {filteredTransactions.length} of {transactions.length} transactions
+              </span>
             </div>
           </CardHeader>
           <CardContent>
@@ -195,16 +232,14 @@ export default function MpesaPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(() => {
-                    const filtered = statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter);
-                    return filtered.length === 0 ? (
+                  {filteredTransactions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        {loading ? "Loading..." : statusFilter === "all" ? "No M-Pesa transactions yet" : `No ${statusFilter} transactions`}
+                        {loading ? "Loading..." : "No transactions match your filters"}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map(tx => (
+                    filteredTransactions.map(tx => (
                       <TableRow key={tx.id}>
                         <TableCell className="whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-mono text-sm">{tx.trans_id}</TableCell>
@@ -226,8 +261,8 @@ export default function MpesaPayments() {
                         </TableCell>
                       </TableRow>
                     ))
-                  );
-                  })()}
+                  )}
+
                 </TableBody>
               </Table>
             </div>
