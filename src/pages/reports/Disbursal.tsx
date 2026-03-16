@@ -25,6 +25,7 @@ interface DisbursalData {
   disbursed_date: string;
   term_months: number;
   interest_rate: number;
+  loan_officer: string;
 }
 
 const branches = [
