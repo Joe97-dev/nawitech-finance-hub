@@ -3,17 +3,13 @@ import { DashboardLayout } from "@/components/dashboard/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, LinkIcon, Globe, FlaskConical, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { Smartphone, RefreshCw, LinkIcon, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useMemo } from "react";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
 interface MpesaTransaction {
