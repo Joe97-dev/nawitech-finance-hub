@@ -256,7 +256,8 @@ const ArrearsReport = () => {
             amountOverdue: item.amountOverdue,
             lastPaymentDate: item.lastPaymentDate,
             contactInfo: item.contactInfo,
-            riskCategory: item.riskCategory
+            riskCategory: item.riskCategory,
+            loanOfficer: item.loanOfficer
           }))} 
           filename={`arrears-report-${new Date().toISOString().slice(0, 10)}`} 
           columns={columns} 
