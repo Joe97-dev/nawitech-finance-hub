@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { ReportPage } from "./Base";
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ExportButton } from "@/components/ui/export-button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DateRange } from "react-day-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,16 +58,34 @@ const CollectionRateReport = () => {
       const fromStr = formatLocal(startDate);
       const toStr = formatLocal(endDate);
 
-      // Use loan_schedule as the single source of truth:
-      // total_due = expected, amount_paid = collected
-      const { data: schedules, error } = await supabase
-        .from('loan_schedule')
-        .select('total_due, due_date, amount_paid')
+      // Fetch fee-account loan IDs to exclude
+      const { data: feeLoans } = await supabase
+        .from('loans')
+        .select('id')
         .eq('organization_id', orgId)
-        .gte('due_date', fromStr)
-        .lte('due_date', toStr);
+        .eq('type', 'client_fee_account');
+      const feeIds = new Set((feeLoans || []).map(l => l.id));
 
-      if (error) throw error;
+      // Paginated fetch of loan_schedule
+      const pageSize = 1000;
+      const allSchedules: { total_due: number; due_date: string; amount_paid: number | null; loan_id: string }[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('loan_schedule')
+          .select('total_due, due_date, amount_paid, loan_id')
+          .eq('organization_id', orgId)
+          .gte('due_date', fromStr)
+          .lte('due_date', toStr)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (data) allSchedules.push(...data);
+        if (!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      // Filter out fee-account schedules
+      const schedules = allSchedules.filter(s => !feeIds.has(s.loan_id));
 
       // Group by month
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
