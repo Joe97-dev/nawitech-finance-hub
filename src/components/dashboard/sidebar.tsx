@@ -147,6 +147,12 @@ const reportNavItems = [
     href: "/reports/loan-age-tracker",
     icon: Clock,
     requiredRoles: ["admin", "loan_officer"],
+  },
+  {
+    title: "Cohort Collection",
+    href: "/reports/cohort-collection",
+    icon: PieChart,
+    requiredRoles: ["admin", "loan_officer"],
   }
 ];
 

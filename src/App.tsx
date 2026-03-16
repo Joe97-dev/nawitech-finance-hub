@@ -41,6 +41,7 @@ const TransactionsReport = lazy(() => import("./pages/reports/Transactions"));
 const InstallmentBoundsReport = lazy(() => import("./pages/reports/InstallmentBounds"));
 const DuesByDayReport = lazy(() => import("./pages/reports/DuesByDay"));
 const LoanAgeTrackerReport = lazy(() => import("./pages/reports/LoanAgeTracker"));
+const CohortCollectionReport = lazy(() => import("./pages/reports/CohortCollection"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -102,6 +103,7 @@ function App() {
             <Route path="/reports/installment-bounds" element={<ProtectedRoute><InstallmentBoundsReport /></ProtectedRoute>} />
             <Route path="/reports/dues-by-day" element={<ProtectedRoute><DuesByDayReport /></ProtectedRoute>} />
             <Route path="/reports/loan-age-tracker" element={<ProtectedRoute><LoanAgeTrackerReport /></ProtectedRoute>} />
+            <Route path="/reports/cohort-collection" element={<ProtectedRoute><CohortCollectionReport /></ProtectedRoute>} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
