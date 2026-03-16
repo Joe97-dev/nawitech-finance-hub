@@ -30,8 +30,8 @@ interface InactiveClientData {
 const columns = [
   { key: "client_name", header: "Client Name" },
   { key: "phone_number", header: "Phone Number" },
-  { key: "last_loan_date", header: "Last Loan Date" },
-  { key: "days_without_loan", header: "Days Without Loan" },
+  { key: "last_loan_date", header: "Last Due Date" },
+  { key: "days_without_loan", header: "Days Since Last Due Date" },
   { key: "category", header: "Category" },
   { key: "current_status", header: "Current Status" },
 ];
