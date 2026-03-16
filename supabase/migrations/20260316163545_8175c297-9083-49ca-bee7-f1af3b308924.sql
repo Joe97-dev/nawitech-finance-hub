@@ -1,0 +1,1 @@
+UPDATE mpesa_transactions SET organization_id = 'a0000000-0000-0000-0000-000000000001' WHERE organization_id IS NULL AND status = 'unmatched';
