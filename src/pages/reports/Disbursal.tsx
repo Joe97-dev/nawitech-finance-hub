@@ -227,12 +227,13 @@ const DisbursalReport = () => {
                   <TableHead>Disbursed Date</TableHead>
                   <TableHead>Loan Term</TableHead>
                   <TableHead>Interest Rate</TableHead>
+                  <TableHead>Loan Officer</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredDisbursals.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-4 text-muted-foreground">
                       No disbursals found for the selected criteria
                     </TableCell>
                   </TableRow>
@@ -245,6 +246,7 @@ const DisbursalReport = () => {
                       <TableCell>{new Date(loan.disbursed_date).toLocaleDateString()}</TableCell>
                       <TableCell>{loan.term_months} months</TableCell>
                       <TableCell>{loan.interest_rate}%</TableCell>
+                      <TableCell>{loan.loan_officer}</TableCell>
                     </TableRow>
                   ))
                 )}
