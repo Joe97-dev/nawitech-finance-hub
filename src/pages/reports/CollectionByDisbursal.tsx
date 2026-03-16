@@ -103,7 +103,7 @@ const CollectionByDisbursalReport = () => {
       const clientByNameMap = new Map(clients.map((c) => [`${c.first_name} ${c.last_name}`.toLowerCase(), `${c.first_name} ${c.last_name}`]));
 
       const profileMap = new Map(
-        profiles.map((p) => {
+        allProfiles.map((p) => {
           const name = `${p.first_name || ""} ${p.last_name || ""}`.trim();
           return [p.id, name || p.username || p.id.slice(0, 8)];
         })
