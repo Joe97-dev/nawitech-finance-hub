@@ -25,7 +25,7 @@ const columns = [
   { key: "net", header: "Net Cash Flow (KES)" }
 ];
 
-const years = ["2025", "2024", "2023"];
+const years = ["2026", "2025", "2024", "2023"];
 
 const CashFlowReport = () => {
   const { toast } = useToast();
