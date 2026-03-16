@@ -140,32 +140,25 @@ const DormantClientsReport = () => {
       (c) => c.category === "inactive" && c.current_status !== "inactive"
     );
 
-    const updates: Promise<any>[] = [];
-
     if (dormantClients.length > 0) {
       const dormantIds = dormantClients.map((c) => c.id);
-      updates.push(
-        supabase
-          .from("clients")
-          .update({ status: "dormant" })
-          .in("id", dormantIds)
-          .eq("organization_id", orgId)
-      );
+      await supabase
+        .from("clients")
+        .update({ status: "dormant" })
+        .in("id", dormantIds)
+        .eq("organization_id", orgId);
     }
 
     if (inactiveClients.length > 0) {
       const inactiveIds = inactiveClients.map((c) => c.id);
-      updates.push(
-        supabase
-          .from("clients")
-          .update({ status: "inactive" })
-          .in("id", inactiveIds)
-          .eq("organization_id", orgId)
-      );
+      await supabase
+        .from("clients")
+        .update({ status: "inactive" })
+        .in("id", inactiveIds)
+        .eq("organization_id", orgId);
     }
 
-    if (updates.length > 0) {
-      await Promise.all(updates);
+    if (dormantClients.length > 0 || inactiveClients.length > 0) {
       fetchData();
     }
   };
