@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
+import { EditLoanDialog } from "@/components/loans/EditLoanDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
