@@ -99,10 +99,11 @@ export function ManualMatchDialog({ open, onOpenChange, transaction, onMatched }
     setStep("select-loan");
     setLoadingLoans(true);
     try {
+      const clientName = `${client.first_name} ${client.last_name}`;
       const { data, error } = await supabase
         .from("loans")
         .select("id, loan_number, amount, balance, status, type")
-        .eq("client", client.id)
+        .eq("client", clientName)
         .in("status", ["active", "in arrears"])
         .order("date", { ascending: true });
 
