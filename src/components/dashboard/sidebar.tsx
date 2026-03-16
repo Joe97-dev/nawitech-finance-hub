@@ -14,6 +14,7 @@ import {
   UserCheck,
   Database,
   Clock,
+  Smartphone,
 } from "lucide-react";
 import {
   Sidebar,
