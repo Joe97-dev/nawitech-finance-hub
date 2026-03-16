@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { exportToCSV } from "@/lib/csv-export";
 import { Clock, AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -61,7 +60,8 @@ export default function LoanAgeTracker() {
         .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate, loan_officer_id")
         .eq("organization_id", organizationId)
         .lte("term_months", 1)
-        .in("status", ["active", "in arrears", "pending"]);
+        .in("status", ["active", "in arrears"])
+        .neq("type", "client_fee_account");
 
       if (loansError) throw loansError;
       if (!loansData || loansData.length === 0) {
@@ -70,16 +70,20 @@ export default function LoanAgeTracker() {
         return;
       }
 
-      // Fetch client phone numbers
+      // Fetch clients for name and phone resolution
       const { data: clientsData } = await supabase
         .from("clients")
-        .select("first_name, last_name, phone")
+        .select("id, first_name, last_name, phone")
         .eq("organization_id", organizationId);
 
-      const clientPhoneMap = new Map<string, string>();
+      // Build lookup maps: by UUID and by full name (for legacy string-based client fields)
+      const clientByIdMap = new Map<string, { name: string; phone: string }>();
+      const clientByNameMap = new Map<string, { name: string; phone: string }>();
       (clientsData || []).forEach(c => {
         const fullName = `${c.first_name} ${c.last_name}`;
-        clientPhoneMap.set(fullName.toLowerCase(), c.phone);
+        const entry = { name: fullName, phone: c.phone };
+        clientByIdMap.set(c.id, entry);
+        clientByNameMap.set(fullName.toLowerCase(), entry);
       });
 
       // Fetch loan officer profiles
@@ -130,11 +134,18 @@ export default function LoanAgeTracker() {
         const sched = schedByLoan.get(loan.id) || { totalDue: 0, totalPaid: 0 };
         const collectionRate = sched.totalDue > 0 ? Math.round((sched.totalPaid / sched.totalDue) * 100) : 0;
 
+        // Resolve client: try UUID lookup first, then name lookup, then raw value
+        const clientById = clientByIdMap.get(loan.client);
+        const clientByName = clientByNameMap.get(loan.client.toLowerCase());
+        const resolvedClient = clientById || clientByName;
+        const clientName = resolvedClient?.name || loan.client;
+        const clientPhone = resolvedClient?.phone || "-";
+
         return {
           id: loan.id,
           loan_number: loan.loan_number,
-          client: loan.client,
-          phone: clientPhoneMap.get(loan.client.toLowerCase()) || "-",
+          client: clientName,
+          phone: clientPhone,
           loanOfficer: loan.loan_officer_id ? officerMap.get(loan.loan_officer_id) || '—' : '—',
           amount: loan.amount,
           balance: loan.balance,
