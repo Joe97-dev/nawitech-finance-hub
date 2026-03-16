@@ -36,13 +36,6 @@ const IncomeReport = () => {
     const fetchIncomeData = async () => {
       try {
         setLoading(true);
-        
-        // Get transactions with income (fees, interest, penalties)
-        let query = supabase
-          .from('loan_transactions')
-          .select('transaction_date, transaction_type, amount')
-          .in('transaction_type', ['fee', 'interest', 'penalty', 'client_fee'])
-          .order('transaction_date', { ascending: true });
 
         const formatLocal = (d: Date) => {
           const y = d.getFullYear();
@@ -51,70 +44,89 @@ const IncomeReport = () => {
           return `${y}-${m}-${day}`;
         };
 
-        // Apply date range filter if provided
-        if (dateRange?.from) {
-          query = query.gte('transaction_date', formatLocal(dateRange.from));
-        }
-        if (dateRange?.to) {
-          const toEndOfDay = `${formatLocal(dateRange.to)}T23:59:59.999`;
-          query = query.lte('transaction_date', toEndOfDay);
-        } else {
-          // Default to last 12 months if no date range
-          const oneYearAgo = new Date();
-          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          query = query.gte('transaction_date', formatLocal(oneYearAgo));
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const defaultFrom = formatLocal(oneYearAgo);
+
+        const fromStr = dateRange?.from ? formatLocal(dateRange.from) : defaultFrom;
+        const toStr = dateRange?.to ? formatLocal(dateRange.to) : undefined;
+
+        // 1) Fetch interest income from loan_schedule (paid installments)
+        let scheduleQuery = supabase
+          .from('loan_schedule')
+          .select('due_date, interest_due, amount_paid, total_due, status')
+          .gte('due_date', fromStr);
+
+        if (toStr) {
+          scheduleQuery = scheduleQuery.lte('due_date', toStr);
         }
 
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        // Group by month and transaction type
+        // 2) Fetch fee transactions from loan_transactions
+        let feeQuery = supabase
+          .from('loan_transactions')
+          .select('transaction_date, amount')
+          .eq('transaction_type', 'fee')
+          .eq('is_reverted', false)
+          .gte('transaction_date', fromStr);
+
+        if (toStr) {
+          feeQuery = feeQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
+        }
+
+        const [scheduleRes, feeRes] = await Promise.all([scheduleQuery, feeQuery]);
+
+        if (scheduleRes.error) throw scheduleRes.error;
+        if (feeRes.error) throw feeRes.error;
+
+        // Group data by month
         const monthlyIncome = new Map<string, {
           interest_income: number;
           fee_income: number;
-          penalty_income: number;
         }>();
 
-        (data || []).forEach(transaction => {
-          const date = new Date(transaction.transaction_date);
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          
-          if (!monthlyIncome.has(monthKey)) {
-            monthlyIncome.set(monthKey, {
-              interest_income: 0,
-              fee_income: 0,
-              penalty_income: 0
-            });
+        const ensureMonth = (key: string) => {
+          if (!monthlyIncome.has(key)) {
+            monthlyIncome.set(key, { interest_income: 0, fee_income: 0 });
           }
+          return monthlyIncome.get(key)!;
+        };
+
+        // Interest from paid/partially-paid schedule entries
+        (scheduleRes.data || []).forEach(entry => {
+          if (entry.status === 'pending' && (!entry.amount_paid || entry.amount_paid <= 0)) return;
           
-          const monthData = monthlyIncome.get(monthKey)!;
-          
-          switch (transaction.transaction_type) {
-            case 'interest':
-              monthData.interest_income += transaction.amount;
-              break;
-            case 'fee':
-            case 'client_fee':
-              monthData.fee_income += transaction.amount;
-              break;
-            case 'penalty':
-              monthData.penalty_income += transaction.amount;
-              break;
+          const date = new Date(entry.due_date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          const monthData = ensureMonth(monthKey);
+
+          if (entry.status === 'paid') {
+            // Fully paid — count full interest_due
+            monthData.interest_income += Number(entry.interest_due);
+          } else if (entry.amount_paid && entry.amount_paid > 0 && entry.total_due > 0) {
+            // Partially paid — proportional interest
+            const paidRatio = Math.min(Number(entry.amount_paid) / Number(entry.total_due), 1);
+            monthData.interest_income += Number(entry.interest_due) * paidRatio;
           }
         });
 
-        // Convert to array and calculate totals
+        // Fee income from transactions
+        (feeRes.data || []).forEach(tx => {
+          const date = new Date(tx.transaction_date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          ensureMonth(monthKey).fee_income += Number(tx.amount);
+        });
+
+        // Convert to array
         const transformedData: IncomeData[] = Array.from(monthlyIncome.entries())
           .map(([monthKey, income]) => ({
-            month: new Date(monthKey + '-01').toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'short' 
+            month: new Date(monthKey + '-01').toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short'
             }),
-            interest_income: income.interest_income,
-            fee_income: income.fee_income,
-            penalty_income: income.penalty_income,
-            total_income: income.interest_income + income.fee_income + income.penalty_income
+            interest_income: Math.round(income.interest_income * 100) / 100,
+            fee_income: Math.round(income.fee_income * 100) / 100,
+            penalty_income: 0,
+            total_income: Math.round((income.interest_income + income.fee_income) * 100) / 100
           }))
           .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
