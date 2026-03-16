@@ -307,6 +307,7 @@ const LoansDueReport = () => {
                 <TableHead>Paid</TableHead>
                 <TableHead>Outstanding</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Loan Officer</TableHead>
                 <TableHead>Branch</TableHead>
               </TableRow>
             </TableHeader>
