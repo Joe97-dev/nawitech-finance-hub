@@ -233,10 +233,18 @@ const LoanDetailPage = () => {
             </div>
           </div>
           {isAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Loan
-            </Button>
+            <div className="flex gap-2">
+              {['active', 'in arrears', 'rejected'].includes(loan.status) && (
+                <Button variant="destructive" size="sm" onClick={() => setAbandonDialogOpen(true)}>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Abandon Loan
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Loan
+              </Button>
+            </div>
           )}
         </div>
         
