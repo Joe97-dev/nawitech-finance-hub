@@ -97,19 +97,33 @@ const DormantClientsReport = () => {
       officersList.sort((a, b) => a.name.localeCompare(b.name));
       setLoanOfficers(officersList);
 
-      // Group loans by client name (lowercase)
-      const loansByClient = new Map<string, typeof loans>();
+      // Group loans by client — match by both UUID and name
+      const loansByClientId = new Map<string, typeof loans>();
+      const loansByClientName = new Map<string, typeof loans>();
       (loans || []).forEach((loan) => {
-        const name = loan.client.toLowerCase();
-        if (!loansByClient.has(name)) loansByClient.set(name, []);
-        loansByClient.get(name)!.push(loan);
+        // If loan.client looks like a UUID, group by ID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(loan.client);
+        if (isUuid) {
+          if (!loansByClientId.has(loan.client)) loansByClientId.set(loan.client, []);
+          loansByClientId.get(loan.client)!.push(loan);
+        } else {
+          const name = loan.client.toLowerCase().trim();
+          if (!loansByClientName.has(name)) loansByClientName.set(name, []);
+          loansByClientName.get(name)!.push(loan);
+        }
       });
+
+      // Helper to get all loans for a client (by ID and by name)
+      const getClientLoans = (clientId: string, firstName: string, lastName: string) => {
+        const byId = loansByClientId.get(clientId) || [];
+        const byName = loansByClientName.get(`${firstName} ${lastName}`.toLowerCase().trim()) || [];
+        return [...byId, ...byName];
+      };
 
       // Find clients with NO active loans (all loans must be closed/completed)
       const clientsWithNoActiveLoans: typeof clients = [];
       (clients || []).forEach((client) => {
-        const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
-        const clientLoans = loansByClient.get(fullName) || [];
+        const clientLoans = getClientLoans(client.id, client.first_name, client.last_name);
         const hasActiveLoan = clientLoans.some(
           (l) => l.status !== "closed" && l.status !== "rejected" && l.status !== "written_off"
         );
@@ -123,7 +137,7 @@ const DormantClientsReport = () => {
       const loanIdToClient = new Map<string, string>();
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`.toLowerCase();
-        const clientLoans = loansByClient.get(fullName) || [];
+        const clientLoans = getClientLoans(client.id, client.first_name, client.last_name);
         clientLoans.forEach((l) => {
           closedLoanIds.push(l.id);
           loanIdToClient.set(l.id, fullName);
