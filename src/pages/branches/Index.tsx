@@ -38,52 +38,100 @@ const BranchesIndex = () => {
   });
   const { toast } = useToast();
 
-  // Fetch branches with computed stats
   useEffect(() => {
     const fetchBranches = async () => {
       try {
         setLoading(true);
+        const orgId = await getOrganizationId();
+
         const { data: branchData, error } = await supabase
           .from('branches')
-          .select('*');
-        
+          .select('*')
+          .eq('organization_id', orgId);
+
         if (error) throw error;
         if (!branchData) { setBranches([]); return; }
 
-        // Fetch staff counts per branch from profiles
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('branch_id');
+        // Fetch staff counts per branch from profiles (paginated)
+        const allProfiles: { branch_id: string | null }[] = [];
+        let pFrom = 0;
+        while (true) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('branch_id')
+            .eq('organization_id', orgId)
+            .range(pFrom, pFrom + 999);
+          if (data) allProfiles.push(...data);
+          if (!data || data.length < 1000) break;
+          pFrom += 1000;
+        }
 
-        // Fetch clients per branch to map loans
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, first_name, last_name, branch_id');
+        // Fetch clients with branch_id (paginated) — we need client IDs to map loans
+        const allClients: { id: string; branch_id: string | null }[] = [];
+        let cFrom = 0;
+        while (true) {
+          const { data } = await supabase
+            .from('clients')
+            .select('id, branch_id')
+            .eq('organization_id', orgId)
+            .range(cFrom, cFrom + 999);
+          if (data) allClients.push(...data);
+          if (!data || data.length < 1000) break;
+          cFrom += 1000;
+        }
 
-        // Fetch active loans
-        const { data: activeLoans } = await supabase
-          .from('loans')
-          .select('client, amount, balance, status')
-          .in('status', ['active', 'in arrears']);
-
-        // Build a map of client name -> branch_id
+        // Build client ID -> branch_id map
         const clientBranchMap = new Map<string, string>();
-        (clients || []).forEach(c => {
+        allClients.forEach(c => {
+          if (c.branch_id) clientBranchMap.set(c.id, c.branch_id);
+        });
+
+        // Fetch active loans (paginated), excluding fee accounts
+        // The `client` field may be a UUID (client ID) or a legacy name string
+        const allLoans: { client: string; balance: number }[] = [];
+        let lFrom = 0;
+        while (true) {
+          const { data } = await supabase
+            .from('loans')
+            .select('client, balance')
+            .eq('organization_id', orgId)
+            .neq('type', 'client_fee_account')
+            .in('status', ['active', 'in arrears'])
+            .range(lFrom, lFrom + 999);
+          if (data) allLoans.push(...data);
+          if (!data || data.length < 1000) break;
+          lFrom += 1000;
+        }
+
+        // Also build a name-based fallback: client full name -> branch_id
+        const allClientsWithNames: { id: string; first_name: string; last_name: string; branch_id: string | null }[] = [];
+        let cnFrom = 0;
+        while (true) {
+          const { data } = await supabase
+            .from('clients')
+            .select('id, first_name, last_name, branch_id')
+            .eq('organization_id', orgId)
+            .range(cnFrom, cnFrom + 999);
+          if (data) allClientsWithNames.push(...data);
+          if (!data || data.length < 1000) break;
+          cnFrom += 1000;
+        }
+        const clientNameBranchMap = new Map<string, string>();
+        allClientsWithNames.forEach(c => {
           if (c.branch_id) {
-            clientBranchMap.set(`${c.first_name} ${c.last_name}`.toLowerCase(), c.branch_id);
+            clientNameBranchMap.set(`${c.first_name} ${c.last_name}`.toLowerCase(), c.branch_id);
           }
         });
 
         const enrichedBranches = branchData.map(branch => {
-          // Count staff in this branch
-          const staffCount = (profiles || []).filter(p => p.branch_id === branch.id).length;
+          const staffCount = allProfiles.filter(p => p.branch_id === branch.id).length;
 
-          // Count active loans and portfolio for this branch
           let branchActiveLoans = 0;
           let branchPortfolio = 0;
-          (activeLoans || []).forEach(loan => {
-            const loanBranchId = clientBranchMap.get(loan.client.toLowerCase());
-            if (loanBranchId === branch.id) {
+          allLoans.forEach(loan => {
+            // Try UUID lookup first, then name fallback
+            const branchId = clientBranchMap.get(loan.client) || clientNameBranchMap.get(loan.client.toLowerCase());
+            if (branchId === branch.id) {
               branchActiveLoans++;
               branchPortfolio += Number(loan.balance);
             }
@@ -140,9 +188,7 @@ const BranchesIndex = () => {
         .select()
         .single();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setBranches([...branches, data]);
       setNewBranch({ name: "", location: "" });
