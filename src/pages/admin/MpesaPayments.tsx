@@ -156,47 +156,64 @@ export default function MpesaPayments() {
 
 
         {/* Transactions Table */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-            <CardTitle>M-Pesa Transactions</CardTitle>
-            <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-1" />
-                  <SelectValue placeholder="Filter status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="applied">Applied</SelectItem>
-                  <SelectItem value="matched">Matched</SelectItem>
-                  <SelectItem value="unmatched">Unmatched</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                </SelectContent>
-              </Select>
-              <ExportButton
-                data={(statusFilter === "all" ? transactions : transactions.filter(tx => tx.status === statusFilter)).map(tx => ({
-                  date: new Date(tx.created_at).toLocaleString(),
-                  trans_id: tx.trans_id,
-                  sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
-                  phone: tx.msisdn,
-                  bill_ref: tx.bill_ref_number || "",
-                  amount: tx.trans_amount,
-                  status: tx.status,
-                }))}
-                filename={`mpesa-transactions-${new Date().toISOString().slice(0, 10)}`}
-                columns={[
-                  { key: "date", header: "Date" },
-                  { key: "trans_id", header: "Transaction ID" },
-                  { key: "sender", header: "Sender" },
-                  { key: "phone", header: "Phone" },
-                  { key: "bill_ref", header: "Bill Ref (ID No.)" },
-                  { key: "amount", header: "Amount (KES)" },
-                  { key: "status", header: "Status" },
-                ]}
+         <Card>
+          <CardHeader className="flex flex-col gap-3">
+            <div className="flex flex-row items-center justify-between flex-wrap gap-2">
+              <CardTitle>M-Pesa Transactions</CardTitle>
+              <div className="flex items-center gap-2">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <Filter className="h-4 w-4 mr-1" />
+                    <SelectValue placeholder="Filter status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="applied">Applied</SelectItem>
+                    <SelectItem value="matched">Matched</SelectItem>
+                    <SelectItem value="unmatched">Unmatched</SelectItem>
+                    <SelectItem value="error">Error</SelectItem>
+                  </SelectContent>
+                </Select>
+                <ExportButton
+                  data={filteredTransactions.map(tx => ({
+                    date: new Date(tx.created_at).toLocaleString(),
+                    trans_id: tx.trans_id,
+                    sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
+                    phone: tx.msisdn,
+                    bill_ref: tx.bill_ref_number || "",
+                    amount: tx.trans_amount,
+                    status: tx.status,
+                  }))}
+                  filename={`mpesa-transactions-${new Date().toISOString().slice(0, 10)}`}
+                  columns={[
+                    { key: "date", header: "Date" },
+                    { key: "trans_id", header: "Transaction ID" },
+                    { key: "sender", header: "Sender" },
+                    { key: "phone", header: "Phone" },
+                    { key: "bill_ref", header: "Bill Ref (ID No.)" },
+                    { key: "amount", header: "Amount (KES)" },
+                    { key: "status", header: "Status" },
+                  ]}
+                />
+                <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
+                className="max-w-xs"
               />
-              <Button variant="outline" size="sm" onClick={fetchTransactions} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
-              </Button>
+              {dateRange?.from && (
+                <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)} className="text-muted-foreground">
+                  <X className="h-4 w-4 mr-1" /> Clear dates
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground ml-auto">
+                Showing {filteredTransactions.length} of {transactions.length} transactions
+              </span>
             </div>
           </CardHeader>
           <CardContent>
