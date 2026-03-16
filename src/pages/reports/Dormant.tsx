@@ -172,6 +172,13 @@ const DormantClientsReport = () => {
       today.setHours(0, 0, 0, 0);
 
       const results: InactiveClientData[] = [];
+      const activeIdsToUpdate = new Set(
+        clientsWithActiveLoans
+          .filter((client) => client.status !== "active")
+          .map((client) => client.id)
+      );
+      const inactiveIdsToUpdate: string[] = [];
+      const dormantIdsToUpdate: string[] = [];
 
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`;
@@ -182,20 +189,58 @@ const DormantClientsReport = () => {
         refDate.setHours(0, 0, 0, 0);
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
 
-        if (daysWithoutLoan >= 7) {
-          const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
-          results.push({
-            id: client.id,
-            client_name: fullName,
-            phone_number: client.phone || "N/A",
-            last_loan_date: lastDueDate || "No loans",
-            days_without_loan: daysWithoutLoan,
-            current_status: client.status || "active",
-            category,
-            loan_officer: client.loan_officer_id ? profileMap.get(client.loan_officer_id) || "—" : "—",
-          });
+        if (daysWithoutLoan < 7) {
+          if (client.status !== "active") {
+            activeIdsToUpdate.add(client.id);
+          }
+          return;
         }
+
+        const category: "inactive" | "dormant" = daysWithoutLoan >= 30 ? "dormant" : "inactive";
+
+        if (category === "dormant" && client.status !== "dormant") {
+          dormantIdsToUpdate.push(client.id);
+        }
+        if (category === "inactive" && client.status !== "inactive") {
+          inactiveIdsToUpdate.push(client.id);
+        }
+
+        results.push({
+          id: client.id,
+          client_name: fullName,
+          phone_number: client.phone || "N/A",
+          last_loan_date: lastDueDate || "No loans",
+          days_without_loan: daysWithoutLoan,
+          current_status: category,
+          category,
+          loan_officer: client.loan_officer_id ? profileMap.get(client.loan_officer_id) || "—" : "—",
+        });
       });
+
+      const activeIds = Array.from(activeIdsToUpdate);
+      if (activeIds.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "active" })
+          .in("id", activeIds)
+          .eq("organization_id", orgId);
+      }
+
+      if (inactiveIdsToUpdate.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "inactive" })
+          .in("id", inactiveIdsToUpdate)
+          .eq("organization_id", orgId);
+      }
+
+      if (dormantIdsToUpdate.length > 0) {
+        await supabase
+          .from("clients")
+          .update({ status: "dormant" })
+          .in("id", dormantIdsToUpdate)
+          .eq("organization_id", orgId);
+      }
 
       results.sort((a, b) => b.days_without_loan - a.days_without_loan);
       setClientsData(results);
