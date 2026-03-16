@@ -107,6 +107,23 @@ const ArrearsReport = () => {
 
         if (clientsError) throw clientsError;
 
+        // Fetch loan officer profiles
+        const officerIds = [...new Set(
+          (overdueScheduleData || [])
+            .map(item => (item.loans as any)?.loan_officer_id)
+            .filter(Boolean)
+        )] as string[];
+        const profileMap = new Map<string, string>();
+        if (officerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', officerIds);
+          (profiles || []).forEach(p => {
+            profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
+          });
+        }
+
         // Group by loan and calculate arrears data
         const loanArrearsMap = new Map();
         
