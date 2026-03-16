@@ -43,7 +43,8 @@ const columns = [
   { key: "amount", header: "Amount (KES)" },
   { key: "disbursed_date", header: "Disbursed Date" },
   { key: "term_months", header: "Loan Term (Months)" },
-  { key: "interest_rate", header: "Interest Rate (%)" }
+  { key: "interest_rate", header: "Interest Rate (%)" },
+  { key: "loan_officer", header: "Loan Officer" }
 ];
 
 const DisbursalReport = () => {
