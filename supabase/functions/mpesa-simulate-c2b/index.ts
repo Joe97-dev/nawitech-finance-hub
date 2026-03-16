@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -76,6 +78,47 @@ Deno.serve(async (req) => {
 
     const simulateData = await simulateResponse.json();
     console.log("Simulate response:", JSON.stringify(simulateData));
+
+    // Safaricom sandbox often doesn't trigger callbacks reliably.
+    // As a fallback, directly call our confirmation endpoint to process the payment.
+    if (simulateResponse.ok && simulateData.ResponseCode === "0") {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const confirmationUrl = `${supabaseUrl}/functions/v1/c2b-confirmation`;
+        const now = new Date();
+        const transTime = now.toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+        const transId = `SIM${Date.now()}`;
+
+        const confirmationBody = {
+          TransactionType: "Pay Bill",
+          TransID: transId,
+          TransTime: transTime,
+          TransAmount: amount.toString(),
+          BusinessShortCode: shortCode,
+          BillRefNumber: billRefNumber,
+          InvoiceNumber: "",
+          OrgAccountBalance: "",
+          ThirdPartyTransID: "",
+          MSISDN: formattedPhone,
+          FirstName: "Sandbox",
+          MiddleName: "",
+          LastName: "User",
+        };
+
+        console.log("Calling confirmation endpoint as fallback:", JSON.stringify(confirmationBody));
+
+        const confirmRes = await fetch(confirmationUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(confirmationBody),
+        });
+
+        const confirmData = await confirmRes.json();
+        console.log("Confirmation fallback response:", JSON.stringify(confirmData));
+      } catch (fallbackErr) {
+        console.error("Fallback confirmation call failed:", fallbackErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({
