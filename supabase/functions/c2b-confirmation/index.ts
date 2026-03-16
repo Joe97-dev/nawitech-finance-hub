@@ -149,6 +149,20 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Recalculate and update loan balance
+        const { data: balanceResult } = await supabase
+          .rpc("calculate_outstanding_balance", { p_loan_id: matchedLoanId });
+
+        if (balanceResult !== null) {
+          await supabase
+            .from("loans")
+            .update({ balance: balanceResult })
+            .eq("id", matchedLoanId);
+
+          // Update loan status based on new balance
+          await supabase.rpc("update_loan_status", { p_loan_id: matchedLoanId });
+        }
+
         // Update mpesa transaction as applied
         await supabase
           .from("mpesa_transactions")
