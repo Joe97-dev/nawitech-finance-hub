@@ -8,10 +8,16 @@ import { ReportFilters } from "@/components/reports/ReportFilters";
 import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getOrganizationId } from "@/lib/get-organization-id";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
+
+interface LoanOfficer {
+  id: string;
+  name: string;
+}
 
 interface CohortData {
   period: string;
@@ -52,10 +58,47 @@ const CohortCollectionReport = () => {
   const [activeView, setActiveView] = useState("chart");
   const [cohortData, setCohortData] = useState<CohortData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loanOfficers, setLoanOfficers] = useState<LoanOfficer[]>([]);
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+
+  useEffect(() => {
+    fetchLoanOfficers();
+  }, []);
 
   useEffect(() => {
     fetchCohortData();
-  }, [date]);
+  }, [date, selectedOfficer]);
+
+  const fetchLoanOfficers = async () => {
+    try {
+      const orgId = await getOrganizationId();
+      // Get loan officers from user_roles + profiles
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("organization_id", orgId)
+        .in("role", ["loan_officer", "admin"]);
+
+      if (!roles || roles.length === 0) return;
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", userIds);
+
+      if (profiles) {
+        setLoanOfficers(
+          profiles.map((p) => ({
+            id: p.id,
+            name: [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unknown",
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching loan officers:", error);
+    }
+  };
 
   const fetchCohortData = async () => {
     try {
@@ -66,14 +109,20 @@ const CohortCollectionReport = () => {
       const endDate = date?.to || new Date(currentYear, 11, 31);
 
       // Fetch loans disbursed in the period
-      const { data: loans, error: loansError } = await supabase
+      let query = supabase
         .from("loans")
-        .select("id, amount, date, status, balance")
+        .select("id, amount, date, status, balance, loan_officer_id")
         .eq("organization_id", orgId)
         .in("status", ["active", "closed", "in arrears", "disbursed", "approved"])
         .neq("type", "client_fee_account")
         .gte("date", formatLocal(startDate))
         .lte("date", formatLocal(endDate));
+
+      if (selectedOfficer !== "all") {
+        query = query.eq("loan_officer_id", selectedOfficer);
+      }
+
+      const { data: loans, error: loansError } = await query;
 
       if (loansError) throw loansError;
 
@@ -189,13 +238,14 @@ const CohortCollectionReport = () => {
   const totalLoans = cohortData.reduce((acc, c) => acc + c.loansCount, 0);
   const totalFullyPaid = cohortData.reduce((acc, c) => acc + c.fullyPaidCount, 0);
 
-  const hasActiveFilters = date !== undefined;
+  const hasActiveFilters = date !== undefined || selectedOfficer !== "all";
 
   const handleReset = () => {
     setDate({
       from: new Date(currentYear, 0, 1),
       to: new Date(currentYear, 11, 31),
     });
+    setSelectedOfficer("all");
   };
 
   const getRateColor = (rate: number) => {
@@ -224,6 +274,24 @@ const CohortCollectionReport = () => {
           onDateRangeChange={setDate}
           className="col-span-2"
         />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Loan Officer
+          </label>
+          <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="All Officers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Officers</SelectItem>
+              {loanOfficers.map((officer) => (
+                <SelectItem key={officer.id} value={officer.id}>
+                  {officer.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </ReportFilters>
   );
