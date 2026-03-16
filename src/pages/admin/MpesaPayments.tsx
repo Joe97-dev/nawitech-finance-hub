@@ -54,6 +54,7 @@ export default function MpesaPayments() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [matchDialogOpen, setMatchDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<MpesaTransaction | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   useEffect(() => { fetchTransactions(); }, []);
 
