@@ -60,7 +60,8 @@ const columns = [
   { key: "amountOverdue", header: "Amount Overdue" },
   { key: "lastPaymentDate", header: "Last Payment" },
   { key: "contactInfo", header: "Contact" },
-  { key: "riskCategory", header: "Risk Category" }
+  { key: "riskCategory", header: "Risk Category" },
+  { key: "loanOfficer", header: "Loan Officer" }
 ];
 
 const ArrearsReport = () => {
