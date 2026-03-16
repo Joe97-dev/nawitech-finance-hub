@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical, Filter } from "lucide-react";
+import { Smartphone, RefreshCw, Play, Link2, LinkIcon, Globe, FlaskConical, Filter, TrendingUp, Calendar, CalendarDays } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useMemo } from "react";
 import { ManualMatchDialog } from "@/components/admin/ManualMatchDialog";
 
 interface MpesaTransaction {
@@ -137,6 +138,59 @@ export default function MpesaPayments() {
             </Badge>
           </div>
         </div>
+
+        {/* Collections Summary */}
+        {(() => {
+          const now = new Date();
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const dayOfWeek = now.getDay();
+          const startOfWeek = new Date(startOfDay);
+          startOfWeek.setDate(startOfDay.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+          const appliedTxs = transactions.filter(tx => tx.status === "applied");
+          const todayTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfDay).reduce((s, tx) => s + tx.trans_amount, 0);
+          const weekTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfWeek).reduce((s, tx) => s + tx.trans_amount, 0);
+          const monthTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfMonth).reduce((s, tx) => s + tx.trans_amount, 0);
+          const txCount = appliedTxs.length;
+
+          return (
+            <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <Calendar className="h-4 w-4" /> Today
+                  </div>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(todayTotal)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <CalendarDays className="h-4 w-4" /> This Week
+                  </div>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(weekTotal)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <CalendarDays className="h-4 w-4" /> This Month
+                  </div>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(monthTotal)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                    <TrendingUp className="h-4 w-4" /> Total Applied
+                  </div>
+                  <p className="text-2xl font-bold text-primary">{txCount} <span className="text-sm font-normal text-muted-foreground">transactions</span></p>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        })()}
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Register URLs */}
