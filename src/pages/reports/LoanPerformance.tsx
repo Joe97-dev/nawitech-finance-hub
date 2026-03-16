@@ -54,14 +54,8 @@ const LoanPerformanceReport = () => {
         // Get loans with their transactions
         let loansQuery = supabase
           .from('loans')
-          .select(`
-            id,
-            amount,
-            balance,
-            type,
-            date,
-            status
-          `);
+          .select('id, amount, balance, type, date, status')
+          .not('status', 'in', '("rejected","pending","postponed")');
 
         const formatLocal = (d: Date) => {
           const y = d.getFullYear();
@@ -70,7 +64,6 @@ const LoanPerformanceReport = () => {
           return `${y}-${m}-${day}`;
         };
 
-        // Apply date filter if provided
         if (dateRange?.from) {
           loansQuery = loansQuery.gte('date', formatLocal(dateRange.from));
         }
@@ -81,13 +74,31 @@ const LoanPerformanceReport = () => {
         const { data: loans, error: loansError } = await loansQuery;
         if (loansError) throw loansError;
 
-        // Get all transactions for these loans
-        const { data: transactions, error: transactionsError } = await supabase
-          .from('loan_transactions')
-          .select('loan_id, amount, transaction_type')
-          .in('loan_id', loans?.map(l => l.id) || []);
+        const loanIds = loans?.map(l => l.id) || [];
 
-        if (transactionsError) throw transactionsError;
+        // Fetch repayment transactions and loan schedules in parallel
+        const [transactionsRes, scheduleRes] = await Promise.all([
+          loanIds.length > 0
+            ? supabase
+                .from('loan_transactions')
+                .select('loan_id, amount, transaction_type')
+                .eq('is_reverted', false)
+                .eq('transaction_type', 'repayment')
+                .in('loan_id', loanIds)
+            : Promise.resolve({ data: [], error: null }),
+          loanIds.length > 0
+            ? supabase
+                .from('loan_schedule')
+                .select('loan_id, interest_due, total_due, amount_paid, status, due_date')
+                .in('loan_id', loanIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+
+        if (transactionsRes.error) throw transactionsRes.error;
+        if (scheduleRes.error) throw scheduleRes.error;
+
+        const transactions = transactionsRes.data || [];
+        const schedules = scheduleRes.data || [];
 
         // Group data by loan type
         const performanceByType: Record<string, {
@@ -96,53 +107,69 @@ const LoanPerformanceReport = () => {
           collected: number;
           interest: number;
           loanCount: number;
-          defaultedLoans: number;
+          arrearsLoans: number;
+          totalScheduleEntries: number;
+          onTimeEntries: number;
         }> = {};
 
         loans?.forEach(loan => {
           const type = loan.type || 'Other';
           if (!performanceByType[type]) {
             performanceByType[type] = {
-              disbursed: 0,
-              outstanding: 0,
-              collected: 0,
-              interest: 0,
-              loanCount: 0,
-              defaultedLoans: 0
+              disbursed: 0, outstanding: 0, collected: 0, interest: 0,
+              loanCount: 0, arrearsLoans: 0, totalScheduleEntries: 0, onTimeEntries: 0
             };
           }
 
-          performanceByType[type].disbursed += Number(loan.amount);
-          performanceByType[type].outstanding += Number(loan.balance);
-          performanceByType[type].loanCount += 1;
+          const perf = performanceByType[type];
+          perf.disbursed += Number(loan.amount);
+          perf.outstanding += Number(loan.balance);
+          perf.loanCount += 1;
 
-          // Check if loan is defaulted (simplified logic)
-          if (loan.status === 'defaulted') {
-            performanceByType[type].defaultedLoans += 1;
+          if (loan.status === 'in arrears') {
+            perf.arrearsLoans += 1;
           }
 
-          // Calculate collections and interest from transactions
-          const loanTransactions = transactions?.filter(t => t.loan_id === loan.id) || [];
-          loanTransactions.forEach(transaction => {
-            if (transaction.transaction_type === 'payment') {
-              performanceByType[type].collected += Number(transaction.amount);
-            } else if (transaction.transaction_type === 'interest') {
-              performanceByType[type].interest += Number(transaction.amount);
+          // Collections from repayment transactions
+          transactions
+            .filter(t => t.loan_id === loan.id)
+            .forEach(t => { perf.collected += Number(t.amount); });
+
+          // Interest from loan schedule & on-time calculation
+          const loanSchedules = schedules.filter(s => s.loan_id === loan.id);
+          loanSchedules.forEach(entry => {
+            // Count past-due entries for on-time calculation
+            const isPast = new Date(entry.due_date) <= new Date();
+            if (isPast) {
+              perf.totalScheduleEntries += 1;
+              if (entry.status === 'paid') {
+                perf.onTimeEntries += 1;
+              }
+            }
+
+            // Interest earned from paid/partially-paid entries
+            if (entry.status === 'paid') {
+              perf.interest += Number(entry.interest_due);
+            } else if (entry.amount_paid && entry.amount_paid > 0 && entry.total_due > 0) {
+              const ratio = Math.min(Number(entry.amount_paid) / Number(entry.total_due), 1);
+              perf.interest += Number(entry.interest_due) * ratio;
             }
           });
         });
 
         // Convert to component format
         const performanceData: LoanPerformanceData[] = Object.entries(performanceByType).map(([type, data], index) => {
-          const defaultRate = data.loanCount > 0 ? (data.defaultedLoans / data.loanCount) * 100 : 0;
-          const onTimeRate = Math.max(0, 100 - defaultRate); // Simplified calculation
+          const defaultRate = data.loanCount > 0 ? (data.arrearsLoans / data.loanCount) * 100 : 0;
+          const onTimeRate = data.totalScheduleEntries > 0
+            ? (data.onTimeEntries / data.totalScheduleEntries) * 100
+            : 100;
           
           return {
             product: type,
             disbursed: data.disbursed,
             outstanding: data.outstanding,
             collected: data.collected,
-            interest: data.interest,
+            interest: Math.round(data.interest * 100) / 100,
             onTime: Math.round(onTimeRate),
             defaultRate: Number(defaultRate.toFixed(2)),
             color: colors[index % colors.length]
