@@ -60,6 +60,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
     receipt_number: "",
     payment_method: "",
     notes: "",
+    transaction_date: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -260,6 +261,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           loan_id: loanId,
           amount: paymentAmount,
           transaction_type: 'repayment',
+          transaction_date: paymentForm.transaction_date,
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
           notes: paymentForm.notes || null,
@@ -281,6 +283,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
         receipt_number: "",
         payment_method: "",
         notes: "",
+        transaction_date: new Date().toISOString().split('T')[0],
       });
 
       // Refresh transactions
@@ -570,6 +573,16 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
                     <SelectItem value="draw_down_account">Draw Down Account</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transaction_date">Payment Date *</Label>
+                <Input
+                  id="transaction_date"
+                  type="date"
+                  value={paymentForm.transaction_date}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, transaction_date: e.target.value }))}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes (Optional)</Label>
