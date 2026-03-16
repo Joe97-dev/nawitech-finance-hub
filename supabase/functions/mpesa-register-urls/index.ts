@@ -51,8 +51,8 @@ Deno.serve(async (req) => {
     const registerPayload = {
       ShortCode: shortCode,
       ResponseType: "Completed",
-      ConfirmationURL: `${functionsBaseUrl}/mpesa-c2b-confirmation`,
-      ValidationURL: `${functionsBaseUrl}/mpesa-c2b-validation`,
+      ConfirmationURL: `${functionsBaseUrl}/c2b-confirmation`,
+      ValidationURL: `${functionsBaseUrl}/c2b-validation`,
     };
 
     console.log("Registering URLs:", JSON.stringify(registerPayload));

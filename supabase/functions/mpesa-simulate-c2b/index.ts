@@ -24,7 +24,14 @@ Deno.serve(async (req) => {
       throw new Error("amount, phoneNumber, and billRefNumber are required");
     }
 
-    // Sandbox only
+    // Format phone: ensure 12-digit 254XXXXXXXXX format
+    let formattedPhone = phoneNumber.replace(/\s+/g, '').replace(/^\+/, '');
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '254' + formattedPhone.substring(1);
+    }
+    if (formattedPhone.length !== 12 || !formattedPhone.startsWith('254')) {
+      throw new Error(`Invalid phone number format. Expected 254XXXXXXXXX (12 digits), got: ${formattedPhone}`);
+    }
     const baseUrl = "https://sandbox.safaricom.co.ke";
 
     // Get OAuth token
@@ -49,7 +56,7 @@ Deno.serve(async (req) => {
       ShortCode: shortCode,
       CommandID: "CustomerPayBillOnline",
       Amount: amount,
-      Msisdn: phoneNumber,
+      Msisdn: formattedPhone,
       BillRefNumber: billRefNumber,
     };
 

@@ -15,10 +15,10 @@ verify_jwt = false
 [functions.process-migration]
 verify_jwt = true
 
-[functions.mpesa-c2b-validation]
+[functions.c2b-validation]
 verify_jwt = false
 
-[functions.mpesa-c2b-confirmation]
+[functions.c2b-confirmation]
 verify_jwt = false
 
 [functions.mpesa-register-urls]
