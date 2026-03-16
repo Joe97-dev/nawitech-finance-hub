@@ -9,12 +9,12 @@ import { CheckCircle, XCircle, Clock, User, UserX } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface Branch {
   id: string;
   name: string;
 }
-import { Label } from "@/components/ui/label";
 
 interface UserApproval {
   id: string;
@@ -25,6 +25,7 @@ interface UserApproval {
   rejection_reason?: string;
   created_at: string;
   email?: string;
+  assigned_role?: string;
   profiles?: {
     username?: string | null;
     first_name?: string | null;
@@ -35,59 +36,71 @@ interface UserApproval {
 const UserApprovals = () => {
   const [approvals, setApprovals] = useState<UserApproval[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [deactivationReason, setDeactivationReason] = useState("");
-  const [selectedRole, setSelectedRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [approvingUserId, setApprovingUserId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Per-dialog isolated state
+  const [activeApproveUserId, setActiveApproveUserId] = useState<string | null>(null);
+  const [activeApproveRole, setActiveApproveRole] = useState<"admin" | "loan_officer" | "data_entry">("data_entry");
+  const [activeApproveBranch, setActiveApproveBranch] = useState("");
+  const [activeRejectReason, setActiveRejectReason] = useState("");
+  const [activeDeactivateReason, setActiveDeactivateReason] = useState("");
+
+  const resetApproveState = () => {
+    setActiveApproveUserId(null);
+    setActiveApproveRole("data_entry");
+    setActiveApproveBranch("");
+  };
+
+  const resetRejectState = () => {
+    setActiveRejectReason("");
+  };
+
+  const resetDeactivateState = () => {
+    setActiveDeactivateReason("");
+  };
 
   const fetchApprovals = async () => {
     try {
-      // Fetch user approvals
-      const { data: approvalsData, error: approvalsError } = await supabase
-        .from('user_approvals')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [
+        { data: approvalsData, error: approvalsError },
+        { data: profilesData, error: profilesError },
+        { data: rolesData, error: rolesError },
+      ] = await Promise.all([
+        supabase.from('user_approvals').select('*').order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, username, first_name, last_name'),
+        supabase.from('user_roles').select('user_id, role'),
+      ]);
 
       if (approvalsError) throw approvalsError;
-
-      // Fetch profiles for user names
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, first_name, last_name');
-
       if (profilesError) throw profilesError;
+      // rolesError is non-critical, just log
+      if (rolesError) console.error('Error fetching roles:', rolesError);
 
-      // Get emails for users who don't have profiles yet (pending users)
-      const approvalsWithEmails = await Promise.all(
+      // Build a map of user_id -> role
+      const roleMap = new Map<string, string>();
+      (rolesData || []).forEach(r => roleMap.set(r.user_id, r.role));
+
+      const approvalsWithDetails = await Promise.all(
         (approvalsData || []).map(async (approval) => {
           const profile = profilesData?.find(p => p.id === approval.user_id);
-          
-          // If no profile exists, get email from auth.users via RPC
+          const assigned_role = roleMap.get(approval.user_id) || undefined;
+
           if (!profile) {
             try {
               const { data: email } = await supabase.rpc('get_user_email', {
                 user_id_input: approval.user_id
               });
-              return {
-                ...approval,
-                email,
-                profiles: null
-              };
+              return { ...approval, email, profiles: null, assigned_role };
             } catch (error) {
               console.error('Error fetching email for user:', approval.user_id, error);
-              return {
-                ...approval,
-                email: null,
-                profiles: null
-              };
+              return { ...approval, email: null, profiles: null, assigned_role };
             }
           }
-          
+
           return {
             ...approval,
+            assigned_role,
             profiles: {
               username: profile.username,
               first_name: profile.first_name,
@@ -97,7 +110,7 @@ const UserApprovals = () => {
         })
       );
 
-      setApprovals(approvalsWithEmails);
+      setApprovals(approvalsWithDetails);
     } catch (error) {
       console.error('Error fetching approvals:', error);
       toast({
@@ -110,14 +123,14 @@ const UserApprovals = () => {
     }
   };
 
-  const handleApprove = async (userId: string, role: "admin" | "loan_officer" | "data_entry" = "data_entry", branchId?: string) => {
+  const handleApprove = async (userId: string) => {
     try {
       const rpcParams: any = {
         target_user_id: userId,
-        assigned_role: role
+        assigned_role: activeApproveRole,
       };
-      if (branchId) {
-        rpcParams.assigned_branch_id = branchId;
+      if (activeApproveBranch) {
+        rpcParams.assigned_branch_id = activeApproveBranch;
       }
       const { error } = await supabase.rpc('approve_user', rpcParams);
 
@@ -125,12 +138,10 @@ const UserApprovals = () => {
 
       toast({
         title: "Success",
-        description: `User approved successfully with ${role.replace('_', ' ')} role`,
+        description: `User approved successfully with ${getRoleDisplayName(activeApproveRole)} role`,
       });
 
-      setApprovingUserId(null);
-      setSelectedRole("data_entry");
-      setSelectedBranchId("");
+      resetApproveState();
       await fetchApprovals();
     } catch (error) {
       console.error('Error approving user:', error);
@@ -146,25 +157,17 @@ const UserApprovals = () => {
     try {
       const { error } = await supabase.rpc('reject_user', {
         target_user_id: userId,
-        reason: rejectionReason || null
+        reason: activeRejectReason || null
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "User rejected successfully",
-      });
-
-      setRejectionReason("");
+      toast({ title: "Success", description: "User rejected successfully" });
+      resetRejectState();
       await fetchApprovals();
     } catch (error) {
       console.error('Error rejecting user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to reject user",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to reject user", variant: "destructive" });
     }
   };
 
@@ -172,25 +175,17 @@ const UserApprovals = () => {
     try {
       const { error } = await supabase.rpc('deactivate_user', {
         target_user_id: userId,
-        reason: deactivationReason || null
+        reason: activeDeactivateReason || null
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "User access has been removed successfully",
-      });
-
-      setDeactivationReason("");
+      toast({ title: "Success", description: "User access has been removed successfully" });
+      resetDeactivateState();
       await fetchApprovals();
     } catch (error) {
       console.error('Error deactivating user:', error);
-      toast({
-        title: "Error",
-        description: "Failed to remove user access",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to remove user access", variant: "destructive" });
     }
   };
 
@@ -200,6 +195,19 @@ const UserApprovals = () => {
       case 'loan_officer': return 'Loan Officer';
       case 'data_entry': return 'Data Entry';
       default: return role;
+    }
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Admin</Badge>;
+      case 'loan_officer':
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Loan Officer</Badge>;
+      case 'data_entry':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Data Entry</Badge>;
+      default:
+        return <Badge variant="outline">{role}</Badge>;
     }
   };
 
@@ -284,9 +292,7 @@ const UserApprovals = () => {
                         <User className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium">
-                          {getUserDisplayName(approval)}
-                        </p>
+                        <p className="font-medium">{getUserDisplayName(approval)}</p>
                         <p className="text-sm text-muted-foreground">
                           Registered: {new Date(approval.created_at).toLocaleDateString()}
                         </p>
@@ -294,13 +300,21 @@ const UserApprovals = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(approval.status)}
-                      <AlertDialog>
+
+                      {/* Approve Dialog */}
+                      <AlertDialog
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setActiveApproveUserId(approval.user_id);
+                            setActiveApproveRole("data_entry");
+                            setActiveApproveBranch("");
+                          } else {
+                            resetApproveState();
+                          }
+                        }}
+                      >
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            onClick={() => setApprovingUserId(approval.user_id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Approve
                           </Button>
@@ -312,24 +326,24 @@ const UserApprovals = () => {
                               Select the role for this user and approve their registration.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                           <div className="py-4 space-y-4">
+                          <div className="py-4 space-y-4">
                             <div>
-                             <Label htmlFor="role-select">Assign Role</Label>
-                             <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as "admin" | "loan_officer" | "data_entry")}>
-                               <SelectTrigger className="mt-2">
-                                 <SelectValue placeholder="Select a role" />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 <SelectItem value="data_entry">Data Entry</SelectItem>
-                                 <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                                 <SelectItem value="admin">Admin</SelectItem>
-                               </SelectContent>
-                             </Select>
+                              <Label>Assign Role</Label>
+                              <Select value={activeApproveRole} onValueChange={(v) => setActiveApproveRole(v as "admin" | "loan_officer" | "data_entry")}>
+                                <SelectTrigger className="mt-2">
+                                  <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="data_entry">Data Entry</SelectItem>
+                                  <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                            {(selectedRole === 'loan_officer' || selectedRole === 'data_entry') && (
+                            {(activeApproveRole === 'loan_officer' || activeApproveRole === 'data_entry') && (
                               <div>
-                                <Label htmlFor="branch-select">Assign Branch</Label>
-                                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                                <Label>Assign Branch</Label>
+                                <Select value={activeApproveBranch} onValueChange={setActiveApproveBranch}>
                                   <SelectTrigger className="mt-2">
                                     <SelectValue placeholder="Select a branch" />
                                   </SelectTrigger>
@@ -341,28 +355,28 @@ const UserApprovals = () => {
                                 </Select>
                               </div>
                             )}
-                           </div>
+                          </div>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => {
-                              setApprovingUserId(null);
-                              setSelectedRole("data_entry");
-                              setSelectedBranchId("");
-                            }}>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleApprove(approval.user_id, selectedRole, selectedBranchId || undefined)}
+                              onClick={() => handleApprove(approval.user_id)}
                               className="bg-green-600 hover:bg-green-700"
                             >
-                              Approve with {getRoleDisplayName(selectedRole)} Role
+                              Approve with {getRoleDisplayName(activeApproveRole)} Role
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                      <AlertDialog>
+
+                      {/* Reject Dialog */}
+                      <AlertDialog
+                        onOpenChange={(open) => {
+                          if (!open) resetRejectState();
+                          else setActiveRejectReason("");
+                        }}
+                      >
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                          >
+                          <Button size="sm" variant="destructive">
                             <XCircle className="h-4 w-4 mr-1" />
                             Reject
                           </Button>
@@ -377,8 +391,8 @@ const UserApprovals = () => {
                           <div className="py-4">
                             <Textarea
                               placeholder="Reason for rejection (optional)"
-                              value={rejectionReason}
-                              onChange={(e) => setRejectionReason(e.target.value)}
+                              value={activeRejectReason}
+                              onChange={(e) => setActiveRejectReason(e.target.value)}
                               className="min-h-[100px]"
                             />
                           </div>
@@ -405,9 +419,7 @@ const UserApprovals = () => {
         <Card>
           <CardHeader>
             <CardTitle>Approval History</CardTitle>
-            <CardDescription>
-              Previously processed user registrations
-            </CardDescription>
+            <CardDescription>Previously processed user registrations</CardDescription>
           </CardHeader>
           <CardContent>
             {processedApprovals.length === 0 ? (
@@ -421,12 +433,13 @@ const UserApprovals = () => {
                         <User className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium">
-                          {getUserDisplayName(approval)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Processed: {approval.approved_at ? new Date(approval.approved_at).toLocaleDateString() : 'N/A'}
-                        </p>
+                        <p className="font-medium">{getUserDisplayName(approval)}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-sm text-muted-foreground">
+                            Processed: {approval.approved_at ? new Date(approval.approved_at).toLocaleDateString() : 'N/A'}
+                          </p>
+                          {approval.status === 'approved' && approval.assigned_role && getRoleBadge(approval.assigned_role)}
+                        </div>
                         {approval.rejection_reason && (
                           <p className="text-sm text-red-600 mt-1">
                             Reason: {approval.rejection_reason}
@@ -437,12 +450,14 @@ const UserApprovals = () => {
                     <div className="flex items-center gap-2">
                       {getStatusBadge(approval.status)}
                       {approval.status === 'approved' && (
-                        <AlertDialog>
+                        <AlertDialog
+                          onOpenChange={(open) => {
+                            if (!open) resetDeactivateState();
+                            else setActiveDeactivateReason("");
+                          }}
+                        >
                           <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                            >
+                            <Button size="sm" variant="destructive">
                               <UserX className="h-4 w-4 mr-1" />
                               Remove Access
                             </Button>
@@ -457,8 +472,8 @@ const UserApprovals = () => {
                             <div className="py-4">
                               <Textarea
                                 placeholder="Reason for removing access (optional)"
-                                value={deactivationReason}
-                                onChange={(e) => setDeactivationReason(e.target.value)}
+                                value={activeDeactivateReason}
+                                onChange={(e) => setActiveDeactivateReason(e.target.value)}
                                 className="min-h-[100px]"
                               />
                             </div>
