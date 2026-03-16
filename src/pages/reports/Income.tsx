@@ -247,6 +247,44 @@ const IncomeReport = () => {
               </div>
             )}
           </ReportCard>
+
+          {incomeData.length > 0 && (
+            <ReportCard title="Detailed Monthly Breakdown">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Month</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Interest Income</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Fee Income</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Penalty Income</th>
+                      <th className="text-right py-3 px-4 font-medium text-foreground">Total Income</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incomeData.map((row, idx) => (
+                      <tr key={idx} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 font-medium">{row.month}</td>
+                        <td className="py-3 px-4 text-right">KES {row.interest_income.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">KES {row.fee_income.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right">KES {row.penalty_income.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right font-semibold">KES {row.total_income.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border bg-muted/30">
+                      <td className="py-3 px-4 font-semibold">Total</td>
+                      <td className="py-3 px-4 text-right font-semibold">KES {totalInterest.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-semibold">KES {totalFees.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-semibold">KES {totalPenalties.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-bold text-primary">KES {totalIncome.toLocaleString()}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </ReportCard>
+          )}
         </div>
       )}
     </ReportPage>
