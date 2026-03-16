@@ -60,7 +60,8 @@ export default function LoanAgeTracker() {
         .select("id, loan_number, client, amount, balance, status, date, frequency, term_months, interest_rate, loan_officer_id")
         .eq("organization_id", organizationId)
         .lte("term_months", 1)
-        .in("status", ["active", "in arrears", "pending"]);
+        .in("status", ["active", "in arrears"])
+        .neq("type", "client_fee_account");
 
       if (loansError) throw loansError;
       if (!loansData || loansData.length === 0) {
