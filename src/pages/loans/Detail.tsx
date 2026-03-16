@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { LoanRepaymentSchedule } from "@/components/loans/LoanRepaymentSchedule";
 import { LoanTransactions } from "@/components/loans/LoanTransactions";
 import { PostFeeDialog } from "@/components/loans/PostFeeDialog";
+import { EditLoanDialog } from "@/components/loans/EditLoanDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useRole } from "@/context/RoleContext";
@@ -69,6 +70,7 @@ const LoanDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   useEffect(() => {
     const fetchLoanDetails = async () => {
@@ -226,6 +228,12 @@ const LoanDetailPage = () => {
               </p>
             </div>
           </div>
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Loan
+            </Button>
+          )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -379,6 +387,19 @@ const LoanDetailPage = () => {
           </Card>
         </div>
       </div>
+
+      {loanId && (
+        <EditLoanDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          loanId={loanId}
+          onLoanUpdated={() => {
+            setRefreshKey(prev => prev + 1);
+            // Refetch loan data
+            window.location.reload();
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 };
