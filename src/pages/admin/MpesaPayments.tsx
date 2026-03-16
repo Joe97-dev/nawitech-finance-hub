@@ -261,8 +261,8 @@ export default function MpesaPayments() {
                         </TableCell>
                       </TableRow>
                     ))
-                  );
-                  })()}
+                  )}
+
                 </TableBody>
               </Table>
             </div>
