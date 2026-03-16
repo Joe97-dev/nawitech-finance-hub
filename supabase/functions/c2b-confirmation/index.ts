@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
           .from("loan_schedule")
           .select("*")
           .eq("loan_id", matchedLoanId)
-          .in("status", ["pending", "partially_paid"])
+          .in("status", ["pending", "partial", "partially_paid"])
           .order("due_date", { ascending: true });
 
         if (schedules) {
@@ -133,9 +133,11 @@ Deno.serve(async (req) => {
             if (remainingAmount <= 0) break;
 
             const amountDue = schedule.total_due - (schedule.amount_paid || 0);
+            if (amountDue <= 0) continue;
+
             const paymentForThis = Math.min(remainingAmount, amountDue);
             const newAmountPaid = (schedule.amount_paid || 0) + paymentForThis;
-            const newStatus = newAmountPaid >= schedule.total_due ? "paid" : "partially_paid";
+            const newStatus = newAmountPaid >= schedule.total_due ? "paid" : "partial";
 
             await supabase
               .from("loan_schedule")

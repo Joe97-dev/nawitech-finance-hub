@@ -94,16 +94,18 @@ Deno.serve(async (req) => {
       .from("loan_schedule")
       .select("*")
       .eq("loan_id", loanId)
-      .in("status", ["pending", "partially_paid"])
+      .in("status", ["pending", "partial", "partially_paid"])
       .order("due_date", { ascending: true });
 
     if (schedules) {
       for (const schedule of schedules) {
         if (remainingAmount <= 0) break;
         const amountDue = schedule.total_due - (schedule.amount_paid || 0);
+        if (amountDue <= 0) continue;
+
         const paymentForThis = Math.min(remainingAmount, amountDue);
         const newAmountPaid = (schedule.amount_paid || 0) + paymentForThis;
-        const newStatus = newAmountPaid >= schedule.total_due ? "paid" : "partially_paid";
+        const newStatus = newAmountPaid >= schedule.total_due ? "paid" : "partial";
 
         await supabase
           .from("loan_schedule")
@@ -112,6 +114,25 @@ Deno.serve(async (req) => {
 
         remainingAmount -= paymentForThis;
       }
+    }
+
+    const { data: balanceResult, error: balanceError } = await supabase
+      .rpc("calculate_outstanding_balance", { p_loan_id: loanId });
+
+    if (balanceError) throw balanceError;
+
+    if (balanceResult !== null) {
+      const { error: updateLoanError } = await supabase
+        .from("loans")
+        .update({ balance: balanceResult })
+        .eq("id", loanId);
+
+      if (updateLoanError) throw updateLoanError;
+
+      const { error: statusError } = await supabase
+        .rpc("update_loan_status", { p_loan_id: loanId });
+
+      if (statusError) throw statusError;
     }
 
     // Update M-Pesa transaction
