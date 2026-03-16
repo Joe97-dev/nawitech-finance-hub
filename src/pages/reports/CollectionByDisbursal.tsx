@@ -72,7 +72,7 @@ const CollectionByDisbursalReport = () => {
           .lte("date", toStr)
           .in("status", ["active", "closed", "in arrears", "disbursed", "approved"]),
         supabase.from("clients").select("id, first_name, last_name"),
-        supabase.from("profiles").select("id, first_name, last_name"),
+        supabase.from("profiles").select("id, first_name, last_name, username"),
       ]);
 
       if (loansResult.error) throw loansResult.error;
