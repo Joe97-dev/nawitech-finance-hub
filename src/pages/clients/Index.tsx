@@ -47,12 +47,20 @@ const ClientsPage = () => {
   const fetchClients = useCallback(async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*');
+      const [{ data: clientsData, error }, { data: loansData, error: loansError }] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('loans').select('client, status').neq('type', 'client_fee_account'),
+      ]);
       
       if (error) throw error;
-      setClients(data || []);
+      if (loansError) throw loansError;
+
+      const enrichedClients = (clientsData || []).map((client) => ({
+        ...client,
+        status: clientHasOpenLoans(client, loansData || []) ? 'active' : client.status,
+      }));
+
+      setClients(enrichedClients);
     } catch (error: any) {
       console.error("Error fetching clients:", error);
       toast({

@@ -121,16 +121,30 @@ const ClientDetailPage = () => {
         
         // Fetch loans for this client
         const clientName = `${clientData.first_name} ${clientData.last_name}`;
-        const { data: loansData, error: loansError } = await supabase
+        const { data: allLoansData, error: loansError } = await supabase
           .from('loans')
           .select('*')
-          .eq('client', clientName)
-          .neq('type', 'client_fee_account');
+          .neq('type', 'client_fee_account')
+          .or(`client.eq.${clientId},client.eq.${clientName}`);
         
         if (loansError) {
           console.error("Error fetching loans:", loansError);
-          // Don't throw here, just log the error and continue without loans
         }
+
+        const matchedLoans = (allLoansData || []).filter((loan) =>
+          loan.client === clientId || loan.client === clientName
+        );
+
+        const computedStatus = clientHasOpenLoans(
+          {
+            id: clientData.id,
+            first_name: clientData.first_name,
+            last_name: clientData.last_name,
+          },
+          matchedLoans.map((loan) => ({ client: loan.client, status: loan.status }))
+        )
+          ? 'active'
+          : clientData.status;
 
         // Fetch client documents
         const { data: documentsData, error: documentsError } = await supabase
@@ -155,10 +169,11 @@ const ClientDetailPage = () => {
         // Combine client data with loans, documents, and referees
         const enrichedClient: Client = {
           ...clientData,
+          status: computedStatus,
           id_photo_front_url: clientData.id_photo_front_url || null,
           id_photo_back_url: clientData.id_photo_back_url || null,
           business_photo_url: clientData.business_photo_url || null,
-          loans: loansData || [],
+          loans: matchedLoans || [],
           documents: documentsData || [],
           referees: refereesData || []
         };
