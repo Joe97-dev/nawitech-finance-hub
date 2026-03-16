@@ -223,6 +223,7 @@ export default function LoanAgeTracker() {
             "Loan Number": l.loan_number || "-",
             "Client": l.client,
             "Phone": l.phone,
+            "Loan Officer": l.loanOfficer,
             "Amount": l.amount,
             "Balance": l.balance,
             "Status": l.status,
