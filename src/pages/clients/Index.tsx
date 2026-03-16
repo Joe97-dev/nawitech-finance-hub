@@ -107,7 +107,31 @@ const ClientsPage = () => {
               <FileUp className="h-4 w-4 mr-2" />
               Import
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => exportToCSV(
+              filteredClients.map(c => ({
+                name: `${c.first_name} ${c.last_name}`,
+                phone: c.phone,
+                email: c.email || '',
+                id_number: c.id_number,
+                gender: c.gender || '',
+                date_of_birth: c.date_of_birth || '',
+                address: [c.address, c.city, c.region].filter(Boolean).join(', '),
+                registration_date: c.registration_date || '',
+                status: c.status,
+              })),
+              `clients-export-${new Date().toISOString().slice(0, 10)}.csv`,
+              [
+                { key: 'name', header: 'Name' },
+                { key: 'phone', header: 'Phone' },
+                { key: 'email', header: 'Email' },
+                { key: 'id_number', header: 'ID Number' },
+                { key: 'gender', header: 'Gender' },
+                { key: 'date_of_birth', header: 'Date of Birth' },
+                { key: 'address', header: 'Address' },
+                { key: 'registration_date', header: 'Registration Date' },
+                { key: 'status', header: 'Status' },
+              ]
+            )}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
