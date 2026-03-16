@@ -72,7 +72,7 @@ const CollectionByDisbursalReport = () => {
           .lte("date", toStr)
           .in("status", ["active", "closed", "in arrears", "disbursed", "approved"]),
         supabase.from("clients").select("id, first_name, last_name"),
-        supabase.from("profiles").select("id, first_name, last_name"),
+        supabase.from("profiles").select("id, first_name, last_name, username"),
       ]);
 
       if (loansResult.error) throw loansResult.error;
@@ -83,7 +83,10 @@ const CollectionByDisbursalReport = () => {
 
       const clientMap = new Map(clients.map((c) => [c.id, `${c.first_name} ${c.last_name}`]));
       const profileMap = new Map(
-        profiles.map((p) => [p.id, `${p.first_name || ""} ${p.last_name || ""}`.trim()])
+        profiles.map((p) => {
+          const name = `${p.first_name || ""} ${p.last_name || ""}`.trim();
+          return [p.id, name || p.username || p.id.slice(0, 8)];
+        })
       );
 
       // Build officer list
