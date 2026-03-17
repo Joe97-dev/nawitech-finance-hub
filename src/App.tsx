@@ -94,7 +94,7 @@ function App() {
             <Route path="/reports/loans-due" element={<ProtectedRoute><LoansDueReport /></ProtectedRoute>} />
             <Route path="/reports/loan-performance" element={<ProtectedRoute><LoanPerformanceReport /></ProtectedRoute>} />
             <Route path="/reports/kyc" element={<ProtectedRoute><KYCReport /></ProtectedRoute>} />
-            <Route path="/reports/income" element={<ProtectedRoute><IncomeReport /></ProtectedRoute>} />
+            <Route path="/reports/income" element={<ProtectedRoute><RoleGuard allowedRoles={["admin"]}><IncomeReport /></RoleGuard></ProtectedRoute>} />
             <Route path="/reports/arrears" element={<ProtectedRoute><ArrearsReport /></ProtectedRoute>} />
             <Route path="/reports/dormant" element={<ProtectedRoute><DormantReport /></ProtectedRoute>} />
             <Route path="/reports/transactions" element={<ProtectedRoute><TransactionsReport /></ProtectedRoute>} />

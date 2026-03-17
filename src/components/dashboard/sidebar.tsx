@@ -62,7 +62,7 @@ const reportNavItems = [
     title: "Income Report",
     href: "/reports/income",
     icon: BarChartHorizontal,
-    requiredRoles: ["admin", "loan_officer"],
+    requiredRoles: ["admin"],
   },
   {
     title: "Cash Flow",
