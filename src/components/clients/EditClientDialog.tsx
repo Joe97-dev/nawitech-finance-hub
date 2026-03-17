@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrganizationId } from "@/lib/get-organization-id";
+import { compressImageFile, sanitizeUploadFileName } from "@/lib/image-upload";
 import { Loader2, Upload, Camera, X, Plus, Trash2, FileText } from "lucide-react";
 
 interface Client {
@@ -130,22 +131,28 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
   };
 
   // Photo handlers
-  const handlePhotoSelect = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File too large", description: "Max 5MB." });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File too large", description: "Photo must be less than 10MB." });
       return;
     }
     if (!file.type.startsWith("image/")) {
       toast({ variant: "destructive", title: "Invalid file", description: "Upload an image file." });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPhotoFiles(prev => ({ ...prev, [key]: { file, preview: ev.target?.result as string } }));
-    };
-    reader.readAsDataURL(file);
+
+    try {
+      const compressedFile = await compressImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotoFiles(prev => ({ ...prev, [key]: { file: compressedFile, preview: ev.target?.result as string } }));
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Failed to process image." });
+    }
   };
 
   const clearPhoto = (key: string) => {
@@ -208,27 +215,26 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
 
       // 2. Upload photos
       const ts = Date.now();
-      const sanitize = (name: string) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
       if (photoFiles.passport?.file) {
-        const path = `client_photos/${client.id}/${ts}_${sanitize(photoFiles.passport.file.name)}`;
+        const path = `client_photos/${client.id}/${ts}_${sanitizeUploadFileName(photoFiles.passport.file.name)}`;
         const { error } = await supabase.storage.from("client_photos").upload(path, photoFiles.passport.file);
         if (error) throw error;
         clientUpdates.photo_url = path;
       }
       if (photoFiles.id_front?.file) {
-        const path = `id_photos/${client.id}/${ts}_${sanitize(photoFiles.id_front.file.name)}`;
+        const path = `id_photos/${client.id}/${ts}_${sanitizeUploadFileName(photoFiles.id_front.file.name)}`;
         const { error } = await supabase.storage.from("client-id-photos").upload(path, photoFiles.id_front.file);
         if (error) throw error;
         clientUpdates.id_photo_front_url = path;
       }
       if (photoFiles.id_back?.file) {
-        const path = `id_photos/${client.id}/${ts}_${sanitize(photoFiles.id_back.file.name)}`;
+        const path = `id_photos/${client.id}/${ts}_${sanitizeUploadFileName(photoFiles.id_back.file.name)}`;
         const { error } = await supabase.storage.from("client-id-photos").upload(path, photoFiles.id_back.file);
         if (error) throw error;
         clientUpdates.id_photo_back_url = path;
       }
       if (photoFiles.business?.file) {
-        const path = `business_photos/${client.id}/${ts}_${sanitize(photoFiles.business.file.name)}`;
+        const path = `business_photos/${client.id}/${ts}_${sanitizeUploadFileName(photoFiles.business.file.name)}`;
         const { error } = await supabase.storage.from("client-business-photos").upload(path, photoFiles.business.file);
         if (error) throw error;
         clientUpdates.business_photo_url = path;

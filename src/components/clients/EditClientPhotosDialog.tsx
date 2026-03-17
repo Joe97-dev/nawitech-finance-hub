@@ -4,43 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { compressImageFile, sanitizeUploadFileName } from "@/lib/image-upload";
 import { Loader2, Upload, X, Camera } from "lucide-react";
-
-const compressImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    // If file is already small enough, skip compression
-    if (file.size < 500 * 1024) {
-      resolve(file);
-      return;
-    }
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      let { width, height } = img;
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { resolve(file); return; }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { resolve(file); return; }
-          resolve(new File([blob], file.name, { type: "image/jpeg" }));
-        },
-        "image/jpeg",
-        quality
-      );
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-    img.src = url;
-  });
-};
 
 interface EditClientPhotosDialogProps {
   clientId: string;
@@ -96,7 +61,7 @@ export function EditClientPhotosDialog({
     }
 
     try {
-      const compressed = await compressImage(file);
+      const compressed = await compressImageFile(file);
       const reader = new FileReader();
       reader.onload = (ev) => {
         setPhotos(prev => prev.map((p, i) => i === index ? { ...p, file: compressed, preview: ev.target?.result as string } : p));
@@ -125,7 +90,7 @@ export function EditClientPhotosDialog({
       for (const photo of photos) {
         if (!photo.file) continue;
         const timestamp = Date.now();
-        const sanitizedName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const sanitizedName = sanitizeUploadFileName(photo.file.name);
         const fileName = `${timestamp}_${sanitizedName}`;
 
         if (photo.key === "passport") {
