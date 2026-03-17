@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getOrganizationId } from "@/lib/get-organization-id";
+import { compressImageFile, sanitizeUploadFileName } from "@/lib/image-upload";
 import { Loader2, Upload, Camera, X, Plus, Trash2, FileText } from "lucide-react";
 
 interface Client {
