@@ -90,7 +90,7 @@ export function EditClientPhotosDialog({
       for (const photo of photos) {
         if (!photo.file) continue;
         const timestamp = Date.now();
-        const sanitizedName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const sanitizedName = sanitizeUploadFileName(photo.file.name);
         const fileName = `${timestamp}_${sanitizedName}`;
 
         if (photo.key === "passport") {
