@@ -61,7 +61,7 @@ export function EditClientPhotosDialog({
     }
 
     try {
-      const compressed = await compressImage(file);
+      const compressed = await compressImageFile(file);
       const reader = new FileReader();
       reader.onload = (ev) => {
         setPhotos(prev => prev.map((p, i) => i === index ? { ...p, file: compressed, preview: ev.target?.result as string } : p));
