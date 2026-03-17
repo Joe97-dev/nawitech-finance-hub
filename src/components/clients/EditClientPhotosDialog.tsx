@@ -6,6 +6,42 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, X, Camera } from "lucide-react";
 
+const compressImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    // If file is already small enough, skip compression
+    if (file.size < 500 * 1024) {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return; }
+          resolve(new File([blob], file.name, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+};
+
 interface EditClientPhotosDialogProps {
   clientId: string;
   clientName: string;
@@ -46,12 +82,12 @@ export function EditClientPhotosDialog({
     { label: "Business Photo", key: "business", file: null, preview: null, currentUrl: signedUrls.business_photo },
   ]);
 
-  const handleFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File too large", description: "Photo must be less than 5MB." });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File too large", description: "Photo must be less than 10MB." });
       return;
     }
     if (!file.type.startsWith("image/")) {
@@ -59,11 +95,16 @@ export function EditClientPhotosDialog({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPhotos(prev => prev.map((p, i) => i === index ? { ...p, file, preview: ev.target?.result as string } : p));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotos(prev => prev.map((p, i) => i === index ? { ...p, file: compressed, preview: ev.target?.result as string } : p));
+      };
+      reader.readAsDataURL(compressed);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Failed to process image." });
+    }
   };
 
   const clearFile = (index: number) => {
