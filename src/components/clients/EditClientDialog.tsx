@@ -131,22 +131,28 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
   };
 
   // Photo handlers
-  const handlePhotoSelect = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: "destructive", title: "File too large", description: "Max 5MB." });
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "File too large", description: "Photo must be less than 10MB." });
       return;
     }
     if (!file.type.startsWith("image/")) {
       toast({ variant: "destructive", title: "Invalid file", description: "Upload an image file." });
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPhotoFiles(prev => ({ ...prev, [key]: { file, preview: ev.target?.result as string } }));
-    };
-    reader.readAsDataURL(file);
+
+    try {
+      const compressedFile = await compressImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotoFiles(prev => ({ ...prev, [key]: { file: compressedFile, preview: ev.target?.result as string } }));
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Failed to process image." });
+    }
   };
 
   const clearPhoto = (key: string) => {
