@@ -80,25 +80,45 @@ const ArrearsReport = () => {
         setLoading(true);
         
         // Fetch loans with overdue payments from loan_schedule and join with clients
-        const { data: overdueScheduleData, error: scheduleError } = await supabase
-          .from('loan_schedule')
-          .select(`
-            loan_id,
-            due_date,
-            total_due,
-            amount_paid,
-            loans!inner(
-              id,
-              client,
-              loan_number,
-              amount,
-              loan_officer_id
-            )
-          `)
-          .lt('due_date', (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })())
-          .neq('status', 'paid');
+        // Fetch active/in-arrears loans with their schedule data
+        const { data: loansData, error: loansError } = await supabase
+          .from('loans')
+          .select('id, client, loan_number, amount, balance, date, term_months, loan_officer_id, status')
+          .in('status', ['active', 'in arrears'])
+          .neq('type', 'client_fee_account');
 
-        if (scheduleError) throw scheduleError;
+        if (loansError) throw loansError;
+
+        // Calculate loan age and find overdue loans (dayAge > totalDays)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const overdueLoanIds: string[] = [];
+        const loanAgeMap = new Map<string, { daysOverdue: number; loan: any }>();
+
+        (loansData || []).forEach(loan => {
+          const disbDate = new Date(loan.date);
+          disbDate.setHours(0, 0, 0, 0);
+          const dayAge = Math.max(0, Math.round((today.getTime() - disbDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const totalDays = Math.round((loan.term_months || 1) * 30);
+          const daysOverdue = dayAge - totalDays;
+
+          if (daysOverdue > 0 || loan.status === 'in arrears') {
+            overdueLoanIds.push(loan.id);
+            loanAgeMap.set(loan.id, { daysOverdue: Math.max(daysOverdue, 1), loan });
+          }
+        });
+
+        // Fetch schedule data for overdue loans to get amount overdue
+        const allSchedules: any[] = [];
+        for (let i = 0; i < overdueLoanIds.length; i += 50) {
+          const batch = overdueLoanIds.slice(i, i + 50);
+          const { data: schedData } = await supabase
+            .from('loan_schedule')
+            .select('loan_id, total_due, amount_paid')
+            .in('loan_id', batch);
+          if (schedData) allSchedules.push(...schedData);
+        }
 
         // Fetch clients data to get contact information
         const { data: clientsData, error: clientsError } = await supabase
