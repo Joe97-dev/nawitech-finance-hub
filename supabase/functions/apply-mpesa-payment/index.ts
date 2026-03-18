@@ -106,6 +106,14 @@ Deno.serve(async (req) => {
         .eq("id", clientId)
         .in("status", ["pending", "dormant"]);
 
+      // Also activate pending loans for this client
+      await supabase
+        .from("loans")
+        .update({ status: "active" })
+        .eq("client", clientName)
+        .eq("status", "pending")
+        .neq("type", "client_fee_account");
+
     } else if (matchType === "loan_fee") {
       // Handle loan fee
       const { data: loanTx, error: loanTxError } = await supabase
