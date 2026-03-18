@@ -141,11 +141,15 @@ export function ManualMatchDialog({ open, onOpenChange, transaction, onMatched }
         return;
       }
 
+      const statusFilter = matchType === "loan_fee" 
+        ? ["active", "in arrears", "pending"] 
+        : ["active", "in arrears"];
+
       const { data, error } = await supabase
         .from("loans")
         .select("id, loan_number, amount, balance, status, type")
         .eq("client", clientName)
-        .in("status", ["active", "in arrears"])
+        .in("status", statusFilter)
         .neq("type", "client_fee_account")
         .order("date", { ascending: true });
 
