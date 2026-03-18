@@ -127,10 +127,29 @@ const ArrearsReport = () => {
 
         if (clientsError) throw clientsError;
 
+        // Aggregate schedule data per loan
+        const schedByLoan = new Map<string, { totalDue: number; totalPaid: number }>();
+        allSchedules.forEach(s => {
+          const existing = schedByLoan.get(s.loan_id) || { totalDue: 0, totalPaid: 0 };
+          existing.totalDue += Number(s.total_due || 0);
+          existing.totalPaid += Number(s.amount_paid || 0);
+          schedByLoan.set(s.loan_id, existing);
+        });
+
+        // Build client lookup
+        const clientByIdMap = new Map<string, { name: string; phone: string; email: string }>();
+        const clientByNameMap = new Map<string, { name: string; phone: string; email: string }>();
+        (clientsData || []).forEach(c => {
+          const fullName = `${c.first_name} ${c.last_name}`;
+          const entry = { name: fullName, phone: c.phone || '', email: c.email || '' };
+          clientByIdMap.set((c as any).id, entry);
+          clientByNameMap.set(fullName.toLowerCase(), entry);
+        });
+
         // Fetch loan officer profiles
         const officerIds = [...new Set(
-          (overdueScheduleData || [])
-            .map(item => (item.loans as any)?.loan_officer_id)
+          Array.from(loanAgeMap.values())
+            .map(item => item.loan.loan_officer_id)
             .filter(Boolean)
         )] as string[];
         const profileMap = new Map<string, string>();
@@ -144,56 +163,45 @@ const ArrearsReport = () => {
           });
         }
 
-        // Group by loan and calculate arrears data
-        const loanArrearsMap = new Map();
-        
-        (overdueScheduleData || []).forEach(item => {
-          const loanId = item.loan_id;
-          const loan = (item.loans as any);
-          const outstandingAmount = item.total_due - (item.amount_paid || 0);
-          
-          if (outstandingAmount > 0) {
-            const daysOverdue = Math.floor(
-              (new Date().getTime() - new Date(item.due_date).getTime()) / (1000 * 60 * 60 * 24)
-            );
-            
-            // Find client contact info
-            const clientFullName = loan.client;
-            const client = clientsData?.find(c => 
-              `${c.first_name} ${c.last_name}` === clientFullName
-            );
-            
-            if (loanArrearsMap.has(loanId)) {
-              const existing = loanArrearsMap.get(loanId);
-              existing.amountOverdue += outstandingAmount;
-              existing.daysOverdue = Math.max(existing.daysOverdue, daysOverdue);
-            } else {
-              // Determine risk category based on days overdue
-              let riskCategory: "low" | "medium" | "high" | "critical" = "low";
-              if (daysOverdue > 90) riskCategory = "critical";
-              else if (daysOverdue > 60) riskCategory = "high";
-              else if (daysOverdue > 30) riskCategory = "medium";
-              
-              loanArrearsMap.set(loanId, {
-                id: loanId,
-                clientName: loan.client,
-                loanId: loan.loan_number || loanId,
-                principalAmount: loan.amount,
-                outstandingBalance: loan.amount,
-                daysOverdue,
-                amountOverdue: outstandingAmount,
-                lastPaymentDate: "N/A",
-                contactInfo: client ? `${client.phone || 'N/A'} | ${client.email || 'N/A'}` : 'N/A',
-                phone: client?.phone,
-                email: client?.email,
-                riskCategory,
-                loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
-              });
-            }
-          }
+        // Build arrears data from overdue loans
+        const arrearsArray: ArrearsData[] = [];
+
+        loanAgeMap.forEach(({ daysOverdue, loan }, loanId) => {
+          const sched = schedByLoan.get(loanId) || { totalDue: 0, totalPaid: 0 };
+          const amountOverdue = Math.max(0, sched.totalDue - sched.totalPaid);
+
+          // Resolve client
+          const clientById = clientByIdMap.get(loan.client);
+          const clientByName = clientByNameMap.get(loan.client.toLowerCase());
+          const resolvedClient = clientById || clientByName;
+          const clientName = resolvedClient?.name || loan.client;
+          const clientPhone = resolvedClient?.phone || '';
+          const clientEmail = resolvedClient?.email || '';
+
+          // Risk category based on days overdue past term
+          let riskCategory: "low" | "medium" | "high" | "critical" = "low";
+          if (daysOverdue > 90) riskCategory = "critical";
+          else if (daysOverdue > 60) riskCategory = "high";
+          else if (daysOverdue > 30) riskCategory = "medium";
+
+          arrearsArray.push({
+            id: loanId,
+            clientName,
+            loanId: loan.loan_number || loanId,
+            principalAmount: loan.amount,
+            outstandingBalance: loan.balance,
+            daysOverdue,
+            amountOverdue,
+            lastPaymentDate: "N/A",
+            contactInfo: `${clientPhone || 'N/A'} | ${clientEmail || 'N/A'}`,
+            phone: clientPhone,
+            email: clientEmail,
+            riskCategory,
+            loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
+          });
         });
 
-        const arrearsArray = Array.from(loanArrearsMap.values());
+        arrearsArray.sort((a, b) => b.daysOverdue - a.daysOverdue);
         setArrearsData(arrearsArray);
       } catch (error: any) {
         console.error("Error fetching arrears data:", error);
