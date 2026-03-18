@@ -123,7 +123,7 @@ const ArrearsReport = () => {
         // Fetch clients data to get contact information
         const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
-          .select('first_name, last_name, phone, email');
+          .select('id, first_name, last_name, phone, email');
 
         if (clientsError) throw clientsError;
 
