@@ -244,7 +244,7 @@ export default function MpesaPayments() {
                         <TableCell className="whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-mono text-sm">{tx.trans_id}</TableCell>
                         <TableCell>{[tx.first_name, tx.last_name].filter(Boolean).join(" ") || "—"}</TableCell>
-                        <TableCell>{tx.msisdn}</TableCell>
+                        
                         <TableCell>{tx.bill_ref_number || "—"}</TableCell>
                         <TableCell className="font-semibold text-green-600">{formatCurrency(tx.trans_amount)}</TableCell>
                         <TableCell>{getStatusBadge(tx.status)}</TableCell>
