@@ -469,7 +469,9 @@ const NewLoanPage = () => {
                       value={clientSearch}
                       onChange={(e) => {
                         setClientSearch(e.target.value);
-                        if (!e.target.value) setClientId("");
+                        // Clear selection when user modifies search text
+                        setClientId("");
+                        setSelectedClient(null);
                       }}
                       onFocus={() => clients.length > 0 && setShowClientDropdown(true)}
                     />
