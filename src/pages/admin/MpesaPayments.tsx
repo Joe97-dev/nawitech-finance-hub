@@ -224,7 +224,7 @@ export default function MpesaPayments() {
                     <TableHead>Date</TableHead>
                     <TableHead>Trans ID</TableHead>
                     <TableHead>Sender</TableHead>
-                    <TableHead>Phone</TableHead>
+                    
                     <TableHead>Ref (ID No.)</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
