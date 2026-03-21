@@ -179,7 +179,6 @@ export default function MpesaPayments() {
                     date: new Date(tx.created_at).toLocaleString(),
                     trans_id: tx.trans_id,
                     sender: [tx.first_name, tx.last_name].filter(Boolean).join(" ") || "",
-                    phone: tx.msisdn,
                     bill_ref: tx.bill_ref_number || "",
                     amount: tx.trans_amount,
                     status: tx.status,
@@ -189,7 +188,6 @@ export default function MpesaPayments() {
                     { key: "date", header: "Date" },
                     { key: "trans_id", header: "Transaction ID" },
                     { key: "sender", header: "Sender" },
-                    { key: "phone", header: "Phone" },
                     { key: "bill_ref", header: "Bill Ref (ID No.)" },
                     { key: "amount", header: "Amount (KES)" },
                     { key: "status", header: "Status" },
@@ -224,7 +222,7 @@ export default function MpesaPayments() {
                     <TableHead>Date</TableHead>
                     <TableHead>Trans ID</TableHead>
                     <TableHead>Sender</TableHead>
-                    <TableHead>Phone</TableHead>
+                    
                     <TableHead>Ref (ID No.)</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
@@ -234,7 +232,7 @@ export default function MpesaPayments() {
                 <TableBody>
                   {filteredTransactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {loading ? "Loading..." : "No transactions match your filters"}
                       </TableCell>
                     </TableRow>
@@ -244,7 +242,7 @@ export default function MpesaPayments() {
                         <TableCell className="whitespace-nowrap">{new Date(tx.created_at).toLocaleString()}</TableCell>
                         <TableCell className="font-mono text-sm">{tx.trans_id}</TableCell>
                         <TableCell>{[tx.first_name, tx.last_name].filter(Boolean).join(" ") || "—"}</TableCell>
-                        <TableCell>{tx.msisdn}</TableCell>
+                        
                         <TableCell>{tx.bill_ref_number || "—"}</TableCell>
                         <TableCell className="font-semibold text-green-600">{formatCurrency(tx.trans_amount)}</TableCell>
                         <TableCell>{getStatusBadge(tx.status)}</TableCell>
