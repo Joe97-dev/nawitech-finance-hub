@@ -342,7 +342,7 @@ const NewLoanPage = () => {
         type: loanType,
         status: "pending",
         date: disbursementDate,
-        frequency: repaymentFrequency,
+        frequency: getRepaymentFrequency(),
         term_months: months,
         interest_rate: rate,
         interest_method: interestMethod,
