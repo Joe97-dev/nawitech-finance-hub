@@ -610,23 +610,6 @@ const NewLoanPage = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Repayment Frequency</Label>
-                  <RadioGroup value={repaymentFrequency} onValueChange={setRepaymentFrequency}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="weekly" id="weekly" />
-                      <Label htmlFor="weekly">Weekly</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="bi-weekly" id="biweekly" />
-                      <Label htmlFor="biweekly">Bi-weekly</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="monthly" id="monthly" />
-                      <Label htmlFor="monthly">Monthly</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
               </CardContent>
             </Card>
             
