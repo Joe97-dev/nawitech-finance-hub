@@ -342,7 +342,7 @@ const DormantClientsReport = () => {
   return (
     <ReportPage
       title="Dormant & Inactive Clients"
-      description="Clients with no active loans — Inactive (7-29 days) or Dormant (30+ days) since last due date"
+      description="Clients with no active loans — Inactive (7-29 days) or Dormant (30+ days) since last repayment"
       actions={
         <ExportButton
           data={filteredData.map((c) => ({
