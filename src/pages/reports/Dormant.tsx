@@ -349,7 +349,7 @@ const DormantClientsReport = () => {
             client_name: c.client_name,
             loan_officer: c.loan_officer,
             phone_number: c.phone_number,
-            last_loan_date: c.last_loan_date === "No loans" ? "No loans" : new Date(c.last_loan_date).toLocaleDateString(),
+            last_loan_date: c.last_loan_date === "No repayments" ? "No repayments" : new Date(c.last_loan_date).toLocaleDateString(),
             days_without_loan: c.days_without_loan,
             category: c.category,
             current_status: c.current_status,
