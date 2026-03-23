@@ -67,7 +67,13 @@ const NewLoanPage = () => {
   const [clientId, setClientId] = useState("");
   const [loanType, setLoanType] = useState("");
   const [disbursementDate, setDisbursementDate] = useState("");
-  const [repaymentFrequency, setRepaymentFrequency] = useState("monthly");
+  // Derive repayment frequency from product term_unit
+  const getRepaymentFrequency = () => {
+    const termUnit = selectedProduct?.term_unit || 'months';
+    if (termUnit === 'days') return 'daily';
+    if (termUnit === 'weeks') return 'weekly';
+    return 'monthly';
+  };
   const [purpose, setPurpose] = useState("");
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
@@ -199,12 +205,11 @@ const NewLoanPage = () => {
   const getInstallmentCount = () => {
     const months = getNormalizedMonths();
     const totalDays = Math.round(months * 30);
+    const frequency = getRepaymentFrequency();
 
-    switch (repaymentFrequency) {
+    switch (frequency) {
       case 'daily': return totalDays;
       case 'weekly': return Math.max(1, Math.round(totalDays / 7));
-      case 'bi-weekly': return Math.max(1, Math.round(totalDays / 14));
-      case 'quarterly': return Math.max(1, Math.ceil(months / 3));
       default: return Math.max(1, Math.round(months)); // monthly
     }
   };
@@ -337,7 +342,7 @@ const NewLoanPage = () => {
         type: loanType,
         status: "pending",
         date: disbursementDate,
-        frequency: repaymentFrequency,
+        frequency: getRepaymentFrequency(),
         term_months: months,
         interest_rate: rate,
         interest_method: interestMethod,
@@ -358,7 +363,7 @@ const NewLoanPage = () => {
       if (error) throw error;
       
       if (loan) {
-        await generateLoanSchedule(loan.id, amount, rate, months, repaymentFrequency, disbursementDate);
+        await generateLoanSchedule(loan.id, amount, rate, months, getRepaymentFrequency(), disbursementDate);
       }
       
       toast({
@@ -605,23 +610,6 @@ const NewLoanPage = () => {
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label>Repayment Frequency</Label>
-                  <RadioGroup value={repaymentFrequency} onValueChange={setRepaymentFrequency}>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="weekly" id="weekly" />
-                      <Label htmlFor="weekly">Weekly</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="bi-weekly" id="biweekly" />
-                      <Label htmlFor="biweekly">Bi-weekly</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="monthly" id="monthly" />
-                      <Label htmlFor="monthly">Monthly</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
               </CardContent>
             </Card>
             
@@ -667,7 +655,7 @@ const NewLoanPage = () => {
                         <p className="text-lg font-medium">{loanTerm} {selectedProduct?.term_unit || 'Months'}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Avg Monthly Payment</p>
+                        <p className="text-sm text-muted-foreground">Avg Installment</p>
                         <p className="text-lg font-medium">KES {calculateMonthly()}</p>
                       </div>
                     </div>
