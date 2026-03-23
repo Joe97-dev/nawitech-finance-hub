@@ -135,7 +135,7 @@ const DormantClientsReport = () => {
         }
       });
 
-      // Get all closed loan IDs for these clients to fetch last due dates
+      // Get all closed loan IDs for these clients to fetch last repayment transaction dates
       const closedLoanIds: string[] = [];
       const loanIdToClient = new Map<string, string>();
       clientsWithNoActiveLoans.forEach((client) => {
@@ -147,22 +147,25 @@ const DormantClientsReport = () => {
         });
       });
 
-      // Fetch last due dates from loan_schedule in batches
-      const lastDueDateMap = new Map<string, string>();
+      // Fetch last repayment transaction dates from loan_transactions in batches
+      const lastRepaymentDateMap = new Map<string, string>();
       for (let i = 0; i < closedLoanIds.length; i += 50) {
         const batch = closedLoanIds.slice(i, i + 50);
-        const { data: schedules } = await supabase
-          .from("loan_schedule")
-          .select("loan_id, due_date")
+        const { data: transactions } = await supabase
+          .from("loan_transactions")
+          .select("loan_id, transaction_date")
           .in("loan_id", batch)
-          .order("due_date", { ascending: false });
+          .eq("transaction_type", "repayment")
+          .eq("is_reverted", false)
+          .order("transaction_date", { ascending: false });
 
-        (schedules || []).forEach((s) => {
-          const clientName = loanIdToClient.get(s.loan_id);
+        (transactions || []).forEach((t) => {
+          const clientName = loanIdToClient.get(t.loan_id);
           if (clientName) {
-            const existing = lastDueDateMap.get(clientName);
-            if (!existing || s.due_date > existing) {
-              lastDueDateMap.set(clientName, s.due_date);
+            const txDate = t.transaction_date.split("T")[0]; // normalize to date string
+            const existing = lastRepaymentDateMap.get(clientName);
+            if (!existing || txDate > existing) {
+              lastRepaymentDateMap.set(clientName, txDate);
             }
           }
         });
