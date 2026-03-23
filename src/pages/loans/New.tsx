@@ -655,7 +655,7 @@ const NewLoanPage = () => {
                         <p className="text-lg font-medium">{loanTerm} {selectedProduct?.term_unit || 'Months'}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Avg Monthly Payment</p>
+                        <p className="text-sm text-muted-foreground">Avg Installment</p>
                         <p className="text-lg font-medium">KES {calculateMonthly()}</p>
                       </div>
                     </div>
