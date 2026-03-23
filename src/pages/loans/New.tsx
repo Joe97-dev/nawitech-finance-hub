@@ -70,7 +70,8 @@ const NewLoanPage = () => {
   // Derive repayment frequency from product term_unit
   const getRepaymentFrequency = () => {
     const termUnit = selectedProduct?.term_unit || 'months';
-    if (termUnit === 'days') return 'daily';
+    // Days-based products get a single lump-sum payment at maturity
+    if (termUnit === 'days') return 'monthly';
     if (termUnit === 'weeks') return 'weekly';
     return 'monthly';
   };
@@ -209,9 +210,8 @@ const NewLoanPage = () => {
     const frequency = getRepaymentFrequency();
 
     switch (frequency) {
-      case 'daily': return totalDays;
       case 'weekly': return Math.max(1, Math.round(totalDays / 7));
-      default: return Math.max(1, Math.round(months)); // monthly
+      default: return Math.max(1, Math.round(months)); // monthly / single payment
     }
   };
 
