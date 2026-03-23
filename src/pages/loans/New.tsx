@@ -67,7 +67,13 @@ const NewLoanPage = () => {
   const [clientId, setClientId] = useState("");
   const [loanType, setLoanType] = useState("");
   const [disbursementDate, setDisbursementDate] = useState("");
-  const [repaymentFrequency, setRepaymentFrequency] = useState("monthly");
+  // Derive repayment frequency from product term_unit
+  const getRepaymentFrequency = () => {
+    const termUnit = selectedProduct?.term_unit || 'months';
+    if (termUnit === 'days') return 'daily';
+    if (termUnit === 'weeks') return 'weekly';
+    return 'monthly';
+  };
   const [purpose, setPurpose] = useState("");
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
