@@ -32,8 +32,8 @@ const columns = [
   { key: "client_name", header: "Client Name" },
   { key: "loan_officer", header: "Loan Officer" },
   { key: "phone_number", header: "Phone Number" },
-  { key: "last_loan_date", header: "Last Due Date" },
-  { key: "days_without_loan", header: "Days Since Last Due Date" },
+  { key: "last_loan_date", header: "Last Repayment Date" },
+  { key: "days_without_loan", header: "Days Since Last Repayment" },
   { key: "category", header: "Category" },
   { key: "current_status", header: "Current Status" },
 ];
@@ -135,7 +135,7 @@ const DormantClientsReport = () => {
         }
       });
 
-      // Get all closed loan IDs for these clients to fetch last due dates
+      // Get all closed loan IDs for these clients to fetch last repayment transaction dates
       const closedLoanIds: string[] = [];
       const loanIdToClient = new Map<string, string>();
       clientsWithNoActiveLoans.forEach((client) => {
@@ -147,22 +147,25 @@ const DormantClientsReport = () => {
         });
       });
 
-      // Fetch last due dates from loan_schedule in batches
-      const lastDueDateMap = new Map<string, string>();
+      // Fetch last repayment transaction dates from loan_transactions in batches
+      const lastRepaymentDateMap = new Map<string, string>();
       for (let i = 0; i < closedLoanIds.length; i += 50) {
         const batch = closedLoanIds.slice(i, i + 50);
-        const { data: schedules } = await supabase
-          .from("loan_schedule")
-          .select("loan_id, due_date")
+        const { data: transactions } = await supabase
+          .from("loan_transactions")
+          .select("loan_id, transaction_date")
           .in("loan_id", batch)
-          .order("due_date", { ascending: false });
+          .eq("transaction_type", "repayment")
+          .eq("is_reverted", false)
+          .order("transaction_date", { ascending: false });
 
-        (schedules || []).forEach((s) => {
-          const clientName = loanIdToClient.get(s.loan_id);
+        (transactions || []).forEach((t) => {
+          const clientName = loanIdToClient.get(t.loan_id);
           if (clientName) {
-            const existing = lastDueDateMap.get(clientName);
-            if (!existing || s.due_date > existing) {
-              lastDueDateMap.set(clientName, s.due_date);
+            const txDate = t.transaction_date.split("T")[0]; // normalize to date string
+            const existing = lastRepaymentDateMap.get(clientName);
+            if (!existing || txDate > existing) {
+              lastRepaymentDateMap.set(clientName, txDate);
             }
           }
         });
@@ -182,9 +185,9 @@ const DormantClientsReport = () => {
 
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`;
-        const lastDueDate = lastDueDateMap.get(fullName.toLowerCase());
+        const lastRepaymentDate = lastRepaymentDateMap.get(fullName.toLowerCase());
 
-        const referenceDate = lastDueDate || client.created_at;
+        const referenceDate = lastRepaymentDate || client.created_at;
         const refDate = new Date(referenceDate);
         refDate.setHours(0, 0, 0, 0);
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
@@ -209,7 +212,7 @@ const DormantClientsReport = () => {
           id: client.id,
           client_name: fullName,
           phone_number: client.phone || "N/A",
-          last_loan_date: lastDueDate || "No loans",
+          last_loan_date: lastRepaymentDate || "No repayments",
           days_without_loan: daysWithoutLoan,
           current_status: category,
           category,
@@ -339,14 +342,14 @@ const DormantClientsReport = () => {
   return (
     <ReportPage
       title="Dormant & Inactive Clients"
-      description="Clients with no active loans — Inactive (7-29 days) or Dormant (30+ days) since last due date"
+      description="Clients with no active loans — Inactive (7-29 days) or Dormant (30+ days) since last repayment"
       actions={
         <ExportButton
           data={filteredData.map((c) => ({
             client_name: c.client_name,
             loan_officer: c.loan_officer,
             phone_number: c.phone_number,
-            last_loan_date: c.last_loan_date === "No loans" ? "No loans" : new Date(c.last_loan_date).toLocaleDateString(),
+            last_loan_date: c.last_loan_date === "No repayments" ? "No repayments" : new Date(c.last_loan_date).toLocaleDateString(),
             days_without_loan: c.days_without_loan,
             category: c.category,
             current_status: c.current_status,
@@ -444,7 +447,7 @@ const DormantClientsReport = () => {
                         <TableHead>Client Name</TableHead>
                         <TableHead>Loan Officer</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Last Due Date</TableHead>
+                        <TableHead>Last Repayment</TableHead>
                         <TableHead>Days Since</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Action</TableHead>
