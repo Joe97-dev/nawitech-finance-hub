@@ -185,7 +185,7 @@ const DormantClientsReport = () => {
 
       clientsWithNoActiveLoans.forEach((client) => {
         const fullName = `${client.first_name} ${client.last_name}`;
-        const lastDueDate = lastDueDateMap.get(fullName.toLowerCase());
+        const lastRepaymentDate = lastRepaymentDateMap.get(fullName.toLowerCase());
 
         const referenceDate = lastDueDate || client.created_at;
         const refDate = new Date(referenceDate);
