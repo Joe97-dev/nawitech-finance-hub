@@ -210,9 +210,8 @@ const NewLoanPage = () => {
     const frequency = getRepaymentFrequency();
 
     switch (frequency) {
-      case 'daily': return totalDays;
       case 'weekly': return Math.max(1, Math.round(totalDays / 7));
-      default: return Math.max(1, Math.round(months)); // monthly
+      default: return Math.max(1, Math.round(months)); // monthly / single payment
     }
   };
 
