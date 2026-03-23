@@ -205,12 +205,11 @@ const NewLoanPage = () => {
   const getInstallmentCount = () => {
     const months = getNormalizedMonths();
     const totalDays = Math.round(months * 30);
+    const frequency = getRepaymentFrequency();
 
-    switch (repaymentFrequency) {
+    switch (frequency) {
       case 'daily': return totalDays;
       case 'weekly': return Math.max(1, Math.round(totalDays / 7));
-      case 'bi-weekly': return Math.max(1, Math.round(totalDays / 14));
-      case 'quarterly': return Math.max(1, Math.ceil(months / 3));
       default: return Math.max(1, Math.round(months)); // monthly
     }
   };
