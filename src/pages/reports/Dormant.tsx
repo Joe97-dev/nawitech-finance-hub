@@ -447,7 +447,7 @@ const DormantClientsReport = () => {
                         <TableHead>Client Name</TableHead>
                         <TableHead>Loan Officer</TableHead>
                         <TableHead>Phone</TableHead>
-                        <TableHead>Last Due Date</TableHead>
+                        <TableHead>Last Repayment</TableHead>
                         <TableHead>Days Since</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Action</TableHead>
