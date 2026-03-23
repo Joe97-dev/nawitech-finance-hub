@@ -363,7 +363,7 @@ const NewLoanPage = () => {
       if (error) throw error;
       
       if (loan) {
-        await generateLoanSchedule(loan.id, amount, rate, months, repaymentFrequency, disbursementDate);
+        await generateLoanSchedule(loan.id, amount, rate, months, getRepaymentFrequency(), disbursementDate);
       }
       
       toast({
