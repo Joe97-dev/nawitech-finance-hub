@@ -212,7 +212,7 @@ const DormantClientsReport = () => {
           id: client.id,
           client_name: fullName,
           phone_number: client.phone || "N/A",
-          last_loan_date: lastDueDate || "No loans",
+          last_loan_date: lastRepaymentDate || "No repayments",
           days_without_loan: daysWithoutLoan,
           current_status: category,
           category,
