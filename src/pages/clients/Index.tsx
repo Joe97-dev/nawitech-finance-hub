@@ -79,11 +79,12 @@ const ClientsPage = () => {
   }, [fetchClients]);
   
   const filteredClients = clients.filter(client => {
+    if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return client.first_name.toLowerCase().includes(q) || 
       client.last_name.toLowerCase().includes(q) || 
       client.phone.includes(searchQuery) ||
-      client.id_number.toLowerCase().includes(q) ||
+      (client.id_number && client.id_number.toLowerCase().includes(q)) ||
       (client.email && client.email.toLowerCase().includes(q));
   });
 
