@@ -32,6 +32,7 @@ interface Client {
   id: string;
   first_name: string;
   last_name: string;
+  id_number?: string;
 }
 
 interface LoanOfficer {
@@ -149,7 +150,7 @@ const NewLoanPage = () => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, first_name, last_name')
+          .select('id, first_name, last_name, id_number')
           .eq('status', 'active')
           .or(`first_name.ilike.%${clientSearch}%,last_name.ilike.%${clientSearch}%,client_number.ilike.%${clientSearch}%,id_number.ilike.%${clientSearch}%,phone.ilike.%${clientSearch}%`)
           .limit(10);
@@ -501,7 +502,12 @@ const NewLoanPage = () => {
                                     setShowClientDropdown(false);
                                   }}
                                 >
-                                  {getFullClientName(client)}
+                                  <div className="flex flex-col">
+                                    <span>{getFullClientName(client)}</span>
+                                    {client.id_number && (
+                                      <span className="text-xs text-muted-foreground">ID: {client.id_number}</span>
+                                    )}
+                                  </div>
                                 </button>
                               </li>
                             ))}
