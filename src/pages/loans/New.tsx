@@ -149,7 +149,7 @@ const NewLoanPage = () => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, first_name, last_name')
+          .select('id, first_name, last_name, id_number')
           .eq('status', 'active')
           .or(`first_name.ilike.%${clientSearch}%,last_name.ilike.%${clientSearch}%,client_number.ilike.%${clientSearch}%,id_number.ilike.%${clientSearch}%,phone.ilike.%${clientSearch}%`)
           .limit(10);
