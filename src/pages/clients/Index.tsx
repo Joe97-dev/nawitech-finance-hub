@@ -78,12 +78,14 @@ const ClientsPage = () => {
     fetchClients();
   }, [fetchClients]);
   
-  const filteredClients = clients.filter(client => 
-    client.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    client.last_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    client.phone.includes(searchQuery) ||
-    (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredClients = clients.filter(client => {
+    const q = searchQuery.toLowerCase();
+    return client.first_name.toLowerCase().includes(q) || 
+      client.last_name.toLowerCase().includes(q) || 
+      client.phone.includes(searchQuery) ||
+      client.id_number.toLowerCase().includes(q) ||
+      (client.email && client.email.toLowerCase().includes(q));
+  });
 
   const getFullName = (client: Client) => {
     return `${client.first_name} ${client.last_name}`;
