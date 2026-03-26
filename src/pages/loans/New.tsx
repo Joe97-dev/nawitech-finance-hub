@@ -501,7 +501,12 @@ const NewLoanPage = () => {
                                     setShowClientDropdown(false);
                                   }}
                                 >
-                                  {getFullClientName(client)}
+                                  <div className="flex flex-col">
+                                    <span>{getFullClientName(client)}</span>
+                                    {client.id_number && (
+                                      <span className="text-xs text-muted-foreground">ID: {client.id_number}</span>
+                                    )}
+                                  </div>
                                 </button>
                               </li>
                             ))}
