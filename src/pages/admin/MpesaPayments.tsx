@@ -145,9 +145,9 @@ export default function MpesaPayments() {
               <Card>
                 <CardContent className="pt-4 pb-3">
                   <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                    <TrendingUp className="h-4 w-4" /> Total Applied
+                    <TrendingUp className="h-4 w-4" /> Monthly Transactions
                   </div>
-                  <p className="text-2xl font-bold text-primary">{txCount} <span className="text-sm font-normal text-muted-foreground">transactions</span></p>
+                  <p className="text-2xl font-bold text-primary">{txCount} <span className="text-sm font-normal text-muted-foreground">this month</span></p>
                 </CardContent>
               </Card>
             </div>
