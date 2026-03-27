@@ -345,12 +345,20 @@ const LoanDetailPage = () => {
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold">Transaction History</h3>
                     {isAdmin && (
-                      <PostFeeDialog 
-                        loanId={loanId || ""} 
-                        onFeePosted={() => {
-                          setRefreshKey(prev => prev + 1);
-                        }}
-                      />
+                      <div className="flex gap-2">
+                        <PostPenaltyDialog
+                          loanId={loanId || ""}
+                          onPenaltyPosted={() => {
+                            setRefreshKey(prev => prev + 1);
+                          }}
+                        />
+                        <PostFeeDialog 
+                          loanId={loanId || ""} 
+                          onFeePosted={() => {
+                            setRefreshKey(prev => prev + 1);
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                   <LoanTransactions
