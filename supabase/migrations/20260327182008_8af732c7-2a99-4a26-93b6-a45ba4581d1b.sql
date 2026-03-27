@@ -1,0 +1,2 @@
+ALTER TABLE public.loan_transactions DROP CONSTRAINT IF EXISTS loan_transactions_transaction_type_check;
+ALTER TABLE public.loan_transactions ADD CONSTRAINT loan_transactions_transaction_type_check CHECK (transaction_type IN ('repayment', 'disbursement', 'fee', 'interest', 'adjustment', 'penalty'));
