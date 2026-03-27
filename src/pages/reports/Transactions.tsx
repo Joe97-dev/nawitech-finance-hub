@@ -36,6 +36,7 @@ const transactionTypes = [
   { value: "repayment", label: "Repayments" },
   { value: "disbursement", label: "Disbursements" },
   { value: "fee", label: "Fees" },
+  { value: "penalty", label: "Penalties" },
   { value: "interest", label: "Interest" },
   { value: "adjustment", label: "Adjustments" },
 ];
