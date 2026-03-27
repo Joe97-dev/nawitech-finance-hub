@@ -60,7 +60,7 @@ export default function MpesaPayments() {
 
   const fetchTransactions = async () => {
     setLoading(true);
-    const { data, error } = await (supabase.from("mpesa_transactions" as any).select("*").order("created_at", { ascending: false }).limit(100)) as any;
+    const { data, error } = await (supabase.from("mpesa_transactions" as any).select("*").order("created_at", { ascending: false }).limit(1000)) as any;
     if (error) {
       toast({ variant: "destructive", title: "Error", description: error.message });
     } else {
