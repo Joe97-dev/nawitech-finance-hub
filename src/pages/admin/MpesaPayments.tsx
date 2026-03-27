@@ -114,7 +114,7 @@ export default function MpesaPayments() {
           const todayTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfDay).reduce((s, tx) => s + tx.trans_amount, 0);
           const weekTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfWeek).reduce((s, tx) => s + tx.trans_amount, 0);
           const monthTotal = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfMonth).reduce((s, tx) => s + tx.trans_amount, 0);
-          const txCount = appliedTxs.filter(tx => new Date(tx.created_at) >= startOfMonth).length;
+          const txCount = transactions.filter(tx => new Date(tx.created_at) >= startOfMonth).length;
 
           return (
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
