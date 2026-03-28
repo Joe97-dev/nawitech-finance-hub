@@ -86,7 +86,7 @@ const Dashboard = () => {
         lFrom += pageSize;
       }
 
-      // Fetch 6-month schedules for collection rate + chart
+      // Fetch 6-month schedules for chart (date-filtered)
       const allSchedules: any[] = [];
       let sFrom = 0;
       while (true) {
@@ -99,6 +99,37 @@ const Dashboard = () => {
         if (!data || data.length < pageSize) break;
         sFrom += pageSize;
       }
+
+      // Collection rate by disbursal: fetch ALL schedules for active/in-arrears/closed loans
+      const collectionLoanIds: string[] = [];
+      let clFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('id')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears', 'closed'])
+          .range(clFrom, clFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) collectionLoanIds.push(...data.map(l => l.id));
+        if (!data || data.length < pageSize) break;
+        clFrom += pageSize;
+      }
+
+      let totalCollectionDue = 0;
+      let totalCollectionPaid = 0;
+      for (let i = 0; i < collectionLoanIds.length; i += 50) {
+        const batch = collectionLoanIds.slice(i, i + 50);
+        const { data } = await supabase
+          .from('loan_schedule')
+          .select('total_due, amount_paid')
+          .in('loan_id', batch);
+        if (data) {
+          data.forEach(s => {
+            totalCollectionDue += Number(s.total_due);
+            totalCollectionPaid += Number(s.amount_paid || 0);
+          });
+        }
+      }
+      const collectionRate = totalCollectionDue > 0 ? Math.round((totalCollectionPaid / totalCollectionDue) * 100) : 0;
 
       // Fetch active/in-arrears loans for PAR
       const activeLoansData: any[] = [];
@@ -114,30 +145,22 @@ const Dashboard = () => {
         aFrom += pageSize;
       }
 
-      // 3. Build monthly chart data using disbursals from loans, collections from schedule
+      // 3. Build monthly chart data
       const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
       const monthlyData = months.map((month) => {
         const monthStr = format(month, 'yyyy-MM');
-
         const disbursed = allLoans
           .filter((l: any) => l.date?.startsWith(monthStr))
           .reduce((sum: number, l: any) => sum + Number(l.amount), 0);
-
         const collected = allSchedules
           .filter((s: any) => s.due_date?.startsWith(monthStr))
           .reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
-
         return {
           month: format(month, 'MMM'),
           disbursed: Math.round(disbursed / 1000),
           collected: Math.round(collected / 1000)
         };
       });
-
-      // 4. Collection rate from loan_schedule (total paid / total due)
-      const totalScheduleDue = allSchedules.reduce((sum: number, s: any) => sum + Number(s.total_due), 0);
-      const totalSchedulePaid = allSchedules.reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
-      const collectionRate = totalScheduleDue > 0 ? Math.round((totalSchedulePaid / totalScheduleDue) * 100) : 0;
 
       // 5. Real PAR calculation — fetch overdue (pending) schedules for active loans
       const activeLoanIds = activeLoansData.map((l: any) => l.id as string);
