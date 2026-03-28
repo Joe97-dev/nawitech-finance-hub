@@ -73,6 +73,18 @@ const IncomeReport = () => {
           feeQuery = feeQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
         }
 
+        // 3) Fetch penalty transactions from loan_transactions
+        let penaltyQuery = supabase
+          .from('loan_transactions')
+          .select('transaction_date, amount')
+          .eq('transaction_type', 'penalty')
+          .eq('is_reverted', false)
+          .gte('transaction_date', fromStr);
+
+        if (toStr) {
+          penaltyQuery = penaltyQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
+        }
+
         const [scheduleRes, feeRes] = await Promise.all([scheduleQuery, feeQuery]);
 
         if (scheduleRes.error) throw scheduleRes.error;
