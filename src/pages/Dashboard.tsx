@@ -131,6 +131,37 @@ const Dashboard = () => {
       }
       const collectionRate = totalCollectionDue > 0 ? Math.round((totalCollectionPaid / totalCollectionDue) * 100) : 0;
 
+      // Fetch active/in-arrears loans for PAR
+      const activeLoansData: any[] = [];
+      let aFrom = 0;
+      while (true) {
+        const { data, error } = await supabase.from('loans').select('id, balance, status')
+          .eq('organization_id', orgId).neq('type', 'client_fee_account')
+          .in('status', ['active', 'in arrears'])
+          .range(aFrom, aFrom + pageSize - 1);
+        if (error) throw error;
+        if (data) activeLoansData.push(...data);
+        if (!data || data.length < pageSize) break;
+        aFrom += pageSize;
+      }
+
+      // 3. Build monthly chart data
+      const months = eachMonthOfInterval({ start: sixMonthsAgo, end: today });
+      const monthlyData = months.map((month) => {
+        const monthStr = format(month, 'yyyy-MM');
+        const disbursed = allLoans
+          .filter((l: any) => l.date?.startsWith(monthStr))
+          .reduce((sum: number, l: any) => sum + Number(l.amount), 0);
+        const collected = allSchedules
+          .filter((s: any) => s.due_date?.startsWith(monthStr))
+          .reduce((sum: number, s: any) => sum + Number(s.amount_paid || 0), 0);
+        return {
+          month: format(month, 'MMM'),
+          disbursed: Math.round(disbursed / 1000),
+          collected: Math.round(collected / 1000)
+        };
+      });
+
       // 5. Real PAR calculation — fetch overdue (pending) schedules for active loans
       const activeLoanIds = activeLoansData.map((l: any) => l.id as string);
       const balanceMap = new Map<string, number>(activeLoansData.map((l: any) => [l.id as string, Number(l.balance)]));
