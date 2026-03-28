@@ -85,20 +85,22 @@ const IncomeReport = () => {
           penaltyQuery = penaltyQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
         }
 
-        const [scheduleRes, feeRes] = await Promise.all([scheduleQuery, feeQuery]);
+        const [scheduleRes, feeRes, penaltyRes] = await Promise.all([scheduleQuery, feeQuery, penaltyQuery]);
 
         if (scheduleRes.error) throw scheduleRes.error;
         if (feeRes.error) throw feeRes.error;
+        if (penaltyRes.error) throw penaltyRes.error;
 
         // Group data by month
         const monthlyIncome = new Map<string, {
           interest_income: number;
           fee_income: number;
+          penalty_income: number;
         }>();
 
         const ensureMonth = (key: string) => {
           if (!monthlyIncome.has(key)) {
-            monthlyIncome.set(key, { interest_income: 0, fee_income: 0 });
+            monthlyIncome.set(key, { interest_income: 0, fee_income: 0, penalty_income: 0 });
           }
           return monthlyIncome.get(key)!;
         };
