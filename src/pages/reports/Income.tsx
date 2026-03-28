@@ -73,20 +73,34 @@ const IncomeReport = () => {
           feeQuery = feeQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
         }
 
-        const [scheduleRes, feeRes] = await Promise.all([scheduleQuery, feeQuery]);
+        // 3) Fetch penalty transactions from loan_transactions
+        let penaltyQuery = supabase
+          .from('loan_transactions')
+          .select('transaction_date, amount')
+          .eq('transaction_type', 'penalty')
+          .eq('is_reverted', false)
+          .gte('transaction_date', fromStr);
+
+        if (toStr) {
+          penaltyQuery = penaltyQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
+        }
+
+        const [scheduleRes, feeRes, penaltyRes] = await Promise.all([scheduleQuery, feeQuery, penaltyQuery]);
 
         if (scheduleRes.error) throw scheduleRes.error;
         if (feeRes.error) throw feeRes.error;
+        if (penaltyRes.error) throw penaltyRes.error;
 
         // Group data by month
         const monthlyIncome = new Map<string, {
           interest_income: number;
           fee_income: number;
+          penalty_income: number;
         }>();
 
         const ensureMonth = (key: string) => {
           if (!monthlyIncome.has(key)) {
-            monthlyIncome.set(key, { interest_income: 0, fee_income: 0 });
+            monthlyIncome.set(key, { interest_income: 0, fee_income: 0, penalty_income: 0 });
           }
           return monthlyIncome.get(key)!;
         };
@@ -116,6 +130,13 @@ const IncomeReport = () => {
           ensureMonth(monthKey).fee_income += Number(tx.amount);
         });
 
+        // Penalty income from transactions
+        (penaltyRes.data || []).forEach(tx => {
+          const date = new Date(tx.transaction_date);
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          ensureMonth(monthKey).penalty_income += Number(tx.amount);
+        });
+
         // Convert to array
         const transformedData: IncomeData[] = Array.from(monthlyIncome.entries())
           .map(([monthKey, income]) => ({
@@ -125,8 +146,8 @@ const IncomeReport = () => {
             }),
             interest_income: Math.round(income.interest_income * 100) / 100,
             fee_income: Math.round(income.fee_income * 100) / 100,
-            penalty_income: 0,
-            total_income: Math.round((income.interest_income + income.fee_income) * 100) / 100
+            penalty_income: Math.round(income.penalty_income * 100) / 100,
+            total_income: Math.round((income.interest_income + income.fee_income + income.penalty_income) * 100) / 100
           }))
           .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 
