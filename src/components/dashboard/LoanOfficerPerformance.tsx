@@ -115,26 +115,23 @@ export function LoanOfficerPerformance() {
       });
       const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-      // Fetch schedules for all officer's loans for collection rate
+      // Fetch ALL schedules for officer's loans (collection by disbursal)
       const loanIds = allLoans.map(l => l.id);
       const sixMonthsAgo = subMonths(new Date(), 6);
       const sixMonthsAgoStr = format(sixMonthsAgo, 'yyyy-MM-01');
       const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-      // Fetch schedules in batches for collection rate + monthly chart
       const allSchedules: any[] = [];
       for (let i = 0; i < loanIds.length; i += 50) {
         const batch = loanIds.slice(i, i + 50);
         const { data } = await supabase
           .from('loan_schedule')
           .select('loan_id, total_due, amount_paid, due_date')
-          .in('loan_id', batch)
-          .gte('due_date', sixMonthsAgoStr)
-          .lte('due_date', todayStr);
+          .in('loan_id', batch);
         if (data) allSchedules.push(...data);
       }
 
-      // Collection rate from schedules
+      // Collection rate by disbursal (all schedules, not date-filtered)
       const totalDue = allSchedules.reduce((sum, s) => sum + Number(s.total_due), 0);
       const totalCollected = allSchedules.reduce((sum, s) => sum + Number(s.amount_paid || 0), 0);
       const collectionRate = totalDue > 0 ? Math.round((totalCollected / totalDue) * 100) : 0;
