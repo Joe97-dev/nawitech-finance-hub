@@ -152,7 +152,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         }
       }
 
-      const wasReactivated = clientData?.status === "pending" || clientData?.status === "dormant";
+      const wasReactivated = clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive";
 
       toast({
         title: "Client fee posted successfully",
