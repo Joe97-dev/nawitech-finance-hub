@@ -141,7 +141,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         .eq("id", clientId)
         .single();
 
-      if (clientData?.status === "pending" || clientData?.status === "dormant") {
+      if (clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive") {
         const { error: updateError } = await supabase
           .from("clients")
           .update({ status: "active" })
