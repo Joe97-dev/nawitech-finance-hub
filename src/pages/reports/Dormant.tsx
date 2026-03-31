@@ -184,6 +184,11 @@ const DormantClientsReport = () => {
       const dormantIdsToUpdate: string[] = [];
 
       clientsWithNoActiveLoans.forEach((client) => {
+        // If client was manually set to "active" (e.g. via Activate button), respect that and skip
+        if (client.status === "active") {
+          return;
+        }
+
         const fullName = `${client.first_name} ${client.last_name}`;
         const lastRepaymentDate = lastRepaymentDateMap.get(fullName.toLowerCase());
 
@@ -193,9 +198,6 @@ const DormantClientsReport = () => {
         const daysWithoutLoan = Math.max(0, Math.round((today.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24)));
 
         if (daysWithoutLoan < 7) {
-          if (client.status !== "active") {
-            activeIdsToUpdate.add(client.id);
-          }
           return;
         }
 
