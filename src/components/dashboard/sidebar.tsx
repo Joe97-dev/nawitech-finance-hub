@@ -15,6 +15,7 @@ import {
   Database,
   Clock,
   Smartphone,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -274,6 +275,14 @@ export function AppSidebar() {
                       <NavLink to="/admin/mpesa-payments" className={getNavClass}>
                         <Smartphone className="h-4 w-4" />
                         {!collapsed && <span>M-Pesa Payments</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/fund-transfers" className={getNavClass}>
+                        <ArrowLeftRight className="h-4 w-4" />
+                        {!collapsed && <span>Fund Transfers</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

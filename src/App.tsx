@@ -19,6 +19,7 @@ const Rejected = lazy(() => import("./pages/Rejected"));
 const UserApprovals = lazy(() => import("./pages/admin/UserApprovals"));
 const DataMigration = lazy(() => import("./pages/admin/DataMigration"));
 const MpesaPayments = lazy(() => import("./pages/admin/MpesaPayments"));
+const FundTransfers = lazy(() => import("./pages/admin/FundTransfers"));
 const ClientsIndex = lazy(() => import("./pages/clients/Index"));
 const ClientNew = lazy(() => import("./pages/clients/New"));
 const ClientDetail = lazy(() => import("./pages/clients/Detail"));
@@ -71,6 +72,7 @@ function App() {
             <Route path="/admin/user-approvals" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
             <Route path="/admin/data-migration" element={<ProtectedRoute><DataMigration /></ProtectedRoute>} />
             <Route path="/admin/mpesa-payments" element={<ProtectedRoute><MpesaPayments /></ProtectedRoute>} />
+            <Route path="/admin/fund-transfers" element={<ProtectedRoute><RoleGuard allowedRoles={["admin"]}><FundTransfers /></RoleGuard></ProtectedRoute>} />
 
             {/* Clients */}
             <Route path="/clients" element={<ProtectedRoute><ClientsIndex /></ProtectedRoute>} />
