@@ -15,6 +15,7 @@ import {
   Database,
   Clock,
   Smartphone,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Sidebar,
