@@ -278,6 +278,14 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/admin/fund-transfers" className={getNavClass}>
+                        <ArrowLeftRight className="h-4 w-4" />
+                        {!collapsed && <span>Fund Transfers</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>

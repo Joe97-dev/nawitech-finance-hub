@@ -72,6 +72,7 @@ function App() {
             <Route path="/admin/user-approvals" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
             <Route path="/admin/data-migration" element={<ProtectedRoute><DataMigration /></ProtectedRoute>} />
             <Route path="/admin/mpesa-payments" element={<ProtectedRoute><MpesaPayments /></ProtectedRoute>} />
+            <Route path="/admin/fund-transfers" element={<ProtectedRoute><RoleGuard allowedRoles={["admin"]}><FundTransfers /></RoleGuard></ProtectedRoute>} />
 
             {/* Clients */}
             <Route path="/clients" element={<ProtectedRoute><ClientsIndex /></ProtectedRoute>} />
