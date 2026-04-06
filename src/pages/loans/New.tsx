@@ -28,6 +28,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/context/RoleContext";
 import { getOrganizationId } from "@/lib/get-organization-id";
 
+const BUSINESS_CATEGORIES = [
+  "Agrovet", "Animal Feeds", "Autospares", "Bags", "Bakery", "Ballast and Sand",
+  "Bar and restaurant", "Beauty and Cosmetics", "Bookshop", "Boutique", "Butchery",
+  "Carpet Seller", "Carpentry/Furniture Shop", "Carwash", "Cereals",
+  "Charcoal/Wood Seller", "Chemist/Pharmacy", "Clothings and accessories",
+  "Computer College", "Curtains", "Cyber Cafe", "Dairy Farming", "Dry Cleaner",
+  "Egg Seller", "Electricals", "Electronics/electronic repairs",
+  "Events and Entertainment", "Fish Seller", "Food Kiosk",
+  "Fruits and Vegetables", "Garage", "Gas Cylinders", "General shop/Kiosk",
+  "Glass", "Grocer", "Groceries", "GYM", "Hardware", "Health Centre",
+  "Juakali Artisan", "Malimali", "Milk ATM", "Money agent",
+  "Movie Shop/Video Show", "Photo Studio", "Posho mill", "Poultry Farming",
+  "Rentals/Accommodation", "Salon/Kinyozi/Massage Spa", "School",
+  "Secondhand Items", "Shoe sellers", "Shoe Shiner/Repairs", "Tailor",
+  "Timberyard", "Welding", "Wines and Spirits",
+];
+
 interface Client {
   id: string;
   first_name: string;
