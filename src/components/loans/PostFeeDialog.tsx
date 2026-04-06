@@ -85,12 +85,62 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
       const { data: { user } } = await supabase.auth.getUser();
       
       const organizationId = await getOrganizationId();
+      const feeAmount = parseFloat(values.amount);
+
+      // If paying from draw down account, deduct from client account first
+      if (values.payment_method === "draw_down_account") {
+        // Get client ID from the loan
+        const { data: loanInfo, error: loanInfoError } = await supabase
+          .from("loans")
+          .select("client")
+          .eq("id", loanId)
+          .single();
+        if (loanInfoError || !loanInfo) throw new Error("Could not find loan details");
+
+        // Find client by name to get client_id
+        const clientName = loanInfo.client;
+        const nameParts = clientName.trim().split(/\s+/);
+        let clientQuery = supabase.from("clients").select("id").eq("organization_id", organizationId);
+        if (nameParts.length >= 2) {
+          clientQuery = clientQuery.eq("first_name", nameParts[0]).eq("last_name", nameParts[nameParts.length - 1]);
+        }
+        const { data: clientData, error: clientError } = await clientQuery.maybeSingle();
+        if (clientError || !clientData) throw new Error("Could not find client for this loan");
+
+        // Get client account
+        const { data: account, error: accountError } = await supabase
+          .from("client_accounts")
+          .select("id, balance")
+          .eq("client_id", clientData.id)
+          .maybeSingle();
+        if (accountError) throw accountError;
+        if (!account || account.balance < feeAmount) {
+          throw new Error(`Insufficient draw down account balance. Available: KES ${(account?.balance || 0).toLocaleString()}`);
+        }
+
+        // Create withdrawal transaction
+        const { error: withdrawError } = await supabase
+          .from("client_account_transactions")
+          .insert({
+            client_account_id: account.id,
+            amount: -feeAmount,
+            transaction_type: "withdrawal",
+            related_loan_id: loanId,
+            notes: `Fee withdrawal: ${values.fee_type}`,
+            created_by: user?.id || null,
+            previous_balance: account.balance,
+            new_balance: account.balance - feeAmount,
+            organization_id: organizationId,
+          });
+        if (withdrawError) throw withdrawError;
+      }
+
       const { error } = await supabase
         .from("loan_transactions")
         .insert({
           loan_id: loanId,
           transaction_type: "fee",
-          amount: parseFloat(values.amount),
+          amount: feeAmount,
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
@@ -120,7 +170,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       toast({
         title: "Fee posted successfully",
-        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded.${loanData?.status === "pending" ? " Loan is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" ? " Loan is now active." : ""}`,
       });
 
       form.reset();

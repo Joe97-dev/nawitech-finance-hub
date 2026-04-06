@@ -82,8 +82,10 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const feeAmount = parseFloat(values.amount);
+
       // First, we need to get or create a "virtual" loan for client fees
-      // We'll create a special loan record to associate client fees with
       let { data: existingLoan, error: loanFetchError } = await supabase
         .from("loans")
         .select("id")
@@ -119,16 +121,45 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         loanId = existingLoan.id;
       }
 
+      // If paying from draw down account, deduct from client account first
+      if (values.payment_method === "draw_down_account") {
+        const { data: account, error: accountError } = await supabase
+          .from("client_accounts")
+          .select("id, balance")
+          .eq("client_id", clientId)
+          .maybeSingle();
+        if (accountError) throw accountError;
+        if (!account || account.balance < feeAmount) {
+          throw new Error(`Insufficient draw down account balance. Available: KES ${(account?.balance || 0).toLocaleString()}`);
+        }
+
+        const { error: withdrawError } = await supabase
+          .from("client_account_transactions")
+          .insert({
+            client_account_id: account.id,
+            amount: -feeAmount,
+            transaction_type: "withdrawal",
+            related_loan_id: loanId,
+            notes: `Client fee withdrawal: ${values.fee_type}`,
+            created_by: user?.id || null,
+            previous_balance: account.balance,
+            new_balance: account.balance - feeAmount,
+            organization_id: organizationId,
+          });
+        if (withdrawError) throw withdrawError;
+      }
+
       // Now create the fee transaction
       const { error } = await supabase
         .from("loan_transactions")
         .insert({
           loan_id: loanId,
           transaction_type: "fee",
-          amount: parseFloat(values.amount),
+          amount: feeAmount,
           payment_method: values.payment_method,
           notes: `${values.fee_type}: ${values.notes || ""}`.trim(),
           receipt_number: values.receipt_number || null,
+          created_by: user?.id || null,
           organization_id: organizationId,
         });
 
@@ -156,7 +187,7 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
 
       toast({
         title: "Client fee posted successfully",
-        description: `Fee of KES ${parseFloat(values.amount).toLocaleString()} has been recorded for ${clientName}.${wasReactivated ? " Client is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded for ${clientName}.${wasReactivated ? " Client is now active." : ""}`,
       });
 
       form.reset();
