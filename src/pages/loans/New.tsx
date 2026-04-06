@@ -617,6 +617,20 @@ const NewLoanPage = () => {
                     onChange={(e) => setDisbursementDate(e.target.value)}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessCategory">Business Category</Label>
+                  <Select value={businessCategory} onValueChange={setBusinessCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select business category" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {BUSINESS_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 
               </CardContent>
             </Card>
