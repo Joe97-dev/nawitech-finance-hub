@@ -77,6 +77,7 @@ const NewLoanPage = () => {
     return 'monthly';
   };
   const [purpose, setPurpose] = useState("");
+  const [businessCategory, setBusinessCategory] = useState("");
   const [collateral, setCollateral] = useState("no");
   const [guarantor, setGuarantor] = useState("yes");
   const [clients, setClients] = useState<Client[]>([]);
