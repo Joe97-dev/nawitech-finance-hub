@@ -350,6 +350,7 @@ const NewLoanPage = () => {
         interest_rate: rate,
         interest_method: interestMethod,
         business_address: purpose || null,
+        business_category: businessCategory || null,
         organization_id: organizationId,
       };
       

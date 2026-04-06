@@ -1,0 +1,1 @@
+ALTER TABLE public.loans ADD COLUMN business_category text NULL;
