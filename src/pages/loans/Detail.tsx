@@ -34,6 +34,7 @@ interface LoanData {
   created_at: string | null;
   updated_at: string | null;
   business_address: string | null;
+  business_category: string | null;
 }
 
 const formatCurrency = (amount: number) => {
