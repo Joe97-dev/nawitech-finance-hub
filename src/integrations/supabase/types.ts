@@ -645,6 +645,7 @@ export type Database = {
           amount: number
           balance: number
           business_address: string | null
+          business_category: string | null
           client: string
           created_at: string | null
           date: string
@@ -665,6 +666,7 @@ export type Database = {
           amount: number
           balance: number
           business_address?: string | null
+          business_category?: string | null
           client: string
           created_at?: string | null
           date?: string
@@ -685,6 +687,7 @@ export type Database = {
           amount?: number
           balance?: number
           business_address?: string | null
+          business_category?: string | null
           client?: string
           created_at?: string | null
           date?: string
