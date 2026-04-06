@@ -306,6 +306,13 @@ const LoanDetailPage = () => {
                     <span className="font-medium">{loan.created_at ? format(new Date(loan.created_at), "PPP") : "—"}</span>
                   </div>
                   
+                  {loan.business_category && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Business Category</span>
+                      <span className="font-medium">{loan.business_category}</span>
+                    </div>
+                  )}
+
                   {loan.business_address && (
                     <div className="pt-2">
                       <span className="text-sm text-muted-foreground">Business Address</span>
