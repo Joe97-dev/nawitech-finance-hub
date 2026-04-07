@@ -89,7 +89,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       // If paying from draw down account, deduct from client account first
       if (values.payment_method === "draw_down_account") {
-        // Get client ID from the loan
+        // Get client ID from the loan by matching the full name
         const { data: loanInfo, error: loanInfoError } = await supabase
           .from("loans")
           .select("client")
@@ -97,15 +97,17 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           .single();
         if (loanInfoError || !loanInfo) throw new Error("Could not find loan details");
 
-        // Find client by name to get client_id
-        const clientName = loanInfo.client;
-        const nameParts = clientName.trim().split(/\s+/);
-        let clientQuery = supabase.from("clients").select("id").eq("organization_id", organizationId);
-        if (nameParts.length >= 2) {
-          clientQuery = clientQuery.eq("first_name", nameParts[0]).eq("last_name", nameParts[nameParts.length - 1]);
-        }
-        const { data: clientData, error: clientError } = await clientQuery.maybeSingle();
-        if (clientError || !clientData) throw new Error("Could not find client for this loan");
+        // Find client whose first_name + ' ' + last_name matches the loan client field
+        const { data: allClients, error: clientError } = await supabase
+          .from("clients")
+          .select("id, first_name, last_name")
+          .eq("organization_id", organizationId);
+        if (clientError) throw clientError;
+        
+        const clientData = allClients?.find(
+          (cl) => `${cl.first_name} ${cl.last_name}` === loanInfo.client
+        );
+        if (!clientData) throw new Error("Could not find client for this loan");
 
         // Get client account
         const { data: account, error: accountError } = await supabase
