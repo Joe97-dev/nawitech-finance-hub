@@ -96,6 +96,7 @@ const LoanDetailPage = () => {
         if (data) {
           // Find client by exact UUID first, then fall back to exact full name match
           let resolvedClientId = '';
+          let clientPhone = '';
           const clientRef = data.client;
 
           // Try UUID lookup first
