@@ -403,17 +403,15 @@ const LoanDetailPage = () => {
                               resolvedClientId = clientById.id;
                               clientPhone = clientById.phone || '';
                             } else {
-                              const nameParts = clientRef.trim().split(/\s+/);
-                              if (nameParts.length >= 2) {
-                                const { data: clientByName } = await supabase
-                                  .from('clients').select('id, phone')
-                                  .eq('first_name', nameParts[0])
-                                  .eq('last_name', nameParts.slice(1).join(' '))
-                                  .limit(1).maybeSingle();
-                                if (clientByName) {
-                                  resolvedClientId = clientByName.id;
-                                  clientPhone = clientByName.phone || '';
-                                }
+                              const { data: allClients } = await supabase
+                                .from('clients').select('id, first_name, last_name, phone')
+                                .eq('organization_id', data.organization_id);
+                              const matched = allClients?.find(
+                                (cl) => `${cl.first_name} ${cl.last_name}`.trim() === clientRef.trim()
+                              );
+                              if (matched) {
+                                resolvedClientId = matched.id;
+                                clientPhone = matched.phone || '';
                               }
                             }
                             const loanData = {
