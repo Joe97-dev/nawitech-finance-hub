@@ -26,6 +26,7 @@ interface LoanData {
   loan_number: string;
   client: string;
   client_id?: string;
+  client_phone?: string;
   amount: number;
   balance: number;
   type: string;
