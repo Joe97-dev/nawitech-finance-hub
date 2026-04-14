@@ -110,22 +110,18 @@ const LoanDetailPage = () => {
             resolvedClientId = clientById.id;
             clientPhone = clientById.phone || '';
           } else {
-            // Fallback: exact full-name match
-            const nameParts = clientRef.trim().split(/\s+/);
-            if (nameParts.length >= 2) {
-              const firstName = nameParts[0];
-              const lastName = nameParts.slice(1).join(' ');
-              const { data: clientByName } = await supabase
-                .from('clients')
-                .select('id, phone')
-                .eq('first_name', firstName)
-                .eq('last_name', lastName)
-                .limit(1)
-                .maybeSingle();
-              if (clientByName) {
-                resolvedClientId = clientByName.id;
-                clientPhone = clientByName.phone || '';
-              }
+            // Fallback: match by concatenated first_name + last_name
+            const { data: allClients } = await supabase
+              .from('clients')
+              .select('id, first_name, last_name, phone')
+              .eq('organization_id', data.organization_id);
+
+            const matchedClient = allClients?.find(
+              (cl) => `${cl.first_name} ${cl.last_name}`.trim() === clientRef.trim()
+            );
+            if (matchedClient) {
+              resolvedClientId = matchedClient.id;
+              clientPhone = matchedClient.phone || '';
             }
           }
 
