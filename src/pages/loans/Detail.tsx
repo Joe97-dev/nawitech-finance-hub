@@ -26,6 +26,7 @@ interface LoanData {
   loan_number: string;
   client: string;
   client_id?: string;
+  client_phone?: string;
   amount: number;
   balance: number;
   type: string;
@@ -95,17 +96,19 @@ const LoanDetailPage = () => {
         if (data) {
           // Find client by exact UUID first, then fall back to exact full name match
           let resolvedClientId = '';
+          let clientPhone = '';
           const clientRef = data.client;
 
           // Try UUID lookup first
           const { data: clientById } = await supabase
             .from('clients')
-            .select('id')
+            .select('id, phone')
             .eq('id', clientRef)
             .maybeSingle();
 
           if (clientById) {
             resolvedClientId = clientById.id;
+            clientPhone = clientById.phone || '';
           } else {
             // Fallback: exact full-name match
             const nameParts = clientRef.trim().split(/\s+/);
@@ -114,18 +117,22 @@ const LoanDetailPage = () => {
               const lastName = nameParts.slice(1).join(' ');
               const { data: clientByName } = await supabase
                 .from('clients')
-                .select('id')
+                .select('id, phone')
                 .eq('first_name', firstName)
                 .eq('last_name', lastName)
                 .limit(1)
                 .maybeSingle();
-              if (clientByName) resolvedClientId = clientByName.id;
+              if (clientByName) {
+                resolvedClientId = clientByName.id;
+                clientPhone = clientByName.phone || '';
+              }
             }
           }
 
           const loanData = {
             ...data,
             client_id: resolvedClientId,
+            client_phone: clientPhone,
           } as LoanData;
           setLoan(loanData);
 
@@ -290,9 +297,16 @@ const LoanDetailPage = () => {
                 
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Disbursed Date</span>
-                    <span className="font-medium">{format(new Date(loan.date), "PPP")}</span>
-                  </div>
+                      <span className="text-sm text-muted-foreground">Disbursed Date</span>
+                      <span className="font-medium">{format(new Date(loan.date), "PPP")}</span>
+                    </div>
+
+                    {loan.client_phone && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Phone Number</span>
+                        <span className="font-medium">{loan.client_phone}</span>
+                      </div>
+                    )}
 
                   {maturityDate && (
                     <div className="flex justify-between">
@@ -386,24 +400,30 @@ const LoanDetailPage = () => {
                           if (data) {
                             const clientRef = data.client;
                             let resolvedClientId = '';
+                            let clientPhone = '';
                             const { data: clientById } = await supabase
-                              .from('clients').select('id').eq('id', clientRef).maybeSingle();
+                              .from('clients').select('id, phone').eq('id', clientRef).maybeSingle();
                             if (clientById) {
                               resolvedClientId = clientById.id;
+                              clientPhone = clientById.phone || '';
                             } else {
                               const nameParts = clientRef.trim().split(/\s+/);
                               if (nameParts.length >= 2) {
                                 const { data: clientByName } = await supabase
-                                  .from('clients').select('id')
+                                  .from('clients').select('id, phone')
                                   .eq('first_name', nameParts[0])
                                   .eq('last_name', nameParts.slice(1).join(' '))
                                   .limit(1).maybeSingle();
-                                if (clientByName) resolvedClientId = clientByName.id;
+                                if (clientByName) {
+                                  resolvedClientId = clientByName.id;
+                                  clientPhone = clientByName.phone || '';
+                                }
                               }
                             }
                             const loanData = {
                               ...data,
                               client_id: resolvedClientId,
+                              client_phone: clientPhone,
                             } as LoanData;
                             setLoan(loanData);
                           }
