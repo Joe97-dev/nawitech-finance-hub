@@ -400,24 +400,30 @@ const LoanDetailPage = () => {
                           if (data) {
                             const clientRef = data.client;
                             let resolvedClientId = '';
+                            let clientPhone = '';
                             const { data: clientById } = await supabase
-                              .from('clients').select('id').eq('id', clientRef).maybeSingle();
+                              .from('clients').select('id, phone').eq('id', clientRef).maybeSingle();
                             if (clientById) {
                               resolvedClientId = clientById.id;
+                              clientPhone = clientById.phone || '';
                             } else {
                               const nameParts = clientRef.trim().split(/\s+/);
                               if (nameParts.length >= 2) {
                                 const { data: clientByName } = await supabase
-                                  .from('clients').select('id')
+                                  .from('clients').select('id, phone')
                                   .eq('first_name', nameParts[0])
                                   .eq('last_name', nameParts.slice(1).join(' '))
                                   .limit(1).maybeSingle();
-                                if (clientByName) resolvedClientId = clientByName.id;
+                                if (clientByName) {
+                                  resolvedClientId = clientByName.id;
+                                  clientPhone = clientByName.phone || '';
+                                }
                               }
                             }
                             const loanData = {
                               ...data,
                               client_id: resolvedClientId,
+                              client_phone: clientPhone,
                             } as LoanData;
                             setLoan(loanData);
                           }
