@@ -101,12 +101,13 @@ const LoanDetailPage = () => {
           // Try UUID lookup first
           const { data: clientById } = await supabase
             .from('clients')
-            .select('id')
+            .select('id, phone')
             .eq('id', clientRef)
             .maybeSingle();
 
           if (clientById) {
             resolvedClientId = clientById.id;
+            clientPhone = clientById.phone || '';
           } else {
             // Fallback: exact full-name match
             const nameParts = clientRef.trim().split(/\s+/);
@@ -115,18 +116,22 @@ const LoanDetailPage = () => {
               const lastName = nameParts.slice(1).join(' ');
               const { data: clientByName } = await supabase
                 .from('clients')
-                .select('id')
+                .select('id, phone')
                 .eq('first_name', firstName)
                 .eq('last_name', lastName)
                 .limit(1)
                 .maybeSingle();
-              if (clientByName) resolvedClientId = clientByName.id;
+              if (clientByName) {
+                resolvedClientId = clientByName.id;
+                clientPhone = clientByName.phone || '';
+              }
             }
           }
 
           const loanData = {
             ...data,
             client_id: resolvedClientId,
+            client_phone: clientPhone,
           } as LoanData;
           setLoan(loanData);
 
