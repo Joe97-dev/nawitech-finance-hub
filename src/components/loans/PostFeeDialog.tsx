@@ -97,6 +97,18 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
+      // Guard: only one active (non-reverted) fee per loan
+      const { data: existing } = await supabase
+        .from("loan_transactions")
+        .select("id")
+        .eq("loan_id", loanId)
+        .eq("transaction_type", "fee")
+        .eq("is_reverted", false)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        throw new Error("A processing fee has already been posted for this loan. Revert the existing fee before posting a new one.");
+      }
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
