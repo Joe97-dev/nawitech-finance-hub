@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,7 +65,23 @@ const paymentMethods = [
 export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasExistingFee, setHasExistingFee] = useState(false);
   const { toast } = useToast();
+
+  const checkExistingFee = async () => {
+    const { data } = await supabase
+      .from("loan_transactions")
+      .select("id")
+      .eq("loan_id", loanId)
+      .eq("transaction_type", "fee")
+      .eq("is_reverted", false)
+      .limit(1);
+    setHasExistingFee((data?.length || 0) > 0);
+  };
+
+  useEffect(() => {
+    if (loanId) checkExistingFee();
+  }, [loanId]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,6 +97,18 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
+      // Guard: only one active (non-reverted) fee per loan
+      const { data: existing } = await supabase
+        .from("loan_transactions")
+        .select("id")
+        .eq("loan_id", loanId)
+        .eq("transaction_type", "fee")
+        .eq("is_reverted", false)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        throw new Error("A processing fee has already been posted for this loan. Revert the existing fee before posting a new one.");
+      }
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -177,6 +205,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       form.reset();
       setOpen(false);
+      setHasExistingFee(true);
       onFeePosted?.();
     } catch (error: any) {
       console.error("Error posting fee:", error);
@@ -191,11 +220,17 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) checkExistingFee(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+          disabled={hasExistingFee}
+          title={hasExistingFee ? "Processing fee already posted. Revert it to post a new one." : undefined}
+        >
           <DollarSign className="h-4 w-4" />
-          Post Fee
+          {hasExistingFee ? "Fee Posted" : "Post Fee"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
