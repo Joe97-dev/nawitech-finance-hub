@@ -483,7 +483,7 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
   const canRevertTransaction = (transaction: Transaction) => {
     return isAdmin && 
            !transaction.is_reverted && 
-           transaction.transaction_type === 'repayment';
+           (transaction.transaction_type === 'repayment' || transaction.transaction_type === 'fee');
   };
 
   if (loading) {
