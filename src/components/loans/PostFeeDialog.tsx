@@ -220,11 +220,17 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) checkExistingFee(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+          disabled={hasExistingFee}
+          title={hasExistingFee ? "Processing fee already posted. Revert it to post a new one." : undefined}
+        >
           <DollarSign className="h-4 w-4" />
-          Post Fee
+          {hasExistingFee ? "Fee Posted" : "Post Fee"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
