@@ -119,6 +119,14 @@ export function RevertPaymentDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Fees do not affect the loan schedule — only reverse draw-down effect (if any)
+      if (transactionType === 'fee') {
+        if (paymentMethod === 'draw_down_account') {
+          await reverseClientAccountEffect(clientId, loanId, amount, paymentMethod, user.id);
+        }
+        return;
+      }
+
       // Get paid schedule items ordered by due date (newest first for reversal)
       const { data: paidScheduleItems, error: scheduleError } = await supabase
         .from('loan_schedule')
@@ -266,9 +274,11 @@ export function RevertPaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Revert Payment</DialogTitle>
+          <DialogTitle>Revert {transaction?.transaction_type === 'fee' ? 'Fee' : 'Payment'}</DialogTitle>
           <DialogDescription>
-            You are about to revert a payment. This action will restore the loan balance and cannot be undone.
+            {transaction?.transaction_type === 'fee'
+              ? 'You are about to revert a fee. If it was paid from the Draw Down Account, the amount will be refunded back. This action cannot be undone.'
+              : 'You are about to revert a payment. This action will restore the loan balance and cannot be undone.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -318,7 +328,7 @@ export function RevertPaymentDialog({
             onClick={handleRevert} 
             disabled={isReverting || !reason.trim()}
           >
-            {isReverting ? "Reverting..." : "Revert Payment"}
+            {isReverting ? "Reverting..." : `Revert ${transaction?.transaction_type === 'fee' ? 'Fee' : 'Payment'}`}
           </Button>
         </DialogFooter>
       </DialogContent>
