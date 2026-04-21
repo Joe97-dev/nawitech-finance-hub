@@ -205,6 +205,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       form.reset();
       setOpen(false);
+      setHasExistingFee(true);
       onFeePosted?.();
     } catch (error: any) {
       console.error("Error posting fee:", error);
