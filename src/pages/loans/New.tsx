@@ -540,11 +540,18 @@ const NewLoanPage = () => {
                                 <button
                                   type="button"
                                   className="flex w-full items-center px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    setShowClientDropdown(false);
+                                    const eligible = await checkClientEligibility(client);
+                                    if (!eligible) {
+                                      setClientId("");
+                                      setSelectedClient(null);
+                                      setClientSearch("");
+                                      return;
+                                    }
                                     setClientId(client.id);
                                     setSelectedClient(client);
                                     setClientSearch(getFullClientName(client));
-                                    setShowClientDropdown(false);
                                   }}
                                 >
                                   <div className="flex flex-col">
