@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/context/RoleContext";
 import { getOrganizationId } from "@/lib/get-organization-id";
+import { clientHasOpenLoans } from "@/lib/client-status";
 
 const BUSINESS_CATEGORIES = [
   "Agrovet", "Animal Feeds", "Autospares", "Bags", "Bakery", "Ballast and Sand",
@@ -320,6 +321,11 @@ const NewLoanPage = () => {
         toast({ variant: "destructive", title: "Missing information", description: "Please select a client." });
         return;
       }
+
+      // Final eligibility re-check before insert
+      const eligible = await checkClientEligibility(selectedClient);
+      if (!eligible) return;
+
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
       const amount = parseFloat(loanAmount);
@@ -427,6 +433,31 @@ const NewLoanPage = () => {
   };
 
   const getFullClientName = (client: Client) => `${client.first_name} ${client.last_name}`;
+
+  // Returns true if eligible (no open loans), false otherwise (and shows toast)
+  const checkClientEligibility = async (client: Client): Promise<boolean> => {
+    try {
+      const organizationId = await getOrganizationId();
+      const { data: loans, error } = await supabase
+        .from('loans')
+        .select('client, status')
+        .eq('organization_id', organizationId);
+      if (error) throw error;
+      if (clientHasOpenLoans(client, (loans || []) as { client: string; status: string }[])) {
+        toast({
+          variant: "destructive",
+          title: "Client not eligible",
+          description: `${getFullClientName(client)} has an active or in-arrears loan. New loans are only allowed for clients whose previous loans are fully closed.`,
+        });
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.error("Eligibility check failed:", err);
+      toast({ variant: "destructive", title: "Eligibility check failed", description: err.message || "Could not verify client loan history." });
+      return false;
+    }
+  };
   
   return (
     <DashboardLayout>
@@ -514,11 +545,18 @@ const NewLoanPage = () => {
                                 <button
                                   type="button"
                                   className="flex w-full items-center px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    setShowClientDropdown(false);
+                                    const eligible = await checkClientEligibility(client);
+                                    if (!eligible) {
+                                      setClientId("");
+                                      setSelectedClient(null);
+                                      setClientSearch("");
+                                      return;
+                                    }
                                     setClientId(client.id);
                                     setSelectedClient(client);
                                     setClientSearch(getFullClientName(client));
-                                    setShowClientDropdown(false);
                                   }}
                                 >
                                   <div className="flex flex-col">
