@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRole } from "@/context/RoleContext";
 import { getOrganizationId } from "@/lib/get-organization-id";
+import { clientHasOpenLoans } from "@/lib/client-status";
 
 const BUSINESS_CATEGORIES = [
   "Agrovet", "Animal Feeds", "Autospares", "Bags", "Bakery", "Ballast and Sand",
