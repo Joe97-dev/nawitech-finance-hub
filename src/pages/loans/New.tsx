@@ -321,6 +321,11 @@ const NewLoanPage = () => {
         toast({ variant: "destructive", title: "Missing information", description: "Please select a client." });
         return;
       }
+
+      // Final eligibility re-check before insert
+      const eligible = await checkClientEligibility(selectedClient);
+      if (!eligible) return;
+
       
       const clientName = `${selectedClient.first_name} ${selectedClient.last_name}`;
       const amount = parseFloat(loanAmount);
