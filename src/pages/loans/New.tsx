@@ -428,6 +428,31 @@ const NewLoanPage = () => {
   };
 
   const getFullClientName = (client: Client) => `${client.first_name} ${client.last_name}`;
+
+  // Returns true if eligible (no open loans), false otherwise (and shows toast)
+  const checkClientEligibility = async (client: Client): Promise<boolean> => {
+    try {
+      const organizationId = await getOrganizationId();
+      const { data: loans, error } = await supabase
+        .from('loans')
+        .select('client, status')
+        .eq('organization_id', organizationId);
+      if (error) throw error;
+      if (clientHasOpenLoans(client, (loans || []) as { client: string; status: string }[])) {
+        toast({
+          variant: "destructive",
+          title: "Client not eligible",
+          description: `${getFullClientName(client)} has an active or in-arrears loan. New loans are only allowed for clients whose previous loans are fully closed.`,
+        });
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.error("Eligibility check failed:", err);
+      toast({ variant: "destructive", title: "Eligibility check failed", description: err.message || "Could not verify client loan history." });
+      return false;
+    }
+  };
   
   return (
     <DashboardLayout>
