@@ -206,7 +206,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       toast({
         title: "Fee posted successfully",
-        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" ? " Loan is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" && isFullProcessingFee ? " Loan is now active." : loanData?.status === "pending" ? " Loan remains pending until full processing fee of KES 400 is posted." : ""}`,
       });
 
       form.reset();
