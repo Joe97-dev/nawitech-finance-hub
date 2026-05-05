@@ -192,7 +192,8 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
         .eq("id", loanId)
         .single();
 
-      if (loanData?.status === "pending") {
+      const isFullProcessingFee = values.fee_type === "processing_fee" && feeAmount >= PROCESSING_FEE_AMOUNT;
+      if (loanData?.status === "pending" && isFullProcessingFee) {
         const { error: updateError } = await supabase
           .from("loans")
           .update({ status: "active" })
