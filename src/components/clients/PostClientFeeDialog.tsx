@@ -177,7 +177,12 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         .eq("id", clientId)
         .single();
 
-      if (clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive") {
+      const isFullRegistrationFee = values.fee_type === "registration_fee" && feeAmount >= REGISTRATION_FEE_AMOUNT;
+      const isPending = clientData?.status === "pending";
+      const isDormantOrInactive = clientData?.status === "dormant" || clientData?.status === "inactive";
+      const shouldActivate = (isPending && isFullRegistrationFee) || isDormantOrInactive;
+
+      if (shouldActivate) {
         const { error: updateError } = await supabase
           .from("clients")
           .update({ status: "active" })
@@ -188,11 +193,9 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         }
       }
 
-      const wasReactivated = clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive";
-
       toast({
         title: "Client fee posted successfully",
-        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded for ${clientName}.${wasReactivated ? " Client is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded for ${clientName}.${shouldActivate ? " Client is now active." : isPending ? " Client remains pending until full registration fee of KES 100 is posted." : ""}`,
       });
 
       form.reset();
