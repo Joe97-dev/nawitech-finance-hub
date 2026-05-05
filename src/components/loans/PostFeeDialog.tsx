@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 
+const PROCESSING_FEE_AMOUNT = 400;
+
 const formSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
     message: "Amount must be a positive number",
@@ -35,7 +37,10 @@ const formSchema = z.object({
   payment_method: z.string().min(1, "Payment method is required"),
   notes: z.string().optional(),
   receipt_number: z.string().optional(),
-});
+}).refine(
+  (data) => data.fee_type !== "processing_fee" || Number(data.amount) === PROCESSING_FEE_AMOUNT,
+  { message: `Processing fee must be exactly KES ${PROCESSING_FEE_AMOUNT}`, path: ["amount"] }
+);
 
 interface PostFeeDialogProps {
   loanId: string;
@@ -187,7 +192,8 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
         .eq("id", loanId)
         .single();
 
-      if (loanData?.status === "pending") {
+      const isFullProcessingFee = values.fee_type === "processing_fee" && feeAmount >= PROCESSING_FEE_AMOUNT;
+      if (loanData?.status === "pending" && isFullProcessingFee) {
         const { error: updateError } = await supabase
           .from("loans")
           .update({ status: "active" })
@@ -200,7 +206,7 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       toast({
         title: "Fee posted successfully",
-        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" ? " Loan is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" && isFullProcessingFee ? " Loan is now active." : loanData?.status === "pending" ? " Loan remains pending until full processing fee of KES 400 is posted." : ""}`,
       });
 
       form.reset();

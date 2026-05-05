@@ -27,6 +27,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getOrganizationId } from "@/lib/get-organization-id";
 import { useToast } from "@/hooks/use-toast";
 
+const REGISTRATION_FEE_AMOUNT = 100;
+
 const formSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
     message: "Amount must be a positive number",
@@ -35,7 +37,10 @@ const formSchema = z.object({
   payment_method: z.string().min(1, "Payment method is required"),
   notes: z.string().optional(),
   receipt_number: z.string().optional(),
-});
+}).refine(
+  (data) => data.fee_type !== "registration_fee" || Number(data.amount) === REGISTRATION_FEE_AMOUNT,
+  { message: `Registration fee must be exactly KES ${REGISTRATION_FEE_AMOUNT}`, path: ["amount"] }
+);
 
 interface PostClientFeeDialogProps {
   clientId: string;
@@ -172,7 +177,12 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         .eq("id", clientId)
         .single();
 
-      if (clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive") {
+      const isFullRegistrationFee = values.fee_type === "registration_fee" && feeAmount >= REGISTRATION_FEE_AMOUNT;
+      const isPending = clientData?.status === "pending";
+      const isDormantOrInactive = clientData?.status === "dormant" || clientData?.status === "inactive";
+      const shouldActivate = (isPending && isFullRegistrationFee) || isDormantOrInactive;
+
+      if (shouldActivate) {
         const { error: updateError } = await supabase
           .from("clients")
           .update({ status: "active" })
@@ -183,11 +193,9 @@ export function PostClientFeeDialog({ clientId, clientName, onFeePosted }: PostC
         }
       }
 
-      const wasReactivated = clientData?.status === "pending" || clientData?.status === "dormant" || clientData?.status === "inactive";
-
       toast({
         title: "Client fee posted successfully",
-        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded for ${clientName}.${wasReactivated ? " Client is now active." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded for ${clientName}.${shouldActivate ? " Client is now active." : isPending ? " Client remains pending until full registration fee of KES 100 is posted." : ""}`,
       });
 
       form.reset();
