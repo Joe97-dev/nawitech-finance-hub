@@ -37,10 +37,7 @@ const formSchema = z.object({
   payment_method: z.string().min(1, "Payment method is required"),
   notes: z.string().optional(),
   receipt_number: z.string().optional(),
-}).refine(
-  (data) => data.fee_type !== "processing_fee" || Number(data.amount) === PROCESSING_FEE_AMOUNT,
-  { message: `Processing fee must be exactly KES ${PROCESSING_FEE_AMOUNT}`, path: ["amount"] }
-);
+});
 
 interface PostFeeDialogProps {
   loanId: string;
