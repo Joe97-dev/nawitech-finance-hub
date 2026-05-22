@@ -9,7 +9,7 @@ export interface ClientStatusLoanInput {
   status: string;
 }
 
-const CLOSED_LOAN_STATUSES = new Set(["closed", "rejected", "written_off"]);
+const CLOSED_LOAN_STATUSES = new Set(["closed", "rejected", "written_off", "abandoned"]);
 
 export const normalizeClientText = (value: string) =>
   value.trim().replace(/\s+/g, " ").toLowerCase();
