@@ -251,6 +251,16 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Processing fee posted</span>
+                <span className="font-medium">KES {processingFeeTotal.toLocaleString()} / 400</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">Remaining</span>
+                <span className="font-medium">KES {remainingProcessingFee.toLocaleString()}</span>
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="amount"
