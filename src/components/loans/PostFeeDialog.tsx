@@ -69,7 +69,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processingFeeTotal, setProcessingFeeTotal] = useState(0);
   const { toast } = useToast();
-  const PROCESSING_FEE_AMOUNT = 400;
   const remainingProcessingFee = Math.max(0, PROCESSING_FEE_AMOUNT - processingFeeTotal);
   const processingFeeFullyPaid = processingFeeTotal >= PROCESSING_FEE_AMOUNT;
 
