@@ -67,22 +67,23 @@ const paymentMethods = [
 export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasExistingFee, setHasExistingFee] = useState(false);
-  const { toast } = useToast();
+  const [processingFeeTotal, setProcessingFeeTotal] = useState(0);
 
-  const checkExistingFee = async () => {
+  const refreshFeeState = async () => {
     const { data } = await supabase
       .from("loan_transactions")
-      .select("id")
+      .select("amount, notes")
       .eq("loan_id", loanId)
       .eq("transaction_type", "fee")
-      .eq("is_reverted", false)
-      .limit(1);
-    setHasExistingFee((data?.length || 0) > 0);
+      .eq("is_reverted", false);
+    const total = (data || [])
+      .filter((t: any) => (t.notes || "").toLowerCase().startsWith("processing_fee"))
+      .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    setProcessingFeeTotal(total);
   };
 
   useEffect(() => {
-    if (loanId) checkExistingFee();
+    if (loanId) refreshFeeState();
   }, [loanId]);
 
   const form = useForm<z.infer<typeof formSchema>>({
