@@ -37,10 +37,7 @@ const formSchema = z.object({
   payment_method: z.string().min(1, "Payment method is required"),
   notes: z.string().optional(),
   receipt_number: z.string().optional(),
-}).refine(
-  (data) => data.fee_type !== "processing_fee" || Number(data.amount) === PROCESSING_FEE_AMOUNT,
-  { message: `Processing fee must be exactly KES ${PROCESSING_FEE_AMOUNT}`, path: ["amount"] }
-);
+});
 
 interface PostFeeDialogProps {
   loanId: string;
@@ -70,22 +67,26 @@ const paymentMethods = [
 export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasExistingFee, setHasExistingFee] = useState(false);
+  const [processingFeeTotal, setProcessingFeeTotal] = useState(0);
   const { toast } = useToast();
+  const remainingProcessingFee = Math.max(0, PROCESSING_FEE_AMOUNT - processingFeeTotal);
+  const processingFeeFullyPaid = processingFeeTotal >= PROCESSING_FEE_AMOUNT;
 
-  const checkExistingFee = async () => {
+  const refreshFeeState = async () => {
     const { data } = await supabase
       .from("loan_transactions")
-      .select("id")
+      .select("amount, notes")
       .eq("loan_id", loanId)
       .eq("transaction_type", "fee")
-      .eq("is_reverted", false)
-      .limit(1);
-    setHasExistingFee((data?.length || 0) > 0);
+      .eq("is_reverted", false);
+    const total = (data || [])
+      .filter((t: any) => (t.notes || "").toLowerCase().startsWith("processing_fee"))
+      .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+    setProcessingFeeTotal(total);
   };
 
   useEffect(() => {
-    if (loanId) checkExistingFee();
+    if (loanId) refreshFeeState();
   }, [loanId]);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -102,27 +103,36 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Guard: only one active (non-reverted) fee per loan
-      const { data: existing } = await supabase
-        .from("loan_transactions")
-        .select("id")
-        .eq("loan_id", loanId)
-        .eq("transaction_type", "fee")
-        .eq("is_reverted", false)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        throw new Error("A processing fee has already been posted for this loan. Revert the existing fee before posting a new one.");
+      const feeAmount = parseFloat(values.amount);
+
+      // For processing fee, enforce the 400 cap on the client (DB trigger also enforces this)
+      if (values.fee_type === "processing_fee") {
+        await refreshFeeState();
+        const { data: existing } = await supabase
+          .from("loan_transactions")
+          .select("amount, notes")
+          .eq("loan_id", loanId)
+          .eq("transaction_type", "fee")
+          .eq("is_reverted", false);
+        const currentTotal = (existing || [])
+          .filter((t: any) => (t.notes || "").toLowerCase().startsWith("processing_fee"))
+          .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
+        const remaining = PROCESSING_FEE_AMOUNT - currentTotal;
+        if (remaining <= 0) {
+          throw new Error("Processing fee of KES 400 has already been fully posted for this loan.");
+        }
+        if (feeAmount > remaining) {
+          throw new Error(`Processing fee remaining is KES ${remaining.toLocaleString()}. You cannot post more than that.`);
+        }
       }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       
       const organizationId = await getOrganizationId();
-      const feeAmount = parseFloat(values.amount);
 
       // If paying from draw down account, deduct from client account first
       if (values.payment_method === "draw_down_account") {
-        // Get client ID from the loan by matching the full name
         const { data: loanInfo, error: loanInfoError } = await supabase
           .from("loans")
           .select("client")
@@ -130,7 +140,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           .single();
         if (loanInfoError || !loanInfo) throw new Error("Could not find loan details");
 
-        // Find client whose first_name + ' ' + last_name matches the loan client field
         const { data: allClients, error: clientError } = await supabase
           .from("clients")
           .select("id, first_name, last_name")
@@ -142,7 +151,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
         );
         if (!clientData) throw new Error("Could not find client for this loan");
 
-        // Get client account
         const { data: account, error: accountError } = await supabase
           .from("client_accounts")
           .select("id, balance")
@@ -153,7 +161,6 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
           throw new Error(`Insufficient draw down account balance. Available: KES ${(account?.balance || 0).toLocaleString()}`);
         }
 
-        // Create withdrawal transaction
         const { error: withdrawError } = await supabase
           .from("client_account_transactions")
           .insert({
@@ -185,33 +192,28 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
 
       if (error) throw error;
 
-      // Activate the loan if it's still pending
+      // Re-read status (DB trigger auto-activates once total reaches 400)
       const { data: loanData } = await supabase
         .from("loans")
         .select("status")
         .eq("id", loanId)
         .single();
 
-      const isFullProcessingFee = values.fee_type === "processing_fee" && feeAmount >= PROCESSING_FEE_AMOUNT;
-      if (loanData?.status === "pending" && isFullProcessingFee) {
-        const { error: updateError } = await supabase
-          .from("loans")
-          .update({ status: "active" })
-          .eq("id", loanId);
-
-        if (updateError) {
-          console.error("Error activating loan:", updateError);
-        }
-      }
+      const newTotal = (values.fee_type === "processing_fee" ? processingFeeTotal + feeAmount : processingFeeTotal);
+      const stillPending = loanData?.status === "pending";
+      const activated = loanData?.status === "active" && newTotal >= PROCESSING_FEE_AMOUNT;
 
       toast({
         title: "Fee posted successfully",
-        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${loanData?.status === "pending" && isFullProcessingFee ? " Loan is now active." : loanData?.status === "pending" ? " Loan remains pending until full processing fee of KES 400 is posted." : ""}`,
+        description: `Fee of KES ${feeAmount.toLocaleString()} has been recorded.${
+          activated ? " Loan is now active." :
+          stillPending && values.fee_type === "processing_fee" ? ` Processing fee total: KES ${newTotal.toLocaleString()} of KES 400. Loan stays pending until KES 400 is reached.` : ""
+        }`,
       });
 
       form.reset();
       setOpen(false);
-      setHasExistingFee(true);
+      await refreshFeeState();
       onFeePosted?.();
     } catch (error: any) {
       console.error("Error posting fee:", error);
@@ -226,17 +228,17 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) checkExistingFee(); }}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) refreshFeeState(); }}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
           size="sm"
           className="flex items-center gap-2"
-          disabled={hasExistingFee}
-          title={hasExistingFee ? "Processing fee already posted. Revert it to post a new one." : undefined}
+          disabled={processingFeeFullyPaid}
+          title={processingFeeFullyPaid ? "Processing fee of KES 400 already fully posted." : undefined}
         >
           <DollarSign className="h-4 w-4" />
-          {hasExistingFee ? "Fee Posted" : "Post Fee"}
+          {processingFeeFullyPaid ? "Fee Posted" : "Post Fee"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
@@ -248,6 +250,16 @@ export function PostFeeDialog({ loanId, onFeePosted }: PostFeeDialogProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Processing fee posted</span>
+                <span className="font-medium">KES {processingFeeTotal.toLocaleString()} / 400</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">Remaining</span>
+                <span className="font-medium">KES {remainingProcessingFee.toLocaleString()}</span>
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="amount"
