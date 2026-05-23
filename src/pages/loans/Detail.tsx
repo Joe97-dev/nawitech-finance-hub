@@ -139,7 +139,9 @@ const LoanDetailPage = () => {
             .eq('loan_id', loanId!)
             .eq('transaction_type', 'penalty');
 
-          const penaltyDates = new Set((penaltyTxns || []).map((t: any) => t.transaction_date));
+          const penaltyDates = new Set(
+            (penaltyTxns || []).map((t: any) => String(t.transaction_date).slice(0, 10))
+          );
 
           const { data: scheduleRows } = await supabase
             .from('loan_schedule')
@@ -147,7 +149,10 @@ const LoanDetailPage = () => {
             .eq('loan_id', loanId!)
             .order('due_date', { ascending: false });
 
-          const trueMaturity = (scheduleRows || []).find((r: any) => !penaltyDates.has(r.due_date));
+          const trueMaturity = (scheduleRows || []).find(
+            (r: any) => !penaltyDates.has(String(r.due_date).slice(0, 10))
+          );
+
           setMaturityDate(trueMaturity?.due_date || null);
 
         }
