@@ -132,16 +132,24 @@ const LoanDetailPage = () => {
           } as LoanData;
           setLoan(loanData);
 
-          // Fetch maturity date (last installment due date)
-          const { data: lastSchedule } = await supabase
+          // Fetch maturity date (last installment due date), excluding penalty-generated entries
+          const { data: penaltyTxns } = await supabase
+            .from('loan_transactions')
+            .select('transaction_date')
+            .eq('loan_id', loanId!)
+            .eq('transaction_type', 'penalty');
+
+          const penaltyDates = new Set((penaltyTxns || []).map((t: any) => t.transaction_date));
+
+          const { data: scheduleRows } = await supabase
             .from('loan_schedule')
             .select('due_date')
             .eq('loan_id', loanId!)
-            .order('due_date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .order('due_date', { ascending: false });
 
-          setMaturityDate(lastSchedule?.due_date || null);
+          const trueMaturity = (scheduleRows || []).find((r: any) => !penaltyDates.has(r.due_date));
+          setMaturityDate(trueMaturity?.due_date || null);
+
         }
       } catch (error: any) {
         console.error("Error fetching loan details:", error);
