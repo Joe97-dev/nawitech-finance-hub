@@ -174,7 +174,10 @@ export function ImportClientsDialog({ open, onOpenChange, onImportComplete }: Im
 
         if (error) {
           failed++;
-          errors.push({ row: i + 2, message: error.message });
+          const msg = (error as any).code === '23505' || /duplicate key|unique/i.test(error.message)
+            ? `Duplicate National ID ${idNumber} — a client with this ID already exists.`
+            : error.message;
+          errors.push({ row: i + 2, message: msg });
         } else {
           success++;
         }
