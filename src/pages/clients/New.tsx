@@ -341,6 +341,17 @@ const NewClientPage = () => {
         clientData.loan_officer_id = selectedOfficerId;
       }
       
+      // Pre-check: ensure no other client in this org already uses this ID number
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id, first_name, last_name')
+        .eq('organization_id', organizationId)
+        .eq('id_number', formData.idNumber)
+        .maybeSingle();
+      if (existing) {
+        throw new Error(`A client with National ID ${formData.idNumber} already exists (${existing.first_name} ${existing.last_name}).`);
+      }
+
       // Insert client to database
       const { data: newClient, error } = await supabase
         .from('clients')
@@ -348,7 +359,12 @@ const NewClientPage = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        if ((error as any).code === '23505' || /duplicate key|unique/i.test(error.message)) {
+          throw new Error(`A client with National ID ${formData.idNumber} already exists in your organization.`);
+        }
+        throw error;
+      }
       
       // Upload photo if available
       if (photoFile && newClient) {
