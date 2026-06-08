@@ -204,7 +204,7 @@ const ClientsPage = () => {
                           className="flex items-center gap-2 hover:underline"
                         >
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={client.photo_url || undefined} />
+                            <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
                             <AvatarFallback>{`${client.first_name[0]}${client.last_name[0]}`}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium text-superdon-600">{getFullName(client)}</span>
