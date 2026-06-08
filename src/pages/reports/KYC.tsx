@@ -387,7 +387,7 @@ const ClientDetail = ({
               <div>
                 <div className="flex items-center gap-4 mb-6">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={client.photo_url || undefined} />
+                    <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
                     <AvatarFallback className="text-lg">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
