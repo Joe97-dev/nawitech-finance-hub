@@ -180,6 +180,14 @@ const KYCReport = () => {
         });
 
         setClients(enhanced);
+
+        // Generate temporary signed URLs for passport photos (private bucket)
+        const signed = await getSignedUrlMap(
+          "client_photos",
+          enhanced.map((c) => c.photo_url)
+        );
+        setPhotoUrls(signed);
+
         if (enhanced.length > 0) {
           setSelectedClient(prev => prev || enhanced[0].id);
         }
