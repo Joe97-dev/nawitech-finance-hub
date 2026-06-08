@@ -316,7 +316,7 @@ const KYCReport = () => {
                         >
                           <CardContent className="p-3 flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={client.photo_url || undefined} />
+                              <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
                               <AvatarFallback>{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
