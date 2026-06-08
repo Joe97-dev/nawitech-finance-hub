@@ -346,6 +346,7 @@ const KYCReport = () => {
                   client={selectedClientData}
                   branchName={branchName(selectedClientData.branch_id)}
                   onLoanClick={loanId => navigate(`/loans/${loanId}`)}
+                  photoUrl={selectedClientData.photo_url ? photoUrls[selectedClientData.photo_url] : undefined}
                 />
               ) : (
                 <div className="border rounded-md flex items-center justify-center h-full p-8 text-muted-foreground">
