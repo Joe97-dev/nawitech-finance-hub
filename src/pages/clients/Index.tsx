@@ -64,6 +64,14 @@ const ClientsPage = () => {
       }));
 
       setClients(enrichedClients);
+
+      // Generate temporary signed URLs for client passport photos (private bucket)
+      const signed = await getSignedUrlMap(
+        "client_photos",
+        enrichedClients.map((c) => c.photo_url)
+      );
+      setPhotoUrls(signed);
+
     } catch (error: any) {
       console.error("Error fetching clients:", error);
       toast({
