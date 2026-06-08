@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ImportClientsDialog } from "@/components/clients/ImportClientsDialog";
 import { clientHasOpenLoans } from "@/lib/client-status";
+import { getSignedUrlMap } from "@/lib/signed-url";
 
 interface Client {
   id: string;
@@ -41,6 +42,7 @@ interface Client {
 const ClientsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [clients, setClients] = useState<Client[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const { toast } = useToast();
@@ -62,6 +64,14 @@ const ClientsPage = () => {
       }));
 
       setClients(enrichedClients);
+
+      // Generate temporary signed URLs for client passport photos (private bucket)
+      const signed = await getSignedUrlMap(
+        "client_photos",
+        enrichedClients.map((c) => c.photo_url)
+      );
+      setPhotoUrls(signed);
+
     } catch (error: any) {
       console.error("Error fetching clients:", error);
       toast({
@@ -194,7 +204,7 @@ const ClientsPage = () => {
                           className="flex items-center gap-2 hover:underline"
                         >
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={client.photo_url || undefined} />
+                            <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
                             <AvatarFallback>{`${client.first_name[0]}${client.last_name[0]}`}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium text-superdon-600">{getFullName(client)}</span>

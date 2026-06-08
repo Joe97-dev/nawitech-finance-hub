@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, AlertCircle } from "lucide-react";
+import { getSignedUrlMap } from "@/lib/signed-url";
 
 interface Client {
   id: string;
@@ -126,6 +127,7 @@ const KYCReport = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loans, setLoans] = useState<Loan[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,14 @@ const KYCReport = () => {
         });
 
         setClients(enhanced);
+
+        // Generate temporary signed URLs for passport photos (private bucket)
+        const signed = await getSignedUrlMap(
+          "client_photos",
+          enhanced.map((c) => c.photo_url)
+        );
+        setPhotoUrls(signed);
+
         if (enhanced.length > 0) {
           setSelectedClient(prev => prev || enhanced[0].id);
         }
@@ -306,7 +316,7 @@ const KYCReport = () => {
                         >
                           <CardContent className="p-3 flex items-center gap-3">
                             <Avatar>
-                              <AvatarImage src={client.photo_url || undefined} />
+                              <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
                               <AvatarFallback>{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
@@ -336,6 +346,7 @@ const KYCReport = () => {
                   client={selectedClientData}
                   branchName={branchName(selectedClientData.branch_id)}
                   onLoanClick={loanId => navigate(`/loans/${loanId}`)}
+                  photoUrl={selectedClientData.photo_url ? photoUrls[selectedClientData.photo_url] : undefined}
                 />
               ) : (
                 <div className="border rounded-md flex items-center justify-center h-full p-8 text-muted-foreground">
@@ -354,10 +365,12 @@ const ClientDetail = ({
   client,
   branchName,
   onLoanClick,
+  photoUrl,
 }: {
   client: Client;
   branchName: string;
   onLoanClick: (loanId: string) => void;
+  photoUrl?: string;
 }) => {
   const kycScore = client.kycScore ?? 0;
   const missingFields = client.missingFields ?? [];
@@ -377,7 +390,7 @@ const ClientDetail = ({
               <div>
                 <div className="flex items-center gap-4 mb-6">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={client.photo_url || undefined} />
+                    <AvatarImage src={photoUrl || undefined} />
                     <AvatarFallback className="text-lg">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
