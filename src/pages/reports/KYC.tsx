@@ -364,10 +364,12 @@ const ClientDetail = ({
   client,
   branchName,
   onLoanClick,
+  photoUrl,
 }: {
   client: Client;
   branchName: string;
   onLoanClick: (loanId: string) => void;
+  photoUrl?: string;
 }) => {
   const kycScore = client.kycScore ?? 0;
   const missingFields = client.missingFields ?? [];
@@ -387,7 +389,7 @@ const ClientDetail = ({
               <div>
                 <div className="flex items-center gap-4 mb-6">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src={(client.photo_url && photoUrls[client.photo_url]) || undefined} />
+                    <AvatarImage src={photoUrl || undefined} />
                     <AvatarFallback className="text-lg">{client.first_name[0]}{client.last_name[0]}</AvatarFallback>
                   </Avatar>
                   <div>
