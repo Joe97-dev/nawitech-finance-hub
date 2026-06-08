@@ -9,6 +9,18 @@ public = false
 file_size_limit = "5MB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
 
+[[storage.buckets]]
+name = "client-id-photos"
+public = false
+file_size_limit = "5MB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
+
+[[storage.buckets]]
+name = "client-business-photos"
+public = false
+file_size_limit = "5MB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"]
+
 [functions.admin-reset-password]
 verify_jwt = false
 
