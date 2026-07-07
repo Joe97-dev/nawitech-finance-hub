@@ -37,10 +37,12 @@ interface Client {
   business_photo_url: string | null;
   occupation: string | null;
   marital_status: string | null;
+  loan_officer_id: string | null;
   loans?: Loan[];
   effectiveStatus?: string;
   kycScore?: number;
   missingFields?: string[];
+  loanOfficerName?: string;
 }
 
 interface Loan {
@@ -73,6 +75,7 @@ const columns = [
   { key: "dob", header: "Date of Birth" },
   { key: "address", header: "Address" },
   { key: "branch", header: "Branch" },
+  { key: "loanOfficer", header: "Loan Officer" },
   { key: "status", header: "Status" },
   { key: "kycScore", header: "KYC Completeness (%)" },
   { key: "registrationDate", header: "Registration Date" }
@@ -165,6 +168,23 @@ const KYCReport = () => {
         setBranches(branchesRes.data || []);
         setLoans(loansData);
 
+        // Resolve loan officer names from profiles
+        const officerIds = [...new Set(allClients.map((c: Client) => c.loan_officer_id).filter(Boolean))] as string[];
+        const officerMap = new Map<string, string>();
+        if (officerIds.length > 0) {
+          const batchSize = 50;
+          for (let i = 0; i < officerIds.length; i += batchSize) {
+            const batch = officerIds.slice(i, i + batchSize);
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name")
+              .in("id", batch);
+            (profiles || []).forEach((p) => {
+              officerMap.set(p.id, `${p.first_name || ""} ${p.last_name || ""}`.trim() || "—");
+            });
+          }
+        }
+
         // Enhance clients with loans, effective status, KYC score
         const enhanced: Client[] = allClients.map((client: Client) => {
           const clientLoans = matchLoansToClient(client, loansData);
@@ -176,6 +196,7 @@ const KYCReport = () => {
             effectiveStatus,
             kycScore: score,
             missingFields: missing,
+            loanOfficerName: client.loan_officer_id ? officerMap.get(client.loan_officer_id) || "—" : "—",
           };
         });
 
@@ -270,6 +291,7 @@ const KYCReport = () => {
                 dob: client.date_of_birth || "Not specified",
                 address: client.address || "Not specified",
                 branch: branchName(client.branch_id),
+                loanOfficer: client.loanOfficerName || "—",
                 status: client.effectiveStatus || client.status,
                 kycScore: client.kycScore ?? 0,
                 registrationDate: client.registration_date || "Not specified",
@@ -414,6 +436,7 @@ const ClientDetail = ({
                 <DetailRow label="City" value={client.city} />
                 <DetailRow label="Region" value={client.region} />
                 <DetailRow label="Branch" value={branchName} />
+                <DetailRow label="Loan Officer" value={client.loanOfficerName} />
                 <DetailRow label="Registration Date" value={client.registration_date} />
               </div>
             </div>
