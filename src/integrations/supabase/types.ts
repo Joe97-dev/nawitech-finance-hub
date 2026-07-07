@@ -1094,6 +1094,14 @@ export type Database = {
         Args: { reason?: string; target_user_id: string }
         Returns: undefined
       }
+      storage_client_object_in_org: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
+      storage_loan_object_in_org: {
+        Args: { object_name: string }
+        Returns: boolean
+      }
       update_loan_status: { Args: { p_loan_id: string }; Returns: undefined }
     }
     Enums: {
