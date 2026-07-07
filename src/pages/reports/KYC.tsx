@@ -75,6 +75,7 @@ const columns = [
   { key: "dob", header: "Date of Birth" },
   { key: "address", header: "Address" },
   { key: "branch", header: "Branch" },
+  { key: "loanOfficer", header: "Loan Officer" },
   { key: "status", header: "Status" },
   { key: "kycScore", header: "KYC Completeness (%)" },
   { key: "registrationDate", header: "Registration Date" }
