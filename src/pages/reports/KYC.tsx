@@ -37,10 +37,12 @@ interface Client {
   business_photo_url: string | null;
   occupation: string | null;
   marital_status: string | null;
+  loan_officer_id: string | null;
   loans?: Loan[];
   effectiveStatus?: string;
   kycScore?: number;
   missingFields?: string[];
+  loanOfficerName?: string;
 }
 
 interface Loan {
