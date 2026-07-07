@@ -291,6 +291,7 @@ const KYCReport = () => {
                 dob: client.date_of_birth || "Not specified",
                 address: client.address || "Not specified",
                 branch: branchName(client.branch_id),
+                loanOfficer: client.loanOfficerName || "—",
                 status: client.effectiveStatus || client.status,
                 kycScore: client.kycScore ?? 0,
                 registrationDate: client.registration_date || "Not specified",
