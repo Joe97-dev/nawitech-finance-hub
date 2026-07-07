@@ -168,6 +168,23 @@ const KYCReport = () => {
         setBranches(branchesRes.data || []);
         setLoans(loansData);
 
+        // Resolve loan officer names from profiles
+        const officerIds = [...new Set(allClients.map((c: Client) => c.loan_officer_id).filter(Boolean))] as string[];
+        const officerMap = new Map<string, string>();
+        if (officerIds.length > 0) {
+          const batchSize = 50;
+          for (let i = 0; i < officerIds.length; i += batchSize) {
+            const batch = officerIds.slice(i, i + batchSize);
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name")
+              .in("id", batch);
+            (profiles || []).forEach((p) => {
+              officerMap.set(p.id, `${p.first_name || ""} ${p.last_name || ""}`.trim() || "—");
+            });
+          }
+        }
+
         // Enhance clients with loans, effective status, KYC score
         const enhanced: Client[] = allClients.map((client: Client) => {
           const clientLoans = matchLoansToClient(client, loansData);
@@ -179,6 +196,7 @@ const KYCReport = () => {
             effectiveStatus,
             kycScore: score,
             missingFields: missing,
+            loanOfficerName: client.loan_officer_id ? officerMap.get(client.loan_officer_id) || "—" : "—",
           };
         });
 
