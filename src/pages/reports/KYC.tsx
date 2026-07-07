@@ -436,6 +436,7 @@ const ClientDetail = ({
                 <DetailRow label="City" value={client.city} />
                 <DetailRow label="Region" value={client.region} />
                 <DetailRow label="Branch" value={branchName} />
+                <DetailRow label="Loan Officer" value={client.loanOfficerName} />
                 <DetailRow label="Registration Date" value={client.registration_date} />
               </div>
             </div>
