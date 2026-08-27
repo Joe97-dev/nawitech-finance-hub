@@ -186,7 +186,7 @@ const NewLoanPage = () => {
       }
     }, 300);
     return () => clearTimeout(timeout);
-  }, [clientSearch]);
+  }, [clientSearch, clientId]);
 
   // Fetch loan officers
   useEffect(() => {
