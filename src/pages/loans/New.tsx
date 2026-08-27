@@ -161,6 +161,7 @@ const NewLoanPage = () => {
 
   // Search clients
   useEffect(() => {
+    if (clientId) return; // a client is already picked; don't re-search the display label
     if (clientSearch.length < 2) {
       setClients([]);
       setShowClientDropdown(false);
