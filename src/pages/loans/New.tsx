@@ -558,14 +558,24 @@ const NewLoanPage = () => {
                                     }
                                     setClientId(client.id);
                                     setSelectedClient(client);
-                                    setClientSearch(getFullClientName(client));
+                                    setClientSearch(
+                                      client.id_number
+                                        ? `${getFullClientName(client)} — ID: ${client.id_number}`
+                                        : getFullClientName(client)
+                                    );
                                   }}
                                 >
                                   <div className="flex flex-col">
-                                    <span>{getFullClientName(client)}</span>
-                                    {client.id_number && (
-                                      <span className="text-xs text-muted-foreground">ID: {client.id_number}</span>
-                                    )}
+                                    <span className="font-medium">{getFullClientName(client)}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {[
+                                        client.id_number ? `ID: ${client.id_number}` : null,
+                                        client.client_number ? `No: ${client.client_number}` : null,
+                                        client.phone ? `Tel: ${client.phone}` : null,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </span>
                                   </div>
                                 </button>
                               </li>
@@ -575,7 +585,15 @@ const NewLoanPage = () => {
                       </div>
                     )}
                   </div>
+                  {selectedClient && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: <span className="font-medium text-foreground">{getFullClientName(selectedClient)}</span>
+                      {selectedClient.id_number && ` · National ID ${selectedClient.id_number}`}
+                      {selectedClient.client_number && ` · ${selectedClient.client_number}`}
+                    </p>
+                  )}
                 </div>
+
                 
                 <div className="space-y-2">
                   <Label htmlFor="loanOfficer">Loan Officer</Label>
