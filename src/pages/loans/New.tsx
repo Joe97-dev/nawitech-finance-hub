@@ -51,6 +51,8 @@ interface Client {
   first_name: string;
   last_name: string;
   id_number?: string;
+  client_number?: string | null;
+  phone?: string | null;
 }
 
 interface LoanOfficer {
@@ -159,6 +161,7 @@ const NewLoanPage = () => {
 
   // Search clients
   useEffect(() => {
+    if (clientId) return; // a client is already picked; don't re-search the display label
     if (clientSearch.length < 2) {
       setClients([]);
       setShowClientDropdown(false);
@@ -169,7 +172,7 @@ const NewLoanPage = () => {
       try {
         const { data, error } = await supabase
           .from('clients')
-          .select('id, first_name, last_name, id_number')
+          .select('id, first_name, last_name, id_number, client_number, phone')
           .eq('status', 'active')
           .or(`first_name.ilike.%${clientSearch}%,last_name.ilike.%${clientSearch}%,client_number.ilike.%${clientSearch}%,id_number.ilike.%${clientSearch}%,phone.ilike.%${clientSearch}%`)
           .limit(10);
@@ -183,7 +186,7 @@ const NewLoanPage = () => {
       }
     }, 300);
     return () => clearTimeout(timeout);
-  }, [clientSearch]);
+  }, [clientSearch, clientId]);
 
   // Fetch loan officers
   useEffect(() => {
@@ -556,14 +559,24 @@ const NewLoanPage = () => {
                                     }
                                     setClientId(client.id);
                                     setSelectedClient(client);
-                                    setClientSearch(getFullClientName(client));
+                                    setClientSearch(
+                                      client.id_number
+                                        ? `${getFullClientName(client)} — ID: ${client.id_number}`
+                                        : getFullClientName(client)
+                                    );
                                   }}
                                 >
                                   <div className="flex flex-col">
-                                    <span>{getFullClientName(client)}</span>
-                                    {client.id_number && (
-                                      <span className="text-xs text-muted-foreground">ID: {client.id_number}</span>
-                                    )}
+                                    <span className="font-medium">{getFullClientName(client)}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {[
+                                        client.id_number ? `ID: ${client.id_number}` : null,
+                                        client.client_number ? `No: ${client.client_number}` : null,
+                                        client.phone ? `Tel: ${client.phone}` : null,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </span>
                                   </div>
                                 </button>
                               </li>
@@ -573,7 +586,15 @@ const NewLoanPage = () => {
                       </div>
                     )}
                   </div>
+                  {selectedClient && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected: <span className="font-medium text-foreground">{getFullClientName(selectedClient)}</span>
+                      {selectedClient.id_number && ` · National ID ${selectedClient.id_number}`}
+                      {selectedClient.client_number && ` · ${selectedClient.client_number}`}
+                    </p>
+                  )}
                 </div>
+
                 
                 <div className="space-y-2">
                   <Label htmlFor="loanOfficer">Loan Officer</Label>
