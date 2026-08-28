@@ -445,17 +445,24 @@ const NewLoanPage = () => {
         supabase.from('loans').select('client, status').eq('organization_id', organizationId),
         supabase
           .from('clients')
-          .select('id')
+          .select('id, first_name, last_name')
           .eq('organization_id', organizationId)
-          .ilike('first_name', client.first_name)
-          .ilike('last_name', client.last_name),
+          // Loose match: names in the DB may carry stray/double spaces, so filter
+          // with wildcards and compare normalized names below.
+          .ilike('first_name', `%${client.first_name.trim()}%`)
+          .ilike('last_name', `%${client.last_name.trim()}%`),
       ]);
       if (error) throw error;
       if (nameError) throw nameError;
 
       // When several clients share this exact name, loans recorded by name only
       // cannot be attributed to this client — match strictly by client ID.
-      const allowNameMatch = (sameName || []).length <= 1;
+      const targetName = normalizeClientText(`${client.first_name} ${client.last_name}`);
+      const sameNameCount = (sameName || []).filter(
+        (c: any) => normalizeClientText(`${c.first_name} ${c.last_name}`) === targetName,
+      ).length;
+      const allowNameMatch = sameNameCount <= 1;
+
 
       if (clientHasOpenLoans(client, (loans || []) as { client: string; status: string }[], { allowNameMatch })) {
         toast({
