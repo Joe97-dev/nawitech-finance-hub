@@ -441,12 +441,23 @@ const NewLoanPage = () => {
   const checkClientEligibility = async (client: Client): Promise<boolean> => {
     try {
       const organizationId = await getOrganizationId();
-      const { data: loans, error } = await supabase
-        .from('loans')
-        .select('client, status')
-        .eq('organization_id', organizationId);
+      const [{ data: loans, error }, { data: sameName, error: nameError }] = await Promise.all([
+        supabase.from('loans').select('client, status').eq('organization_id', organizationId),
+        supabase
+          .from('clients')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .ilike('first_name', client.first_name)
+          .ilike('last_name', client.last_name),
+      ]);
       if (error) throw error;
-      if (clientHasOpenLoans(client, (loans || []) as { client: string; status: string }[])) {
+      if (nameError) throw nameError;
+
+      // When several clients share this exact name, loans recorded by name only
+      // cannot be attributed to this client — match strictly by client ID.
+      const allowNameMatch = (sameName || []).length <= 1;
+
+      if (clientHasOpenLoans(client, (loans || []) as { client: string; status: string }[], { allowNameMatch })) {
         toast({
           variant: "destructive",
           title: "Client not eligible",
@@ -454,6 +465,7 @@ const NewLoanPage = () => {
         });
         return false;
       }
+
       return true;
     } catch (err: any) {
       console.error("Eligibility check failed:", err);

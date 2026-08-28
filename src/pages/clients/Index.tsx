@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ImportClientsDialog } from "@/components/clients/ImportClientsDialog";
-import { clientHasOpenLoans } from "@/lib/client-status";
+import { clientHasOpenLoans, getDuplicateClientNames, isNameShared } from "@/lib/client-status";
 import { getSignedUrlMap } from "@/lib/signed-url";
 
 interface Client {
@@ -58,10 +58,17 @@ const ClientsPage = () => {
       if (error) throw error;
       if (loansError) throw loansError;
 
+      const duplicateNames = getDuplicateClientNames(clientsData || []);
+
       const enrichedClients = (clientsData || []).map((client) => ({
         ...client,
-        status: clientHasOpenLoans(client, loansData || []) ? 'active' : client.status,
+        status: clientHasOpenLoans(client, loansData || [], {
+          allowNameMatch: !isNameShared(client, duplicateNames),
+        })
+          ? 'active'
+          : client.status,
       }));
+
 
       setClients(enrichedClients);
 
