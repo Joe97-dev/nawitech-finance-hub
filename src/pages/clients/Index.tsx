@@ -18,7 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ImportClientsDialog } from "@/components/clients/ImportClientsDialog";
-import { clientHasOpenLoans } from "@/lib/client-status";
+import { clientHasOpenLoans, getDuplicateClientNames, isNameShared } from "@/lib/client-status";
 import { getSignedUrlMap } from "@/lib/signed-url";
 
 interface Client {
