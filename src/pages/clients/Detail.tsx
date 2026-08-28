@@ -121,18 +121,31 @@ const ClientDetailPage = () => {
         
         // Fetch loans for this client
         const clientName = `${clientData.first_name} ${clientData.last_name}`;
+
+        // Clients sharing this exact name: loans stored by name only are ambiguous
+        const { data: sameNameClients } = await supabase
+          .from('clients')
+          .select('id')
+          .ilike('first_name', clientData.first_name)
+          .ilike('last_name', clientData.last_name);
+        const allowNameMatch = (sameNameClients || []).length <= 1;
+
         const { data: allLoansData, error: loansError } = await supabase
           .from('loans')
           .select('*')
           .neq('type', 'client_fee_account')
-          .or(`client.eq.${clientId},client.eq.${clientName}`);
+          .or(
+            allowNameMatch
+              ? `client.eq.${clientId},client.eq.${clientName}`
+              : `client.eq.${clientId}`
+          );
         
         if (loansError) {
           console.error("Error fetching loans:", loansError);
         }
 
         const matchedLoans = (allLoansData || []).filter((loan) =>
-          loan.client === clientId || loan.client === clientName
+          loan.client === clientId || (allowNameMatch && loan.client === clientName)
         );
 
         const computedStatus = clientHasOpenLoans(
@@ -141,10 +154,12 @@ const ClientDetailPage = () => {
             first_name: clientData.first_name,
             last_name: clientData.last_name,
           },
-          matchedLoans.map((loan) => ({ client: loan.client, status: loan.status }))
+          matchedLoans.map((loan) => ({ client: loan.client, status: loan.status })),
+          { allowNameMatch }
         )
           ? 'active'
           : clientData.status;
+
 
         // Fetch client documents
         const { data: documentsData, error: documentsError } = await supabase
