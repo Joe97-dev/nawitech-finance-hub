@@ -58,10 +58,17 @@ const ClientsPage = () => {
       if (error) throw error;
       if (loansError) throw loansError;
 
+      const duplicateNames = getDuplicateClientNames(clientsData || []);
+
       const enrichedClients = (clientsData || []).map((client) => ({
         ...client,
-        status: clientHasOpenLoans(client, loansData || []) ? 'active' : client.status,
+        status: clientHasOpenLoans(client, loansData || [], {
+          allowNameMatch: !isNameShared(client, duplicateNames),
+        })
+          ? 'active'
+          : client.status,
       }));
+
 
       setClients(enrichedClients);
 
