@@ -267,10 +267,24 @@ const UserApprovals = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">User Approvals</h1>
-          <p className="text-muted-foreground">Manage user registration approvals</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">User Approvals</h1>
+            <p className="text-muted-foreground">Manage user registration approvals</p>
+          </div>
+          <Button onClick={() => setAddStaffOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Staff
+          </Button>
         </div>
+
+        <AddStaffDialog
+          open={addStaffOpen}
+          onOpenChange={setAddStaffOpen}
+          branches={branches}
+          onCreated={fetchApprovals}
+        />
+
 
         {/* Pending Approvals */}
         <Card>
