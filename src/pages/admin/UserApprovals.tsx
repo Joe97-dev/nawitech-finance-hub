@@ -39,6 +39,8 @@ const UserApprovals = () => {
   const [loading, setLoading] = useState(true);
   const [branches, setBranches] = useState<Branch[]>([]);
   const { toast } = useToast();
+  const [addStaffOpen, setAddStaffOpen] = useState(false);
+
 
   // Per-dialog isolated state
   const [activeApproveUserId, setActiveApproveUserId] = useState<string | null>(null);
