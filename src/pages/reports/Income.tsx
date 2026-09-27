@@ -85,7 +85,24 @@ const IncomeReport = () => {
           penaltyQuery = penaltyQuery.lte('transaction_date', `${toStr}T23:59:59.999`);
         }
 
-        const [scheduleRes, feeRes, penaltyRes] = await Promise.all([scheduleQuery, feeQuery, penaltyQuery]);
+        // Paginate past the 1000-row default limit so no records are dropped
+        const fetchAll = async (q: any): Promise<{ data: any[]; error: any }> => {
+          const all: any[] = [];
+          const size = 1000;
+          for (let from = 0; ; from += size) {
+            const { data, error } = await q.order('id').range(from, from + size - 1);
+            if (error) return { data: all, error };
+            all.push(...(data || []));
+            if (!data || data.length < size) break;
+          }
+          return { data: all, error: null };
+        };
+
+        const [scheduleRes, feeRes, penaltyRes] = await Promise.all([
+          fetchAll(scheduleQuery),
+          fetchAll(feeQuery),
+          fetchAll(penaltyQuery),
+        ]);
 
         if (scheduleRes.error) throw scheduleRes.error;
         if (feeRes.error) throw feeRes.error;
