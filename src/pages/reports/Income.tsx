@@ -86,11 +86,11 @@ const IncomeReport = () => {
         }
 
         // Paginate past the 1000-row default limit so no records are dropped
-        const fetchAll = async (q: any): Promise<{ data: any[]; error: any }> => {
+        const fetchAll = async (make: () => any): Promise<{ data: any[]; error: any }> => {
           const all: any[] = [];
           const size = 1000;
           for (let from = 0; ; from += size) {
-            const { data, error } = await q.order('id').range(from, from + size - 1);
+            const { data, error } = await make().order('id').range(from, from + size - 1);
             if (error) return { data: all, error };
             all.push(...(data || []));
             if (!data || data.length < size) break;
@@ -99,9 +99,9 @@ const IncomeReport = () => {
         };
 
         const [scheduleRes, feeRes, penaltyRes] = await Promise.all([
-          fetchAll(scheduleQuery),
-          fetchAll(feeQuery),
-          fetchAll(penaltyQuery),
+          fetchAll(() => { let q = supabase.from('loan_schedule').select('id, due_date, interest_due, amount_paid, total_due, status').gte('due_date', fromStr); return toStr ? q.lte('due_date', toStr) : q; }),
+          fetchAll(() => { let q = supabase.from('loan_transactions').select('id, transaction_date, amount').eq('transaction_type', 'fee').eq('is_reverted', false).gte('transaction_date', fromStr); return toStr ? q.lte('transaction_date', `${toStr}T23:59:59.999`) : q; }),
+          fetchAll(() => { let q = supabase.from('loan_transactions').select('id, transaction_date, amount').eq('transaction_type', 'penalty').eq('is_reverted', false).gte('transaction_date', fromStr); return toStr ? q.lte('transaction_date', `${toStr}T23:59:59.999`) : q; }),
         ]);
 
         if (scheduleRes.error) throw scheduleRes.error;
