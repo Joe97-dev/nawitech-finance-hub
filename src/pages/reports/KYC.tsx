@@ -235,15 +235,16 @@ const KYCReport = () => {
     clients.filter(client => {
       const matchesBranch = selectedBranch === "all" || client.branch_id === selectedBranch;
       const matchesStatus = selectedStatus === "all" || client.effectiveStatus === selectedStatus;
+      const matchesOfficer = selectedOfficer === "all" || client.loan_officer_id === selectedOfficer;
       const name = `${client.first_name} ${client.last_name}`;
       const matchesSearch =
         searchQuery === "" ||
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.phone.includes(searchQuery) ||
         client.id_number.includes(searchQuery);
-      return matchesBranch && matchesStatus && matchesSearch;
+      return matchesBranch && matchesStatus && matchesOfficer && matchesSearch;
     }),
-    [clients, selectedBranch, selectedStatus, searchQuery]
+    [clients, selectedBranch, selectedStatus, selectedOfficer, searchQuery]
   );
 
   const selectedClientData = clients.find(c => c.id === selectedClient);
@@ -278,6 +279,18 @@ const KYCReport = () => {
               <SelectContent>
                 {statusOptions.map(s => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Loan Officer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {officers.map(o => (
+                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
