@@ -196,7 +196,6 @@ const ClientsReport = () => {
           data={filtered}
           columns={columns}
           filename={`clients-report-${new Date().toISOString().slice(0, 10)}`}
-          disabled={loading || filtered.length === 0}
         />
       }
       filters={
