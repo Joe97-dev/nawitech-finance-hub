@@ -144,6 +144,12 @@ const LoanBookReport = () => {
           });
         }
 
+        const officerList = officerIds
+          .map((id) => ({ id, name: profileMap.get(id) || "—" }))
+          .filter((o) => o.name !== "—")
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setOfficers(officerList);
+
         const { data: branchesData } = await supabase
           .from("branches")
           .select("id, name")
@@ -181,6 +187,7 @@ const LoanBookReport = () => {
             status: loan.status || "—",
             disbursed_date: loan.date,
             loan_officer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || "—" : "—",
+            loan_officer_id: loan.loan_officer_id || null,
             branch_name: branchId ? branchNameMap.get(branchId) || "—" : "—",
             branch_id: branchId,
           };
@@ -208,21 +215,24 @@ const LoanBookReport = () => {
           loan.loan_number.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesBranch = selectedBranch === "all" || loan.branch_id === selectedBranch;
         const matchesStatus = selectedStatus === "all" || loan.status === selectedStatus;
-        return matchesSearch && matchesBranch && matchesStatus;
+        const matchesOfficer = selectedOfficer === "all" || loan.loan_officer_id === selectedOfficer;
+        return matchesSearch && matchesBranch && matchesStatus && matchesOfficer;
       }),
-    [rows, searchQuery, selectedBranch, selectedStatus]
+    [rows, searchQuery, selectedBranch, selectedStatus, selectedOfficer]
   );
 
   const totalPrincipal = filteredRows.reduce((acc, l) => acc + l.principal, 0);
   const totalOutstanding = filteredRows.reduce((acc, l) => acc + l.outstanding, 0);
   const totalPaid = filteredRows.reduce((acc, l) => acc + l.amount_paid, 0);
 
-  const hasActiveFilters = searchQuery !== "" || selectedBranch !== "all" || selectedStatus !== "all" || date !== undefined;
+  const hasActiveFilters =
+    searchQuery !== "" || selectedBranch !== "all" || selectedStatus !== "all" || selectedOfficer !== "all" || date !== undefined;
 
   const handleReset = () => {
     setSearchQuery("");
     setSelectedBranch("all");
     setSelectedStatus("all");
+    setSelectedOfficer("all");
     setDate(undefined);
   };
 
