@@ -212,6 +212,7 @@ const ClientsReport = () => {
       filters={
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Input
+            className="md:col-span-2"
             placeholder="Search name, client no., ID or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -240,6 +241,11 @@ const ClientsReport = () => {
               {officers.map((o) => <SelectItem key={o.id} value={o.name}>{o.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <DateRangePicker
+            className="md:col-span-2"
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </div>
       }
     >
