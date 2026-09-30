@@ -26,6 +26,7 @@ interface LoanBookRow {
   status: string;
   disbursed_date: string;
   loan_officer: string;
+  loan_officer_id: string | null;
   branch_name: string;
   branch_id: string | null;
 }
@@ -67,6 +68,8 @@ const LoanBookReport = () => {
   const [date, setDate] = useState<DateRange | undefined>();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [rows, setRows] = useState<LoanBookRow[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -141,6 +144,12 @@ const LoanBookReport = () => {
           });
         }
 
+        const officerList = officerIds
+          .map((id) => ({ id, name: profileMap.get(id) || "—" }))
+          .filter((o) => o.name !== "—")
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setOfficers(officerList);
+
         const { data: branchesData } = await supabase
           .from("branches")
           .select("id, name")
@@ -178,6 +187,7 @@ const LoanBookReport = () => {
             status: loan.status || "—",
             disbursed_date: loan.date,
             loan_officer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || "—" : "—",
+            loan_officer_id: loan.loan_officer_id || null,
             branch_name: branchId ? branchNameMap.get(branchId) || "—" : "—",
             branch_id: branchId,
           };
@@ -205,27 +215,30 @@ const LoanBookReport = () => {
           loan.loan_number.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesBranch = selectedBranch === "all" || loan.branch_id === selectedBranch;
         const matchesStatus = selectedStatus === "all" || loan.status === selectedStatus;
-        return matchesSearch && matchesBranch && matchesStatus;
+        const matchesOfficer = selectedOfficer === "all" || loan.loan_officer_id === selectedOfficer;
+        return matchesSearch && matchesBranch && matchesStatus && matchesOfficer;
       }),
-    [rows, searchQuery, selectedBranch, selectedStatus]
+    [rows, searchQuery, selectedBranch, selectedStatus, selectedOfficer]
   );
 
   const totalPrincipal = filteredRows.reduce((acc, l) => acc + l.principal, 0);
   const totalOutstanding = filteredRows.reduce((acc, l) => acc + l.outstanding, 0);
   const totalPaid = filteredRows.reduce((acc, l) => acc + l.amount_paid, 0);
 
-  const hasActiveFilters = searchQuery !== "" || selectedBranch !== "all" || selectedStatus !== "all" || date !== undefined;
+  const hasActiveFilters =
+    searchQuery !== "" || selectedBranch !== "all" || selectedStatus !== "all" || selectedOfficer !== "all" || date !== undefined;
 
   const handleReset = () => {
     setSearchQuery("");
     setSelectedBranch("all");
     setSelectedStatus("all");
+    setSelectedOfficer("all");
     setDate(undefined);
   };
 
   const filters = (
     <ReportFilters title="Loan Book Filters" hasActiveFilters={hasActiveFilters} onReset={handleReset}>
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <DateRangePicker dateRange={date} onDateRangeChange={setDate} />
 
         <div>
@@ -252,6 +265,21 @@ const LoanBookReport = () => {
             <SelectContent>
               {statusOptions.map((s) => (
                 <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Loan Officer</label>
+          <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="Select Officer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Officers</SelectItem>
+              {officers.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
