@@ -26,6 +26,7 @@ interface LoanBookRow {
   status: string;
   disbursed_date: string;
   loan_officer: string;
+  loan_officer_id: string | null;
   branch_name: string;
   branch_id: string | null;
 }
@@ -67,6 +68,8 @@ const LoanBookReport = () => {
   const [date, setDate] = useState<DateRange | undefined>();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [rows, setRows] = useState<LoanBookRow[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
