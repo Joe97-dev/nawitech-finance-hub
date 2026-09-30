@@ -60,6 +60,12 @@ const mainNavItems = [
 
 const reportNavItems = [
   {
+    title: "Clients Report",
+    href: "/reports/clients",
+    icon: Users,
+    requiredRoles: ["admin", "loan_officer", "data_entry"],
+  },
+  {
     title: "Loan Book",
     href: "/reports/loan-book",
     icon: FileText,
