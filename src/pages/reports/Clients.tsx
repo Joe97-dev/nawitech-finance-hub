@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import { ReportPage } from "./Base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/export-button";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getOrganizationId } from "@/lib/get-organization-id";
@@ -52,6 +55,7 @@ const ClientsReport = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [officerFilter, setOfficerFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
 
@@ -163,14 +167,21 @@ const ClientsReport = () => {
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
+    const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : undefined;
+    const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined;
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (branchFilter !== "all" && r.branch !== branchFilter) return false;
       if (officerFilter !== "all" && r.loan_officer !== officerFilter) return false;
+      if (fromStr) {
+        // registration_date is "YYYY-MM-DD" (or "—" when missing)
+        const reg = /^\d{4}-\d{2}-\d{2}$/.test(r.registration_date) ? r.registration_date : undefined;
+        if (!reg || reg < fromStr || (toStr && reg > toStr)) return false;
+      }
       if (q && ![r.client_name, r.client_number, r.id_number, r.phone].some((v) => v.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [rows, searchQuery, statusFilter, branchFilter, officerFilter]);
+  }, [rows, searchQuery, statusFilter, branchFilter, officerFilter, dateRange]);
 
   const stats = useMemo(() => ({
     total: filtered.length,
@@ -201,6 +212,7 @@ const ClientsReport = () => {
       filters={
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Input
+            className="md:col-span-2"
             placeholder="Search name, client no., ID or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -229,6 +241,11 @@ const ClientsReport = () => {
               {officers.map((o) => <SelectItem key={o.id} value={o.name}>{o.name}</SelectItem>)}
             </SelectContent>
           </Select>
+          <DateRangePicker
+            className="md:col-span-2"
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </div>
       }
     >
