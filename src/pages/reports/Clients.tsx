@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import { ReportPage } from "./Base";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/ui/export-button";
 import { ReportStat, ReportStats } from "@/components/reports/ReportStats";
+import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getOrganizationId } from "@/lib/get-organization-id";
@@ -52,6 +55,7 @@ const ClientsReport = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [officerFilter, setOfficerFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
 
