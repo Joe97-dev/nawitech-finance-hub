@@ -186,6 +186,11 @@ const KYCReport = () => {
             });
           }
         }
+        setOfficers(
+          Array.from(officerMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
 
         // Enhance clients with loans, effective status, KYC score
         const enhanced: Client[] = allClients.map((client: Client) => {
