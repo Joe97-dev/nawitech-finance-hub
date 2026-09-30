@@ -238,7 +238,7 @@ const LoanBookReport = () => {
 
   const filters = (
     <ReportFilters title="Loan Book Filters" hasActiveFilters={hasActiveFilters} onReset={handleReset}>
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <DateRangePicker dateRange={date} onDateRangeChange={setDate} />
 
         <div>
@@ -265,6 +265,21 @@ const LoanBookReport = () => {
             <SelectContent>
               {statusOptions.map((s) => (
                 <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Loan Officer</label>
+          <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+            <SelectTrigger className="border-dashed">
+              <SelectValue placeholder="Select Officer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Officers</SelectItem>
+              {officers.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
