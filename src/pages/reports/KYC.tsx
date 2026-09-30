@@ -127,12 +127,14 @@ const KYCReport = () => {
   const { toast } = useToast();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loans, setLoans] = useState<Loan[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch all data once — no dependency on selectedClient
