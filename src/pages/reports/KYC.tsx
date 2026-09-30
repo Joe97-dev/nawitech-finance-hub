@@ -127,12 +127,14 @@ const KYCReport = () => {
   const { toast } = useToast();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loans, setLoans] = useState<Loan[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch all data once — no dependency on selectedClient
@@ -184,6 +186,11 @@ const KYCReport = () => {
             });
           }
         }
+        setOfficers(
+          Array.from(officerMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
 
         // Enhance clients with loans, effective status, KYC score
         const enhanced: Client[] = allClients.map((client: Client) => {
@@ -228,15 +235,16 @@ const KYCReport = () => {
     clients.filter(client => {
       const matchesBranch = selectedBranch === "all" || client.branch_id === selectedBranch;
       const matchesStatus = selectedStatus === "all" || client.effectiveStatus === selectedStatus;
+      const matchesOfficer = selectedOfficer === "all" || client.loan_officer_id === selectedOfficer;
       const name = `${client.first_name} ${client.last_name}`;
       const matchesSearch =
         searchQuery === "" ||
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         client.phone.includes(searchQuery) ||
         client.id_number.includes(searchQuery);
-      return matchesBranch && matchesStatus && matchesSearch;
+      return matchesBranch && matchesStatus && matchesOfficer && matchesSearch;
     }),
-    [clients, selectedBranch, selectedStatus, searchQuery]
+    [clients, selectedBranch, selectedStatus, selectedOfficer, searchQuery]
   );
 
   const selectedClientData = clients.find(c => c.id === selectedClient);
@@ -271,6 +279,18 @@ const KYCReport = () => {
               <SelectContent>
                 {statusOptions.map(s => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Loan Officer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {officers.map(o => (
+                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
