@@ -167,14 +167,21 @@ const ClientsReport = () => {
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
+    const fromStr = dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : undefined;
+    const toStr = dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined;
     return rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (branchFilter !== "all" && r.branch !== branchFilter) return false;
       if (officerFilter !== "all" && r.loan_officer !== officerFilter) return false;
+      if (fromStr) {
+        // registration_date is "YYYY-MM-DD" (or "—" when missing)
+        const reg = /^\d{4}-\d{2}-\d{2}$/.test(r.registration_date) ? r.registration_date : undefined;
+        if (!reg || reg < fromStr || (toStr && reg > toStr)) return false;
+      }
       if (q && ![r.client_name, r.client_number, r.id_number, r.phone].some((v) => v.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [rows, searchQuery, statusFilter, branchFilter, officerFilter]);
+  }, [rows, searchQuery, statusFilter, branchFilter, officerFilter, dateRange]);
 
   const stats = useMemo(() => ({
     total: filtered.length,
