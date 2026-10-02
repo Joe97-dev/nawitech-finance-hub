@@ -32,6 +32,7 @@ interface ArrearsData {
   riskCategory: "low" | "medium" | "high" | "critical";
   photoUrl?: string;
   loanOfficer: string;
+  loanOfficerId?: string;
 }
 
 const branches = [
