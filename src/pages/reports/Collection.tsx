@@ -10,6 +10,7 @@ import { DateRangePicker } from "@/components/reports/DateRangePicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getOrganizationId } from "@/lib/get-organization-id";
+import { useRole } from "@/context/RoleContext";
 
 interface CollectionData {
   month: string;
@@ -36,9 +37,12 @@ const CollectionRateReport = () => {
   const [collectionData, setCollectionData] = useState<CollectionData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { isAdmin, loading: roleLoading } = useRole();
+
   useEffect(() => {
+    if (roleLoading) return;
     fetchCollectionData();
-  }, [date]);
+  }, [date, isAdmin, roleLoading]);
 
   const fetchCollectionData = async () => {
     try {
@@ -84,8 +88,32 @@ const CollectionRateReport = () => {
         from += pageSize;
       }
 
+      // Loan officers only see their own loans
+      let ownLoanIds: Set<string> | null = null;
+      if (!isAdmin) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const ids: string[] = [];
+        let lf = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from('loans')
+            .select('id')
+            .eq('organization_id', orgId)
+            .eq('loan_officer_id', user?.id ?? '')
+            .order('id')
+            .range(lf, lf + pageSize - 1);
+          if (error) throw error;
+          (data || []).forEach(l => ids.push(l.id));
+          if (!data || data.length < pageSize) break;
+          lf += pageSize;
+        }
+        ownLoanIds = new Set(ids);
+      }
+
       // Filter out fee-account schedules
-      const schedules = allSchedules.filter(s => !feeIds.has(s.loan_id));
+      const schedules = allSchedules.filter(s =>
+        !feeIds.has(s.loan_id) && (!ownLoanIds || ownLoanIds.has(s.loan_id))
+      );
 
       // Group by month
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
