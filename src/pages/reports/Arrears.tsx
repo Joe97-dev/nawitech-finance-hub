@@ -71,6 +71,8 @@ const ArrearsReport = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedRisk, setSelectedRisk] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   const [arrearsData, setArrearsData] = useState<ArrearsData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +165,12 @@ const ArrearsReport = () => {
             profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim() || '—');
           });
         }
+
+        setOfficers(
+          Array.from(profileMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
 
         // Build arrears data from overdue loans
         const arrearsArray: ArrearsData[] = [];
