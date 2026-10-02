@@ -32,6 +32,7 @@ interface ArrearsData {
   riskCategory: "low" | "medium" | "high" | "critical";
   photoUrl?: string;
   loanOfficer: string;
+  loanOfficerId?: string;
 }
 
 const branches = [
@@ -70,6 +71,8 @@ const ArrearsReport = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedRisk, setSelectedRisk] = useState("all");
+  const [selectedOfficer, setSelectedOfficer] = useState("all");
+  const [officers, setOfficers] = useState<{ id: string; name: string }[]>([]);
   const [interestCalculation, setInterestCalculation] = useState<"monthly" | "annually">("annually");
   const [arrearsData, setArrearsData] = useState<ArrearsData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,6 +166,12 @@ const ArrearsReport = () => {
           });
         }
 
+        setOfficers(
+          Array.from(profileMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
+
         // Build arrears data from overdue loans
         const arrearsArray: ArrearsData[] = [];
 
@@ -197,7 +206,8 @@ const ArrearsReport = () => {
             phone: clientPhone,
             email: clientEmail,
             riskCategory,
-            loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
+            loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—',
+            loanOfficerId: loan.loan_officer_id || undefined
           });
         });
 
@@ -223,8 +233,9 @@ const ArrearsReport = () => {
   const filteredData = arrearsData.filter(item => {
     const matchesBranch = selectedBranch === "all";
     const matchesRisk = selectedRisk === "all" || item.riskCategory === selectedRisk;
+    const matchesOfficer = selectedOfficer === "all" || item.loanOfficerId === selectedOfficer;
     
-    return matchesBranch && matchesRisk;
+    return matchesBranch && matchesRisk && matchesOfficer;
   });
 
   // Calculate statistics
@@ -260,11 +271,12 @@ const ArrearsReport = () => {
     }
   };
 
-  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || (dateRange !== undefined);
+  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || selectedOfficer !== "all" || (dateRange !== undefined);
 
   const handleReset = () => {
     setSelectedBranch("all");
     setSelectedRisk("all");
+    setSelectedOfficer("all");
     setDateRange(undefined);
     setInterestCalculation("annually");
   };
@@ -296,7 +308,7 @@ const ArrearsReport = () => {
         hasActiveFilters={hasActiveFilters}
         onReset={handleReset}
       >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
           <DateRangePicker
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -315,6 +327,25 @@ const ArrearsReport = () => {
                 {branches.map((branch) => (
                   <SelectItem key={branch.value} value={branch.value}>
                     {branch.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Loan Officer
+            </label>
+            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="All Officers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {officers.map((officer) => (
+                  <SelectItem key={officer.id} value={officer.id}>
+                    {officer.name}
                   </SelectItem>
                 ))}
               </SelectContent>
