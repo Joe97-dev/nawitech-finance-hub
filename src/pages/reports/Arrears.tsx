@@ -206,7 +206,8 @@ const ArrearsReport = () => {
             phone: clientPhone,
             email: clientEmail,
             riskCategory,
-            loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—'
+            loanOfficer: loan.loan_officer_id ? profileMap.get(loan.loan_officer_id) || '—' : '—',
+            loanOfficerId: loan.loan_officer_id || undefined
           });
         });
 
@@ -232,8 +233,9 @@ const ArrearsReport = () => {
   const filteredData = arrearsData.filter(item => {
     const matchesBranch = selectedBranch === "all";
     const matchesRisk = selectedRisk === "all" || item.riskCategory === selectedRisk;
+    const matchesOfficer = selectedOfficer === "all" || item.loanOfficerId === selectedOfficer;
     
-    return matchesBranch && matchesRisk;
+    return matchesBranch && matchesRisk && matchesOfficer;
   });
 
   // Calculate statistics
