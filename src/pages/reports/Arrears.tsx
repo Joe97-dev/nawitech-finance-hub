@@ -271,11 +271,12 @@ const ArrearsReport = () => {
     }
   };
 
-  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || (dateRange !== undefined);
+  const hasActiveFilters = selectedBranch !== "all" || selectedRisk !== "all" || selectedOfficer !== "all" || (dateRange !== undefined);
 
   const handleReset = () => {
     setSelectedBranch("all");
     setSelectedRisk("all");
+    setSelectedOfficer("all");
     setDateRange(undefined);
     setInterestCalculation("annually");
   };
@@ -307,7 +308,7 @@ const ArrearsReport = () => {
         hasActiveFilters={hasActiveFilters}
         onReset={handleReset}
       >
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
           <DateRangePicker
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -326,6 +327,25 @@ const ArrearsReport = () => {
                 {branches.map((branch) => (
                   <SelectItem key={branch.value} value={branch.value}>
                     {branch.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Loan Officer
+            </label>
+            <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <SelectTrigger className="border-dashed">
+                <SelectValue placeholder="All Officers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Officers</SelectItem>
+                {officers.map((officer) => (
+                  <SelectItem key={officer.id} value={officer.id}>
+                    {officer.name}
                   </SelectItem>
                 ))}
               </SelectContent>
