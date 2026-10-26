@@ -220,6 +220,7 @@ const FundTransfers = () => {
           client_account_id: sourceAccountId,
           amount: -transferAmount,
           transaction_type: "withdrawal",
+          related_loan_id: transferType === "loan" ? destLoanId : null,
           notes: transferType === "loan"
             ? `Transfer to ${destName}'s loan${notes ? ` - ${notes}` : ""}`
             : `Transfer to ${destName}'s account${notes ? ` - ${notes}` : ""}`,
