@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
+const PROCESSING_FEE_REQUIRED = 400;
+const REGISTRATION_FEE_REQUIRED = 100;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -99,23 +102,46 @@ Deno.serve(async (req) => {
       if (loanTxError) throw loanTxError;
       loanTxId = loanTx.id;
 
-      // Activate client if pending/dormant
-      await supabase
-        .from("clients")
-        .update({ status: "active" })
-        .eq("id", clientId)
-        .in("status", ["pending", "dormant"]);
-
-      // Also activate pending loans for this client
-      await supabase
-        .from("loans")
-        .update({ status: "active" })
-        .eq("client", clientName)
-        .eq("status", "pending")
-        .neq("type", "client_fee_account");
+      // Activate client only once the full KES 100 registration fee has been posted
+      if ((feeType || "") === "registration_fee") {
+        const { data: regFees } = await supabase
+          .from("loan_transactions")
+          .select("amount")
+          .eq("loan_id", effectiveLoanId)
+          .eq("transaction_type", "fee")
+          .eq("is_reverted", false)
+          .ilike("notes", "registration_fee%");
+        const regTotal = (regFees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+        if (regTotal >= REGISTRATION_FEE_REQUIRED) {
+          await supabase
+            .from("clients")
+            .update({ status: "active" })
+            .eq("id", clientId)
+            .in("status", ["pending", "dormant"]);
+        }
+      }
 
     } else if (matchType === "loan_fee") {
-      // Handle loan fee
+      // Handle loan fee — processing fees are capped at KES 400 in total
+      if ((feeType || "") === "processing_fee") {
+        const { data: existingFees } = await supabase
+          .from("loan_transactions")
+          .select("amount")
+          .eq("loan_id", loanId)
+          .eq("transaction_type", "fee")
+          .eq("is_reverted", false)
+          .ilike("notes", "processing_fee%");
+        const alreadyPaid = (existingFees || []).reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+        const remaining = Math.max(PROCESSING_FEE_REQUIRED - alreadyPaid, 0);
+        if (amount > remaining) {
+          throw new Error(
+            remaining === 0
+              ? `The KES ${PROCESSING_FEE_REQUIRED} processing fee for this loan is already fully paid.`
+              : `This loan only needs KES ${remaining} more processing fee (KES ${alreadyPaid} of ${PROCESSING_FEE_REQUIRED} already paid). Match this payment as a repayment instead.`
+          );
+        }
+      }
+
       const { data: loanTx, error: loanTxError } = await supabase
         .from("loan_transactions")
         .insert({
@@ -134,12 +160,8 @@ Deno.serve(async (req) => {
       if (loanTxError) throw loanTxError;
       loanTxId = loanTx.id;
 
-      // Activate the loan if pending
-      await supabase
-        .from("loans")
-        .update({ status: "active" })
-        .eq("id", loanId)
-        .eq("status", "pending");
+      // Loan activation is handled by the database: the loan becomes active
+      // only once non-reverted processing fees total KES 400.
 
     } else {
       // Handle repayment (original logic)
