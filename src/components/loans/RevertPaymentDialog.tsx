@@ -193,6 +193,39 @@ export function RevertPaymentDialog({
     }
   };
 
+  // For cross-client fund transfers, find the source client's withdrawal that funded this payment
+  const findTransferSourceAccount = async (loanId: string, amount: number) => {
+    if (!transaction || !(transaction.notes || '').startsWith('Transfer from')) return null;
+    const txTime = new Date(transaction.transaction_date).getTime();
+    const windowStart = new Date(txTime - 60_000).toISOString();
+    const windowEnd = new Date(txTime + 5_000).toISOString();
+
+    const { data: candidates, error } = await supabase
+      .from('client_account_transactions')
+      .select('id, client_account_id, related_loan_id, created_at')
+      .eq('transaction_type', 'withdrawal')
+      .eq('amount', -amount)
+      .ilike('notes', 'Transfer to %loan%')
+      .gte('created_at', windowStart)
+      .lte('created_at', windowEnd)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!candidates || candidates.length === 0) return null;
+
+    const match =
+      candidates.find((c) => c.related_loan_id === loanId) ||
+      candidates.find((c) => !c.related_loan_id);
+    if (!match) return null;
+
+    const { data: account, error: accErr } = await supabase
+      .from('client_accounts')
+      .select('id, balance')
+      .eq('id', match.client_account_id)
+      .maybeSingle();
+    if (accErr) throw accErr;
+    return account;
+  };
+
   const reverseClientAccountEffect = async (
     clientId: string,
     loanId: string,
@@ -201,6 +234,32 @@ export function RevertPaymentDialog({
     userId: string
   ) => {
     try {
+      const { data: orgData } = await supabase.rpc('get_user_organization_id', { _user_id: userId });
+      const organizationId = orgData as string;
+
+      // Payment funded by another client's Draw Down (fund transfer) — refund the source client
+      if (paymentMethod === 'draw_down_account') {
+        const sourceAccount = await findTransferSourceAccount(loanId, amount);
+        if (sourceAccount) {
+          const { error } = await supabase
+            .from('client_account_transactions')
+            .insert({
+              client_account_id: sourceAccount.id,
+              amount: amount,
+              transaction_type: 'deposit',
+              related_loan_id: loanId,
+              related_transaction_id: transaction?.id ?? null,
+              notes: 'Refund: reverted fund transfer to another client\'s loan',
+              created_by: userId,
+              previous_balance: sourceAccount.balance,
+              new_balance: Number(sourceAccount.balance) + amount,
+              organization_id: organizationId
+            });
+          if (error) throw error;
+          return;
+        }
+      }
+
       // Get client account
       const { data: account, error: accountError } = await supabase
         .from('client_accounts')
@@ -211,9 +270,6 @@ export function RevertPaymentDialog({
       if (accountError) throw accountError;
       if (!account) return; // No client account, nothing to reverse
 
-      const { data: orgData } = await supabase.rpc('get_user_organization_id', { _user_id: userId });
-      const organizationId = orgData as string;
-
       if (paymentMethod === 'draw_down_account') {
         // Payment was FROM draw down — reverse means ADD back to draw down
         const { error } = await supabase
@@ -223,6 +279,7 @@ export function RevertPaymentDialog({
             amount: amount,
             transaction_type: 'deposit',
             related_loan_id: loanId,
+            related_transaction_id: transaction?.id ?? null,
             notes: 'Reversed: payment from Draw Down Account was reverted',
             created_by: userId,
             previous_balance: account.balance,
