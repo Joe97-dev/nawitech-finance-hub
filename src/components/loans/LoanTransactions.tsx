@@ -249,6 +249,8 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
       return;
     }
 
+    const isDrawDown = paymentForm.payment_method === 'draw_down_account';
+
     setIsProcessingPayment(true);
 
     try {
@@ -258,8 +260,26 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
 
       const organizationId = await getOrganizationId();
 
+      // A payment marked as coming from the Draw Down Account must be taken out of it.
+      // Read the live balance so we never overdraw or use a stale figure.
+      let ddAccount: { id: string; balance: number } | null = null;
+      if (isDrawDown) {
+        if (!clientId) throw new Error("This loan is not linked to a client Draw Down Account");
+        const { data: acct, error: acctError } = await supabase
+          .from('client_accounts')
+          .select('id, balance')
+          .eq('client_id', clientId)
+          .maybeSingle();
+        if (acctError) throw acctError;
+        if (!acct) throw new Error("Client has no Draw Down Account");
+        if (paymentAmount > Number(acct.balance)) {
+          throw new Error(`Insufficient Draw Down balance (available ${formatCurrency(Number(acct.balance))})`);
+        }
+        ddAccount = { id: acct.id, balance: Number(acct.balance) };
+      }
+
       // Insert the transaction
-      const { error: transactionError } = await supabase
+      const { data: insertedTx, error: transactionError } = await supabase
         .from('loan_transactions')
         .insert({
           loan_id: loanId,
@@ -268,15 +288,36 @@ export function LoanTransactions({ loanId, clientId, onBalanceUpdate }: LoanTran
           transaction_date: paymentForm.transaction_date,
           payment_method: paymentForm.payment_method,
           receipt_number: paymentForm.receipt_number,
-          notes: paymentForm.notes || null,
+          notes: paymentForm.notes || (isDrawDown ? 'Payment from Draw Down Account' : null),
           created_by: user.id,
           organization_id: organizationId
-        });
+        })
+        .select('id')
+        .single();
 
       if (transactionError) throw transactionError;
 
       // Allocate payment to schedule items (oldest unpaid first)
       await allocatePaymentToSchedule(loanId, paymentAmount);
+
+      if (ddAccount) {
+        const { error: ddError } = await supabase
+          .from('client_account_transactions')
+          .insert({
+            client_account_id: ddAccount.id,
+            amount: -paymentAmount,
+            transaction_type: 'loan_payment',
+            related_loan_id: loanId,
+            related_transaction_id: insertedTx?.id ?? null,
+            notes: 'Loan repayment from Draw Down Account',
+            created_by: user.id,
+            previous_balance: ddAccount.balance,
+            new_balance: ddAccount.balance - paymentAmount,
+            organization_id: organizationId
+          });
+        if (ddError) throw ddError;
+        await fetchDrawDownBalance();
+      }
       
       // Note: The loan balance will be automatically updated by the database trigger
       // when we update the loan_schedule amount_paid values
