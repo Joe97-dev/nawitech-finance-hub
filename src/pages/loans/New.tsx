@@ -441,8 +441,26 @@ const NewLoanPage = () => {
   const checkClientEligibility = async (client: Client): Promise<boolean> => {
     try {
       const organizationId = await getOrganizationId();
+      // Read every loan (not just the first 1,000) so no open loan is missed.
+      const fetchAllLoans = async () => {
+        const all: { client: string; status: string }[] = [];
+        const pageSize = 1000;
+        for (let from = 0; ; from += pageSize) {
+          const { data, error } = await supabase
+            .from('loans')
+            .select('id, client, status')
+            .eq('organization_id', organizationId)
+            .neq('type', 'client_fee_account')
+            .order('id')
+            .range(from, from + pageSize - 1);
+          if (error) return { data: null, error };
+          all.push(...((data || []) as { client: string; status: string }[]));
+          if (!data || data.length < pageSize) break;
+        }
+        return { data: all, error: null };
+      };
       const [{ data: loans, error }, { data: sameName, error: nameError }] = await Promise.all([
-        supabase.from('loans').select('client, status').eq('organization_id', organizationId),
+        fetchAllLoans(),
         supabase
           .from('clients')
           .select('id, first_name, last_name')
