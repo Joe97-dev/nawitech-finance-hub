@@ -57,12 +57,22 @@ const getStatusClass = (status: string) => {
   }
 };
 
+const normName = (v: string) => (v || '').trim().replace(/\s+/g, ' ').toLowerCase();
+// Compare phones by their last 9 digits so 07..., 2547... and +2547... all match
+const phoneCore = (v: string) => {
+  const d = (v || '').replace(/\D/g, '');
+  if (d.startsWith('254')) return d.slice(3);
+  if (d.startsWith('0')) return d.slice(1);
+  return d;
+};
+
 const LoansPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [clientMap, setClientMap] = useState<ClientMap>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [phoneMap, setPhoneMap] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { isAdmin, isLoanOfficer } = useRole();
   
@@ -102,13 +112,22 @@ const LoansPage = () => {
 
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, first_name, last_name');
+        .select('id, first_name, last_name, phone');
       if (clients) {
         const map: ClientMap = {};
+        const phones: Record<string, string> = {};
+        const add = (key: string, phone: string) => {
+          phones[key] = phones[key] ? `${phones[key]} ${phone}` : phone;
+        };
         clients.forEach(c => {
           map[`${c.first_name} ${c.last_name}`] = c.id;
+          if (c.phone) {
+            add(c.id, c.phone);
+            add(normName(`${c.first_name} ${c.last_name}`), c.phone);
+          }
         });
         setClientMap(map);
+        setPhoneMap(phones);
       }
     } catch (error: any) {
       console.error("Error fetching loans:", error);
@@ -126,7 +145,11 @@ const LoansPage = () => {
     fetchLoans();
   }, [toast]);
   
+  const queryDigits = phoneCore(searchQuery);
   const filteredLoans = loans.filter(loan => 
+    (queryDigits.length >= 4 && /^[\d\s+()-]+$/.test(searchQuery.trim()) &&
+      (phoneMap[loan.client] || phoneMap[normName(loan.client)] || '')
+        .split(' ').some(p => phoneCore(p).includes(queryDigits))) ||
     loan.client.toLowerCase().includes(searchQuery.toLowerCase()) || 
     loan.loan_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     loan.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -197,7 +220,7 @@ const LoansPage = () => {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search loans..."
+              placeholder="Search by name, loan no. or phone..."
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
