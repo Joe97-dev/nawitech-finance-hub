@@ -69,13 +69,22 @@ const LoansPage = () => {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('loans')
-        .select('*')
-        .neq('type', 'client_fee_account')
-        .order('date', { ascending: false });
-        
-      if (error) throw error;
+      const pageSize = 1000;
+      let data: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data: page, error } = await supabase
+          .from('loans')
+          .select('*')
+          .neq('type', 'client_fee_account')
+          .order('date', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        data = data.concat(page || []);
+        if (!page || page.length < pageSize) break;
+        from += pageSize;
+      }
       
       const formattedLoans: Loan[] = (data || []).map((loan: any) => ({
         id: loan.id,
