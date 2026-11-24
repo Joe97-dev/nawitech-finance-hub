@@ -209,9 +209,12 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
         occupation: formData.occupation || null,
         employment_status: formData.employment_status || null,
         monthly_income: formData.monthly_income || null,
-        status: formData.status,
         loan_officer_id: formData.loan_officer_id || null,
       };
+      // Do not overwrite a fee-driven status change when saving unrelated details.
+      if (formData.status !== client.status) {
+        clientUpdates.status = formData.status;
+      }
 
       // 2. Upload photos
       const ts = Date.now();
@@ -389,7 +392,7 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated, 
                 <Select value={formData.status} onValueChange={(v) => handleInputChange('status', v)}>
                   <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="active" disabled={client.status !== "active"}>Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                   </SelectContent>
